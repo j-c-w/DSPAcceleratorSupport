@@ -1,0 +1,10 @@
+{
+	"Complex": {
+		"type": "struct",
+		"symbols": ["re", "im"],
+		"typemap": {
+			"re": "float32",
+			"im": "float32"
+		}
+	}
+}

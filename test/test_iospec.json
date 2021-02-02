@@ -1,0 +1,6 @@
+{ "livein":["cpx", "n"],
+	"liveout": ["cpx"],
+	"execcmd": "./a.out $INPUT_JSON",
+	"typemap": { "cpx": "array(Complex)",
+		"n": "int32"}
+}

@@ -1,0 +1,10 @@
+{
+	"livein":["re", "im", "len"],
+	"liveout": ["re", "im"],
+	"execcmd": "./a.out $INPUT_JSON",
+	"typemap": {
+		"re": "array(float32)",
+		"im": "array(float32)",
+		"len": "int32"
+	}
+}
