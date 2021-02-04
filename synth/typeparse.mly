@@ -35,5 +35,5 @@ tsub:
  | FLOAT32 { Float32 }
  | FLOAT64 { Float64 }
  | UNIT { Unit }
- | ARRAY; LPAREN; tsub; RPAREN { Array($3) };
+ | ARRAY; LPAREN; tsub; RPAREN { Array($3, EmptyDimension) };
  | IDENT {Struct($1)}
