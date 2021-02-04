@@ -19,11 +19,13 @@ let main options classspec_file iospec_file api_file  =
 	Printf.printf "Done!\n";;
 
 let optswrapper classspec_file iospec_file api_file dump_skeletons 
-        debug_generate_skeletons =
+        debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions =
     (* First make the options object, then call the normal main function.  *)
     let options = {
+		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
-        debug_generate_skeletons = debug_generate_skeletons
+		debug_generate_skeletons = debug_generate_skeletons;
+		debug_assign_dimensions = debug_assign_dimensions
     }
     in
     main options classspec_file iospec_file api_file
@@ -46,11 +48,17 @@ let apispec =
 let dump_skeletons =
     let doc = "Dump skeletons" in
     Arg.(value & flag & info ["dump-skeletons"] ~docv:"DumpSkeletons" ~doc)
+let dump_assigned_dimensions =
+	let doc = "Dump assigned dimension variables" in
+	Arg.(value & flag & info ["dump-dimensions"] ~docv:"DumpDimensions" ~doc)
 
 (* Debug pass internal flags *)
 let debug_generate_skeletons =
     let doc = "Print debug information for skeleton.ml" in
     Arg.(value & flag & info ["debug-skeletons"]  ~docv:"DebugSkeletons" ~doc)
+let debug_assign_dimensions =
+	let doc = "Print debug information for assign_dimensions.ml" in
+	Arg.(value & flag & info ["debug-assign-dimensions"] ~docv:"DebugAssignDimensions" ~doc)
 
 (* Debug flags *)
 let info =
@@ -60,5 +68,5 @@ let info =
 (* This command line parser is a shitshow, or I don't know how to use it.
    In any case, this has to stay in the right order.  *)
 let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skeletons $
-    debug_generate_skeletons)
+    debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions)
 let () = Term.exit @@ Term.eval (args_t, info)

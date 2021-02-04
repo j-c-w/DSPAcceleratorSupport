@@ -1,5 +1,6 @@
 open Core_kernel;;
 open Spec_definition;;
+open Assign_dimensions;;
 open Skeleton
 open Options;;
 
@@ -10,7 +11,13 @@ let maxarraylength = 100;;
 let floatmax = 100.0;;
 let intmax = 1000;;
 
-let run_synthesis (opts:options) classmap iospec api =
+let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) api =
+	(* Assign possible dimension equalities between vector types.  *)
+	(* This updates the type ref tables in place, so no reassigns needed.  *)
+	let _ = assign_dimensions opts classmap iospec.typemap iospec.livein in
+	(* We don't assign dimensions for the API since we assume those
+	   can be explicitly listed --- it would not be hard to do if
+	   required though. *)
     (* Generate the possible skeletons to consider *)
     let skeleton_pairs = generate_skeleton_pairs opts classmap iospec api in
 	if opts.dump_skeletons = true then
@@ -37,7 +44,9 @@ let rec generate_inputs_for t structure_metadata =
        make a distinction between square and non
        square arrays.  *)
     (* TODO --- Need to support array lengths somehow.  *)
-    | Array(subtype) ->
+	(* TODO --- need to support array lengths consistently
+	   across different arrays with the same dimension. *)
+    | Array(subtype, dimvar) ->
             let maxlen = Random.int (maxarraylength) in
             ArrayV(List.map (List.range 0 maxlen) (fun _ -> generate_inputs_for subtype structure_metadata))
     | Struct(name) ->
