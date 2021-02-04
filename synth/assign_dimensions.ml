@@ -55,9 +55,9 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name =
                    e.g. class members/functions. *)
                 let possible_len_vars = List.filter all_vars_at_level (valid_lenvar typemap) in
 				let () = if opts.debug_assign_dimensions then
-					Printf.printf "%s" ("Found " ^ (string_of_int (List.length possible_len_vars)) ^ " vars\n");
-					Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," all_vars_at_level))
-					Printf.printf "%s\n" ("These are possible: " ^ (String.concat ~sep:"," possible_len_vars))
+					let () = Printf.printf "%s" ("Found " ^ (string_of_int (List.length possible_len_vars)) ^ " vars\n") in
+					let () = Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," (List.map all_vars_at_level name_reference_to_string))) in
+					Printf.printf "%s\n" ("These are possible: " ^ (String.concat ~sep:"," (List.map possible_len_vars name_reference_to_string)))
 				else () in
                 let newarrtyp = Array(newsubtyp, Dimension(possible_len_vars)) in
                 newarrtyp
