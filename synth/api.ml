@@ -18,7 +18,7 @@ let fft_accel_api = {
     liveout = ["fftvalues"];
     typemap = (
         let tbl = Hashtbl.create (module String) in
-        ignore(Hashtbl.add tbl ~key:"fftvalues" ~data:(Array(Float32)));
+		ignore(Hashtbl.add tbl ~key:"fftvalues" ~data:(Array(Float32, Dimension([Name("length")]))));
         ignore(Hashtbl.add tbl ~key:"length" ~data:Int32);
         tbl
     );
