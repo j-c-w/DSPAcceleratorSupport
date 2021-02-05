@@ -3,7 +3,9 @@ open Core_kernel;;
 open Yojson;;
 open Yojson.Basic.Util;;
 open Spec_definition;;
+open Spec_utils;;
 open Parse_type;;
+open Options;;
 
 let extract_typemap typemap vars =
 	let tbl: (string, synth_type) Hashtbl.t = (Hashtbl.create (module String)) in
@@ -13,10 +15,15 @@ let extract_typemap typemap vars =
 	ignore(List.map typepairs (fun (var, t)  -> Hashtbl.add tbl var t));
 	tbl;;
 
-let load_iospec filename: iospec =
+let load_iospec options filename: iospec =
 	let json = Yojson.Basic.from_file filename in
 	let livein = List.map (json |> member "livein" |> to_list) (fun j -> j |> to_string) in
 	let liveout = List.map (json |> member "liveout" |> to_list) (fun j -> j |> to_string) in
 	let execcmd = json |> member "execcmd" |> to_string in
 	let typemap = extract_typemap (json |> member "typemap") (livein @ liveout) in
-	{livein=livein; liveout=liveout; execcmd=execcmd; typemap=typemap}
+	let iospec: iospec = {livein=livein; liveout=liveout; execcmd=execcmd; typemap=typemap} in
+	let () =
+		if options.debug_load then
+			Printf.printf "Loaded iospec is %s" (iospec_to_string iospec)
+		else () in
+	iospec
