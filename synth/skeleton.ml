@@ -203,16 +203,28 @@ let rec prepend_all_name_refs prep all =
 		| StructName(existing_list) -> StructName(v :: existing_list)
 	) :: (prepend_all_name_refs prep vs)
 
-let rec has_overlap x y =
+
+(* TODO --- We can use this to filter lists that have
+	incompatible dimvar assignments.   Not actually 100%
+	sure what conversion should be here.  *)
+let have_dimvar_conversion conversions x y =
+	true
+
+let rec dimvar_contains dimvar_conversions x y =
+	match y with
+	| [] -> false
+	| (y :: ys) -> (have_dimvar_conversion dimvar_conversions x y) || (dimvar_contains dimvar_conversions x ys)
+
+let rec has_overlap dimvar_conversions x y =
 	match x with
 	| [] -> false
-	| x :: xs -> (contains x y) || (has_overlap xs y)
+	| x :: xs -> (dimvar_contains dimvar_conversions x y) || (has_overlap dimvar_conversions xs y)
 
 let rec dimensions_overlap x y =
 	match x, y with
 	| EmptyDimension, _ -> false
 	| _, EmptyDimension -> false
-	| Dimension(nrefs), Dimension(nrefs2) -> has_overlap nrefs nrefs2
+	| Dimension(nrefs), Dimension(nrefs2) -> has_overlap [] nrefs nrefs2
 	| _ -> raise (SkeletonGenerationException "TODO May need to handle")
 
 (* Generates the base typesets for a class. *)
@@ -264,8 +276,8 @@ let binding_check binding = true
 			in a from_t.  *)
 let rec compatible_types from_t to_t: bool =
 	match from_t, to_t with
-	| SInt(nfrom), SInt(nto) as to_t -> true
-	| SFloat(nfrom), SFloat(nto) as to_t -> true
+	| SInt(nfrom), SInt(nto) -> true
+	| SFloat(nfrom), SFloat(nto) -> true
 	(* There are all kinds of other conversions that could be matched,
 	   just need to add them in here.  *)
 	| _ -> false
