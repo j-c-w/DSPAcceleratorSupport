@@ -4,6 +4,7 @@ open Spec_definition;;
 open Spec_utils;;
 open Skeleton;;
 open Gir;;
+open Gir_utils;;
 
 
 let rec cross_product ls =
@@ -59,7 +60,7 @@ let generate_assign_functions fvars tvar =
 			Assignment(LVariable(tvar), RReference(fvar)))
 
 
-let generate_gir_for_binding skeleton: gir list =
+let generate_gir_for_binding (options: options) skeleton: gir list =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
 	   x = cos(y) or x = sin(y) or x = y.  *)
@@ -71,27 +72,50 @@ let generate_gir_for_binding skeleton: gir list =
 		let assign_funcs = generate_assign_functions single_variable_binding.fromvars single_variable_binding.tovar in
 		(* Do every combination of assignment loops and assign funcs. *)
 		let assignment_statements =
-			List.map loop_wrappers (fun lwrap ->
+			List.concat (List.map loop_wrappers (fun lwrap ->
 				List.map assign_funcs (fun assfunc ->
 					(* Combine the loops! *)
 					lwrap assfunc
 				)
-			)
+			))
 		in
 		assignment_statements
 	) in
 	(* We now have a expression list list, where we need one element
 	   from each sublist in sequence to form complete assignment
 	   tree.  *)
-	let expr_lists: gir list list = List.concat (cross_product expression_options) in
+	let () = if options.debug_generate_gir then
+		Printf.printf "Have the following expression options before cross product: %s\n"
+			(gir_list_list_to_string expression_options)
+	else () in
+	let expr_lists: gir list list = cross_product expression_options in
 	(* Now we have a expression list list where each set
 	   is a full set of assignments.  Convert each expr list
 	   to a sequence.  *)
 	List.map expr_lists (fun exprs -> Sequence(exprs))
 
-let generate_gir_for ((pre_skeleton: skeleton_type_binding), (post_skeleton: skeleton_type_binding)) =
-	List.cartesian_product (generate_gir_for_binding pre_skeleton) (generate_gir_for_binding post_skeleton)
+let generate_gir_for options ((pre_skeleton: skeleton_type_binding), (post_skeleton: skeleton_type_binding)) =
+	let () = if options.debug_generate_gir then
+		Printf.printf "Starting generation for new skeleton pair\n"
+	else () in
+	let pre_gir = generate_gir_for_binding options pre_skeleton in
+	let post_gir = generate_gir_for_binding options post_skeleton in
+	let res = List.cartesian_product pre_gir post_gir in
+	let () = if options.debug_generate_gir then
+		let () = Printf.printf "Finished generation of candidata pre programs.  Program are:\n%s\n"
+			(String.concat ~sep:"\n\n" (List.map pre_gir gir_to_string)) in
+		Printf.printf "Finsihed generation of candiates post programs. Programs are:\n%s\n"
+			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string))
+	else () in
+	res
+
 
 let generate_gir (options:options) classmap iospec api skeletons: ((gir * gir) list) =
-	List.concat ((List.map skeletons (fun skel ->
-		generate_gir_for skel)))
+	let result = List.concat ((List.map skeletons (fun skel ->
+		generate_gir_for options skel))) in
+	let () = if options.dump_generate_gir then
+		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post) ->
+			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
+	else () in
+	result

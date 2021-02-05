@@ -20,14 +20,17 @@ let main options classspec_file iospec_file api_file  =
 
 let optswrapper classspec_file iospec_file api_file dump_skeletons 
         debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions 
-		debug_load =
+		debug_load debug_generate_gir dump_generate_gir =
     (* First make the options object, then call the normal main function.  *)
     let options = {
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
+		dump_generate_gir = dump_generate_gir;
+
 		debug_load = debug_load;
 		debug_generate_skeletons = debug_generate_skeletons;
-		debug_assign_dimensions = debug_assign_dimensions
+        debug_assign_dimensions = debug_assign_dimensions;
+		debug_generate_gir = debug_generate_gir;
     }
     in
     main options classspec_file iospec_file api_file
@@ -53,8 +56,14 @@ let dump_skeletons =
 let dump_assigned_dimensions =
 	let doc = "Dump assigned dimension variables" in
 	Arg.(value & flag & info ["dump-dimensions"] ~docv:"DumpDimensions" ~doc)
+let dump_generate_gir =
+	let doc = "Dump GIR after generation but before program generation" in
+	Arg.(value & flag & info ["dump-generate-gir"] ~docv:"DumpGenerateGIR" ~doc)
 
 (* Debug pass internal flags *)
+let debug_generate_gir =
+	let doc = "Print debug information for generate_gir.ml" in
+	Arg.(value & flag & info ["debug-generate-gir"] ~docv:"DebugGenGIR" ~doc)
 let debug_generate_skeletons =
     let doc = "Print debug information for skeleton.ml" in
     Arg.(value & flag & info ["debug-skeletons"]  ~docv:"DebugSkeletons" ~doc)
@@ -73,5 +82,6 @@ let info =
 (* This command line parser is a shitshow, or I don't know how to use it.
    In any case, this has to stay in the right order.  *)
 let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skeletons $
-    debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load)
+    debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
+	debug_generate_gir $ dump_generate_gir)
 let () = Term.exit @@ Term.eval (args_t, info)
