@@ -44,6 +44,8 @@ type synth_value =
 type iospec = {
 	livein: string list;
 	liveout: string list;
+	(* This should be an element of liveout, or empty.  *)
+    returnvar: string option;
 	execcmd: string;
 	typemap: (string, synth_type) Hashtbl.t
 }
@@ -52,6 +54,7 @@ type apispec = {
     livein: string list;
     liveout: string list;
     execcmd: string;
+	funname: string;
     typemap: (string, synth_type) Hashtbl.t
 }
 
