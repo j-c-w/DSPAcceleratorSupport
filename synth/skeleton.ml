@@ -46,7 +46,7 @@ type skeleton_type_binding = {
 let skeleton_type_to_string stype =
 	match stype with
 	| SInt(name) -> "SInt(" ^ (name_reference_to_string name) ^ ")"
-	| SFloat(name) -> "SFloat" ^ (name_reference_to_string name) ^ ")"
+	| SFloat(name) -> "SFloat(" ^ (name_reference_to_string name) ^ ")"
 
 let rec skeleton_dimension_group_type_to_string stype =
 	match stype with
@@ -54,6 +54,9 @@ let rec skeleton_dimension_group_type_to_string stype =
 	| STypes(subtype) -> "STypes(" ^ (String.concat ~sep:", " (List.map subtype skeleton_dimension_group_type_to_string)) ^ ")"
 	| SArray(subdim, lenvar) -> "SArray(" ^ (skeleton_dimension_group_type_to_string subdim) ^
 								": with lenvar " ^ (dimension_type_to_string lenvar) ^ ")"
+
+let skeleton_dimension_group_type_list_to_string typs =
+	String.concat ~sep:", " (List.map typs skeleton_dimension_group_type_to_string)
 
 let skeleton_type_binding_to_string skeleton =
 	"SKELETON:" ^ String.concat ~sep:"\n" (
@@ -63,16 +66,19 @@ let skeleton_type_binding_to_string skeleton =
 	))
 
 let skeleton_dimension_group_types_to_string typs =
-    String.concat ~sep:"DimensionType:" (List.map typs skeleton_dimension_group_type_to_string)
+    String.concat ~sep:", DimensionType:" (List.map typs skeleton_dimension_group_type_to_string)
 
 let skeleton_list_to_string bindings =
-	"BINDINGS"^ String.concat ~sep:" (new var): \n" (
-		List.map bindings (fun bindings_for_var -> String.concat ~sep:"\n" (
+	"BINDINGS:\n"^ (String.concat ~sep:">(new binding): \n" (
+		List.map bindings (fun bindings_for_var -> String.concat (
 			List.map bindings_for_var.bindings (fun (bindings) ->
 			"From " ^ (String.concat (List.map bindings.fromvars name_reference_to_string)) ^ 
-			" to " ^ (name_reference_to_string bindings.tovar)
+			" to " ^ (name_reference_to_string bindings.tovar) ^ "\n"
 			)))
-	)
+	)) ^ "\n"
+
+let double_binding_options_list_to_string opts =
+	skeleton_list_to_string (List.map opts (fun o -> { bindings = o }))
 
 let skeletons_to_string skeletons =
 	String.concat ~sep:"\n" (List.map skeletons skeleton_type_binding_to_string)
@@ -92,6 +98,19 @@ let name_refs_from_skeleton sk =
 	match sk with
 	| SInt(nr) -> nr
 	| SFloat(nr) -> nr
+
+(* THis function turns a SType into a list of types
+   by flattening them.  (i.e. SType(A,B,C) -> A,B,C*)
+let rec flatten_stype_list stype =
+	match stype with
+	| SType(_) as t -> [t]
+	| STypes(typs) -> List.concat (List.map typs flatten_stype_list)
+	(* We don't touch the arrays, because those can't
+	   come out of their array wrappers.  We do
+	   need to make sure that the subtyps are flattened
+	   but I've decided that that should happen right
+	   before the call to inspect this type.  *)
+	| SArray(subtyps, lenvar) as t -> [t]
 
 let rec contains x ys =
 	match ys with
@@ -213,9 +232,9 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
 				(fun (memtyp, memname) -> (generate_typesets classmap memtyp memname)) in
 			STypes(types))
 	| Array(subtyp, lenvar) ->
-            let subtyps = generate_typesets classmap subtyp "" in
-            (* Array types have no subnames. The subnames get put in the SArray struct so that
-			   they can be used when required.  *)
+            let subtyps = generate_typesets classmap subtyp inpname in
+			let () = Printf.printf "Creating array with %s\n" (skeleton_dimension_group_type_to_string (SArray(subtyps, lenvar))) in
+			let () = Printf.printf "Subtyp was %s\n" (synth_type_to_string subtyp) in
 			SArray(subtyps, lenvar)
 	| Unit -> raise (SkeletonGenerationException "Can't Unit typesets")
 	| Fun(_, _) -> raise (SkeletonGenerationException "Cannot generate typesets from a fun")
@@ -317,7 +336,7 @@ and bindings_for (typesets_in: skeleton_type list) (output: skeleton_type): skel
 
    Need to get a set of assignments for each
    output. *)
-and possible_bindings (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option list list = 
+and possible_bindings options (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option list list = 
     List.concat (List.map types_out (fun type_out ->
 		(*  Make sure that all the possible assingments
 		    have the same dimension.  *)
@@ -338,14 +357,28 @@ and possible_bindings (typesets_in: skeleton_dimension_group_type list) (types_o
 				) in
 				(* Get the STypes from these arrays, but keep the
 				   dim_options.  *)
-				let array_stypes: skeleton_dimension_group_type list =
+				let valid_undimensioned_typesets_in: skeleton_dimension_group_type list =
 						List.map valid_dimensioned_typesets_in (fun intype ->
 							match intype with
 							| SArray(artyp, dims) -> artyp
 							| _ -> raise (SkeletonGenerationException "")
 						) in
+				let () = if options.debug_generate_skeletons then
+					Printf.printf "Recursing from ARRAY_ASSIGN using valid assignment vars %s\n"
+						(skeleton_dimension_group_type_list_to_string valid_undimensioned_typesets_in)
+				else () in
+				(* Flatten the arstyles into a list.  *)
+				let flattened_arr_stypes = flatten_stype_list array_subtyps in
+				let flattened_undimensioned_typesets = List.concat (List.map valid_undimensioned_typesets_in flatten_stype_list) in
 				(* Recurse for the matches.  *)
-				let recurse_assignments: single_variable_binding_option list list = possible_bindings valid_dimensioned_typesets_in array_stypes in
+				let recurse_assignments: single_variable_binding_option list list = possible_bindings options flattened_undimensioned_typesets flattened_arr_stypes in
+				let () = if options.debug_generate_skeletons then
+					let () = Printf.printf "ARRAY_ASSIGN: For the flattened subtypes %s\n" (skeleton_dimension_group_type_list_to_string flattened_arr_stypes) in
+					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string recurse_assignments) in
+					let () = Printf.printf "Had the following types available to find these assignments %s\n" (skeleton_dimension_group_type_list_to_string typesets_in) in
+					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string valid_undimensioned_typesets_in)
+				else
+					() in
 				(* Need to put these stypes into the arrays
 				   they were just taken out of.  *)
 				List.map recurse_assignments (fun assign_list ->
@@ -376,6 +409,10 @@ and possible_bindings (typesets_in: skeleton_dimension_group_type list) (types_o
 		| SType(stype_out) ->
 				let zero_dimtypes = flatten_stypes typesets_in in
 				let allbindings = bindings_for zero_dimtypes stype_out in
+				let () = if options.debug_generate_skeletons then
+					Printf.printf "SINGLE_ASSIGN: Assiging to variable '%s' using bindings %s\n" (name_reference_to_string (name_refs_from_skeleton stype_out))
+						((skeleton_dimension_group_type_list_to_string typesets_in ))
+				else () in
         (* The bindings_for doesn't create the whole skeleton_type_binding or
            name_binding types.  This needs to add the informtion about
            the out variable to each set to achieve that.  *)
@@ -388,24 +425,34 @@ and possible_bindings (typesets_in: skeleton_dimension_group_type list) (types_o
    for each variable.  *)
 (* For now we try to create all possible bindings and filter them
    later.   May need a more efficient search strategy eventually.  *)
-let rec find_possible_skeletons (possible_bindings_for_var: single_variable_binding_option list list): skeleton_type_binding list =
+let rec find_possible_skeletons options (possible_bindings_for_var: single_variable_binding_option list list): skeleton_type_binding list =
     (* TODO --- Fix this function so it isn't empty *)
+	let () = if options.debug_generate_skeletons then
+		Printf.printf "Number of Varibales left to bind: %d\n" (List.length possible_bindings_for_var)
+		else () in
 	match (possible_bindings_for_var) with
-    | [] -> [] (* No bindings needed *)
+	| [] -> [{bindings = []}] (* No bindings needed *)
 	(* Create the basis for the binding sets we are gong to explore *)
-    | binding_list :: [] -> List.map binding_list (fun b -> {
+    (* | binding_list :: [] -> List.map binding_list (fun b -> {
 		bindings = [b]
-	})
+	}) *)
 	| binding :: bindings ->
-			let subbindings = find_possible_skeletons bindings in
+			let () = if options.debug_generate_skeletons then
+				let () = Printf.printf "Number of options for this variable is %d\n" (List.length binding) in
+				let () = if List.length binding > 0 then
+					Printf.printf "Working on binding from var %s\n" (name_reference_to_string (List.hd_exn binding).tovar)
+				else () in
+				()
+			else () in
+			let subbindings = find_possible_skeletons options bindings in
 			(* Include each possible set of bindings for this variable. *)
             (* Note that we can't just /not/ bind a variable, so we need to
                make sure that we don't skip a binding at any
                occasion.  *)
 			List.concat (List.map binding (fun b -> List.map subbindings (fun sub -> { bindings = (b :: sub.bindings)})))
 
-let possible_skeletons possible_bindings_for_var =
-    find_possible_skeletons possible_bindings_for_var
+let possible_skeletons options possible_bindings_for_var =
+    find_possible_skeletons options possible_bindings_for_var
 
 (* TODO --- Some filtering here might be a good idea.  *)
 let skeleton_check skel = true
@@ -416,15 +463,19 @@ let skeleton_pair_check p = true
 (* The algorithm should produce bindings from the inputs
    the outputs. *)
 let binding_skeleton options classmap typesets_in typesets_out =
+	(* Need to flatten the output typesets to make sure we only
+	   look for one type at a type --- this takes the STypes([...])
+	   and converts it to [...] *)
+	let flattened_typesets_out = List.concat (List.map typesets_out flatten_stype_list) in
 	(* Get a list of list of possible inputs for each
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
-	let possible_bindings_list: single_variable_binding_option list list = possible_bindings typesets_in typesets_out in
+	let possible_bindings_list: single_variable_binding_option list list = possible_bindings options typesets_in flattened_typesets_out in
 	(* Then, filter out various bindings that might not make any sense.  *)
 	let sensible_bindings = List.filter possible_bindings_list binding_check in
 	(* Finally, create some skeletons from those bindings.  *)
     (* Need to have one set of bindings for each output variable.  *)
-	let possible_skeletons_list: skeleton_type_binding list = possible_skeletons sensible_bindings in
+	let possible_skeletons_list: skeleton_type_binding list = possible_skeletons options sensible_bindings in
 	let sensible_skeletons = List.filter possible_skeletons_list skeleton_check in
 	(* Debug info: *)
 	if options.debug_generate_skeletons then
