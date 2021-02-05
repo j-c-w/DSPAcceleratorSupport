@@ -1,32 +1,40 @@
-type programtype =
-	| List
-	| Int
-	| Float
-type typemap = (string, programtype) Hashtbl.t
+open Spec_definition;;
 
 type classname = Classname of string
-type function_ref = FunctionRef of string
-type variable = Variable of string
+type function_ref = FunctionRef of name_reference
 (* Needs a list name and the variable that we are considering. *)
-	| ListVariable of string * variable
-type variables =
-	| EmptyVariableList
-	| VariableList of variable * variables
 type expression =
-	| VariableReference of variable
-	| ListIndex of variable * expression
-	| ClassDeref of classname * variable
+	| VariableReference of name_reference
+	| ListIndex of name_reference * expression
+	| ClassDeref of classname * name_reference
+	| FunctionCall of function_ref * varlist
 
-type gir =
-	| Sequence of gir * gir
+and rvalue =
+	| Expression of expression
+    | RReference of name_reference
+
+and lvalue =
+    | LVariable of name_reference
+
+and varlist =
+    | VariableList of name_reference list
+
+and gir =
+	| Sequence of gir list
 	(* This can eitehr assign lists to lists, of variables to
 	   variables.  *)
-	| Assignment of variable * variable * gir
+	| Assignment of lvalue * rvalue
+	(* Body, induction variable. *)
+    | LoopOver of gir * name_reference
 	| Expression of expression
-	| FunctionCall of function_ref * variables
 	| EmptyGIR
 	(* Todo --- add a lambda here *)
 
 (* This should be a list of live-in variables, the function
 	and then the live out varaibles. *)
-type program = Program of variables * gir * variables * typemap
+type program = {
+    in_variables: name_reference list;
+    gir: gir;
+    out_variables: name_reference list;
+    typemap: (string, synth_type) Hashtbl.t
+}
