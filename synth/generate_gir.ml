@@ -26,29 +26,25 @@ that can be used to generate wrappers when
 given a simple assignment sequence Assignment.  *)
 let rec generate_loop_wrappers_from_dimensions dim =
 	match dim with
-	| EmptyDimension ->
-			(* Just do a pure (e.g. pointer or raw
-			value) assignment *)
-			[fun assign -> assign]
-	| Dimension(dimvars) ->
+	| DimvarOneDimension(dimvar) -> (
 			(* Generate a loop for each of the dimvars.  *)
 			(* Also try just a straight up assignment.  *)
-			(fun assign -> assign) ::
-			List.map dimvars (fun dimvar ->
-				fun assign ->
-					LoopOver(assign, dimvar )
-			)
-	| HigherDimention(subdim, names) ->
+            match dimvar with
+            | ExactVarMatch(from, tov) ->
+                [(fun assign -> assign);
+                (fun assign ->
+                    LoopOver(assign, from)
+                )]
+    )
+	| DimvarHigherDimension(subdim, dim_mapping) ->
 			(* Compute the loops for the subdimensions,
 			   then add this loop on top.  *)
 			let subloops = generate_loop_wrappers_from_dimensions subdim in
-			List.concat (
-				List.map subloops (fun sloop ->
-					List.map names (fun name ->
-						fun assign ->
-							LoopOver((sloop assign), name)
-					)
-				)
+            List.map subloops (fun sloop ->
+                match dim_mapping with
+                | ExactVarMatch(from, tov) ->
+                    fun assign ->
+                        LoopOver((sloop assign), from)
 			)
 
 let generate_assign_functions fvars tvar =
@@ -67,7 +63,8 @@ let generate_gir_for_binding (options: options) skeleton: gir list =
 	let expression_options = List.map skeleton.bindings (fun single_variable_binding ->
 		(* There may be more than one valid dimension value.
 		   generate assignments based on all the dimension values. *)
-		let loop_wrappers = generate_loop_wrappers_from_dimensions single_variable_binding.valid_dimensions in
+		let loop_wrappers = List.concat (List.map single_variable_binding.valid_dimensions 
+            generate_loop_wrappers_from_dimensions) in
 		(* Generate the possible assignments *)
 		let assign_funcs = generate_assign_functions single_variable_binding.fromvars single_variable_binding.tovar in
 		(* Do every combination of assignment loops and assign funcs. *)
