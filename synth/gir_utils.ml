@@ -40,4 +40,12 @@ let gir_list_to_string girl =
 	String.concat ~sep:"\nGIR:" (List.map girl gir_to_string)
 
 let gir_list_list_to_string girll =
-	String.concat ~sep:"=====" (List.map girll gir_list_to_string)
+	String.concat ~sep:"\n=====\n" (List.map girll gir_list_to_string)
+
+let program_to_string (program: program) =
+    "Function(" ^ (String.concat ~sep:"," program.in_variables) ^ ") {\n" ^
+    (gir_to_string program.gir) ^ "\n EndFunction (outvars: " ^
+    (String.concat ~sep:"," program.out_variables) ^ ")\n"
+
+let program_list_to_string (programs: program list) =
+    String.concat ~sep:"\n\n" (List.map programs program_to_string)
