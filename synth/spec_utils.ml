@@ -6,6 +6,9 @@ let rec name_reference_to_string nref =
 	| Name(s) -> s
 	| StructName(ns) -> (String.concat ~sep:"." (List.map ns name_reference_to_string))
 
+let name_reference_list_to_string nrefs =
+	String.concat ~sep:", " (List.map nrefs name_reference_to_string)
+
 let rec dimension_type_to_string dim =
     match dim with
     | EmptyDimension -> "No dimensions set!"

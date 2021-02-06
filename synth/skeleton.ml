@@ -30,12 +30,23 @@ and skeleton_dimension_group_type =
 	| STypes of skeleton_dimension_group_type list
 	| SArray of skeleton_dimension_group_type * dimension_type
 
+(* Keep track of dimvar mappings required for
+   certain loops.  We envision that this will
+   eventually include more complicated mappings
+   than the direct mappings entailed by this.  *)
+type one_dim_var_mapping =
+	| ExactVarMatch of name_reference * name_reference
+
+type dimvar_mapping =
+    | DimvarOneDimension of one_dim_var_mapping
+    | DimvarHigherDimension of dimvar_mapping * one_dim_var_mapping
+
 (* These store bindings.  They are both of the form <from> * <to> *)
 type single_variable_binding_option = {
 	fromvars: name_reference list;
 	tovar: name_reference;
 	(* Which dimensions is this assignment valid over? *)
-	valid_dimensions: dimension_type
+	valid_dimensions: dimvar_mapping list
 }
 
 (* Storing one binding for every variable.  *)
@@ -152,23 +163,26 @@ let rec variable_in_dim_type var typ =
 	| STypes(t) -> List.exists t (variable_in_dim_type var)
 	| SArray(t, dt) -> variable_in_dim_type var t
 
-let rec get_dimension_intersections (dim_typesets_in: skeleton_dimension_group_type list) (variables: name_reference list) (original_valid_list: name_reference list) =
+let rec get_dimension_intersections (dim_typesets_in: skeleton_dimension_group_type list) (variables: dimvar_mapping list) (original_valid_list: name_reference list) =
 	(* Get the right dims for each variable assigned.  *)
-	let var_typesets = List.map variables (fun var ->
+	let var_typesets = List.map variables (fun mapping ->
+		match mapping with
+		| DimvarOneDimension(ExactVarMatch(fromv, tov)) ->
 		(* Get the type of the input dimension type that is
 		defined by variables.  *)
 		let artype: skeleton_dimension_group_type = 
 			match (List.find dim_typesets_in (fun (dim: skeleton_dimension_group_type) ->
 			match dim with
 			| SArray(artyps, ardims) ->
-					if variable_in_dim_type var artyps then
+					(* This should use the source of the assignment *)
+					if variable_in_dim_type fromv artyps then
 						true
 					else
 						false
 			| _ -> raise (SkeletonGenerationException "Can't look for dimension types in non dimension!")
 		)) with
 		| Some(v) -> v
-		| None -> raise (SkeletonGenerationException "") in
+		| None -> raise (SkeletonGenerationException "Not Possible") in
 		let found_dims =
 			match artype with
 			| SArray(_, dims) -> (
@@ -203,28 +217,26 @@ let rec prepend_all_name_refs prep all =
 		| StructName(existing_list) -> StructName(v :: existing_list)
 	) :: (prepend_all_name_refs prep vs)
 
+(* In theory, we'd like to support assignments between
+   lists of different lengths.  Currently, we just
+   assign one variable at a time.  *)
+let dimvar_match x y =
+	DimvarOneDimension(ExactVarMatch(x, y))
 
-(* TODO --- We can use this to filter lists that have
-	incompatible dimvar assignments.   Not actually 100%
-	sure what conversion should be here.  *)
-let have_dimvar_conversion conversions x y =
-	true
-
-let rec dimvar_contains dimvar_conversions x y =
+let rec dimvar_contains x y =
 	match y with
-	| [] -> false
-	| (y :: ys) -> (have_dimvar_conversion dimvar_conversions x y) || (dimvar_contains dimvar_conversions x ys)
+	| [] -> []
+	| (y :: ys) ->
+			(dimvar_match x y) :: (dimvar_contains x ys)
 
-let rec has_overlap dimvar_conversions x y =
-	match x with
-	| [] -> false
-	| x :: xs -> (dimvar_contains dimvar_conversions x y) || (has_overlap dimvar_conversions xs y)
+let rec has_overlap x y =
+	List.concat (List.map x (fun xel -> dimvar_contains xel y ))
 
 let rec dimensions_overlap x y =
 	match x, y with
-	| EmptyDimension, _ -> false
-	| _, EmptyDimension -> false
-	| Dimension(nrefs), Dimension(nrefs2) -> has_overlap [] nrefs nrefs2
+	| EmptyDimension, _ -> []
+	| _, EmptyDimension -> []
+	| Dimension(nrefs), Dimension(nrefs2) -> has_overlap nrefs nrefs2
 	| _ -> raise (SkeletonGenerationException "TODO May need to handle")
 
 (* Generates the base typesets for a class. *)
@@ -245,8 +257,6 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
 			STypes(types))
 	| Array(subtyp, lenvar) ->
             let subtyps = generate_typesets classmap subtyp inpname in
-			let () = Printf.printf "Creating array with %s\n" (skeleton_dimension_group_type_to_string (SArray(subtyps, lenvar))) in
-			let () = Printf.printf "Subtyp was %s\n" (synth_type_to_string subtyp) in
 			SArray(subtyps, lenvar)
 	| Unit -> raise (SkeletonGenerationException "Can't Unit typesets")
 	| Fun(_, _) -> raise (SkeletonGenerationException "Cannot generate typesets from a fun")
@@ -358,18 +368,19 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 		   (And then we need to find appropriate assignments for
 		   those). *)
 		| SArray(array_subtyps, dim_options) ->
-				let valid_dimensioned_typesets_in: skeleton_dimension_group_type list = List.filter typesets_in (fun intype ->
+				let valid_dimensioned_typesets_in, dim_mappings  = List.unzip (List.filter_map typesets_in (fun intype ->
 					match intype with
 					| SArray(_, in_dim_options) ->
-							(* If there is any overlap in the possible typesets,
-							   include this.  *)
-							dimensions_overlap dim_options in_dim_options
+							(* Get the set of possible typevar
+							   bindings that would make this mapping
+							   possible.  *)
+							Some(intype, dimensions_overlap dim_options in_dim_options)
 					(* non-dimension types can't be included. *)
-					| _ -> false
-				) in
+					| _ -> None
+				)) in
 				(* Get the STypes from these arrays, but keep the
 				   dim_options.  *)
-				let valid_undimensioned_typesets_in: skeleton_dimension_group_type list =
+				let valid_undimensioned_typesets_in =
 						List.map valid_dimensioned_typesets_in (fun intype ->
 							match intype with
 							| SArray(artyp, dims) -> artyp
@@ -381,9 +392,24 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 				else () in
 				(* Flatten the arstyles into a list.  *)
 				let flattened_arr_stypes = flatten_stype_list array_subtyps in
-				let flattened_undimensioned_typesets = List.concat (List.map valid_undimensioned_typesets_in flatten_stype_list) in
+				let flattened_undimensioned_typesets = List.map valid_undimensioned_typesets_in flatten_stype_list in
 				(* Recurse for the matches.  *)
-				let recurse_assignments: single_variable_binding_option list list = possible_bindings options flattened_undimensioned_typesets flattened_arr_stypes in
+				let recurse_assignments: single_variable_binding_option list list =
+					(* Put the undimensioned typelists back with their types.  *)
+					List.concat (List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun (flattened_undimensioned_typeset, dim_mapping) ->
+					(* Get the possible bindings.  *)
+					let poss_bindings: single_variable_binding_option list list  = possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
+					(* Now add the required dimension mappings.  *)
+					List.map poss_bindings (fun var_binds ->
+						List.map var_binds (fun bind ->
+							{
+								fromvars = bind.fromvars;
+								tovar = bind.tovar;
+								valid_dimensions = dim_mapping
+							}
+						)
+					)
+				)) in
 				let () = if options.debug_generate_skeletons then
 					let () = Printf.printf "ARRAY_ASSIGN: For the flattened subtypes %s\n" (skeleton_dimension_group_type_list_to_string flattened_arr_stypes) in
 					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string recurse_assignments) in
@@ -391,30 +417,7 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string valid_undimensioned_typesets_in)
 				else
 					() in
-				(* Need to put these stypes into the arrays
-				   they were just taken out of.  *)
-				List.map recurse_assignments (fun assign_list ->
-				List.map assign_list (fun assignments ->
-					(* Get the varaibles that would make
-					a valid subdimension.  This is probably
-					quite a slow operation as it computes
-					the n-way intersection.  *)
-					let dim_option_names = dimension_types_to_names dim_options in
-					let valid_dimension_vars = get_dimension_intersections valid_dimensioned_typesets_in assignments.fromvars dim_option_names in
-					let sub_dimensions = assignments.valid_dimensions in
-					(* Add the subdimensions we just computed
-					to any calcualted subdimensions.  *)
-					let injected_sub_dimensions =
-						match sub_dimensions with
-						| EmptyDimension -> Dimension(valid_dimension_vars)
-						| higher_dimension ->
-								HigherDimention(higher_dimension, valid_dimension_vars) in
-					{
-						fromvars = assignments.fromvars;
-						tovar = assignments.tovar;
-						valid_dimensions = injected_sub_dimensions
-					}
-				))
+				recurse_assignments
 		(* If this isn't an array, then allow any type
 		   that isn't an array. *)
 		| STypes(_) -> raise (SkeletonGenerationException "Need to flatten STypes out before getting mappings")
@@ -429,7 +432,7 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
            name_binding types.  This needs to add the informtion about
            the out variable to each set to achieve that.  *)
 		[List.map allbindings (fun binding ->
-			{fromvars = List.map binding name_refs_from_skeleton; tovar = name_refs_from_skeleton stype_out; valid_dimensions = EmptyDimension})]
+			{fromvars = List.map binding name_refs_from_skeleton; tovar = name_refs_from_skeleton stype_out; valid_dimensions = []})]
 		))
 
 (* Given a list of variables, and an equally sized list of
@@ -483,6 +486,8 @@ let binding_skeleton options classmap typesets_in typesets_out =
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
 	let possible_bindings_list: single_variable_binding_option list list = possible_bindings options typesets_in flattened_typesets_out in
+	(* Verify that there is exactly one variable per list, and that
+	   there is not more than one list per variable.  *)
 	(* Then, filter out various bindings that might not make any sense.  *)
 	let sensible_bindings = List.filter possible_bindings_list binding_check in
 	(* Finally, create some skeletons from those bindings.  *)
@@ -522,22 +527,26 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
     let all_skeleton_paris = List.cartesian_product pre_skeletons post_skeletons in
     (* Do joint filtering *)
     let sensible_skeleton_pairs = List.filter all_skeleton_paris skeleton_pair_check in
-	if options.debug_generate_skeletons then
+	let () = if options.print_synthesizer_numbers || options.debug_generate_skeletons then
         (Printf.printf "Number of types (livein IO=%d, livein API=%d, liveout API=%d, liveout IO=%d)\n"
             (List.length livein_types) (List.length livein_api_types)
             (List.length liveout_api_types) (List.length liveout_types);
+        Printf.printf "Number of pre-bindings generated is %d\n" (List.length pre_skeletons);
+        Printf.printf "Number of post-bindings generated is %d\n" (List.length post_skeletons);
+        Printf.printf "Number of skeletons generated is %d\n" (List.length all_skeleton_paris);
+        Printf.printf "Number of skeletons post-filtering is %d\n" (List.length sensible_skeleton_pairs);
+        )
+	else () in
+	if options.debug_generate_skeletons then
+        (
 		Printf.printf "Liveout types are %s\n" (String.concat ~sep:", " (List.map liveout_types skeleton_dimension_group_type_to_string));
 		Printf.printf "Livein types are %s\n" (String.concat ~sep:", " (List.map livein_types skeleton_dimension_group_type_to_string));
 		Printf.printf "Liveout API types are %s\n" (String.concat ~sep:", " (List.map liveout_api_types skeleton_dimension_group_type_to_string));
 		Printf.printf "Livein API types are %s\n" (String.concat ~sep:", " (List.map liveout_api_types skeleton_dimension_group_type_to_string));
-        Printf.printf "Number of pre-bindings generated is %d\n" (List.length pre_skeletons);
-        Printf.printf "Number of post-bindings generated is %d\n" (List.length post_skeletons);
         (* Currently no postbinding filtering visible in this function.
         Printf.printf "Number of pre-bindings post-filterings is %d" (List.length 
         Printf.printf "Number of post-bindings post-filterings is %d" (List.length 
         *)
-        Printf.printf "Number of skeletons generated is %d\n" (List.length all_skeleton_paris);
-        Printf.printf "Number of skeletons post-filtering is %d\n" (List.length sensible_skeleton_pairs);
         ())
     else
         ();
