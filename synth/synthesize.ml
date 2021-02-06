@@ -1,6 +1,8 @@
 open Core_kernel;;
 open Spec_definition;;
 open Assign_dimensions;;
+open Generate_gir;;
+open Generate_programs;;
 open Skeleton
 open Options;;
 
@@ -21,10 +23,32 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	let _ = assign_dimensions opts classmap api.typemap api.livein in
     (* Generate the possible skeletons to consider *)
     let skeleton_pairs = generate_skeleton_pairs opts classmap iospec api in
-	if opts.dump_skeletons = true then
+	let () = if opts.dump_skeletons = true then
 		Printf.printf "%s%s\n" "Skeletons are " (skeleton_pairs_to_string skeleton_pairs)
 	else
-		()
+		() in
+    let () = if opts.print_synthesizer_numbers then
+        Printf.printf "Number of skeletons generated is %d\n" (List.length skeleton_pairs)
+    else () in
+	(* Do some lenvar expansion to avoid incompatible lenvar
+	   at the next stages? *)
+	(* Should also do some assignment merging here, e.g. if
+		we have structs that are exactly the same type.  *)
+	(* Do some internal simulation on the pairs? *)
+	(* Generate the actual conversion functions between the code pairs *)
+	let conversion_functions = generate_gir opts classmap iospec api skeleton_pairs in
+    let () = if opts.print_synthesizer_numbers then
+        Printf.printf "Number of conversion pairs generated is %d\n" (List.length conversion_functions)
+    else () in
+	(* Generate program from the pre/post convsersion function pairs. *)
+	let programs = generate_programs opts classmap iospec api conversion_functions in
+    let () = if opts.print_synthesizer_numbers then
+        Printf.printf "Number of programs from these pairs is %d\n" (List.length programs)
+    else () in
+	(* Generate some code.  *)
+	(* Generate some I/O tests.  *)
+	(* Try the code until we find one that works.  *)
+	()
 ;;
 
 let _ = Random.init 0
