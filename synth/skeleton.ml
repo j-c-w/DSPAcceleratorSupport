@@ -54,6 +54,20 @@ type skeleton_type_binding = {
 	bindings: single_variable_binding_option list
 }
 
+let one_dim_var_mapping_to_string map =
+	match map with
+	| ExactVarMatch(fromv, tov) -> (name_reference_to_string fromv) ^
+    " = " ^ (name_reference_to_string tov)
+
+let rec dimvar_mapping_to_string mapping = match mapping with
+	| DimvarOneDimension(map) -> one_dim_var_mapping_to_string map
+	| DimvarHigherDimension(submapping, onedmap) ->
+			"HigherDimension(" ^ (dimvar_mapping_to_string submapping) ^
+			": " ^ (one_dim_var_mapping_to_string onedmap) ^ ")"
+
+let dimvar_mapping_list_to_string mapping =
+    String.concat ~sep:"\n" (List.map mapping dimvar_mapping_to_string)
+
 let skeleton_type_to_string stype =
 	match stype with
 	| SInt(name) -> "SInt(" ^ (name_reference_to_string name) ^ ")"
@@ -156,47 +170,6 @@ let rec flatten_stypes sty =
 	| SType(x) -> Some([x])
 	| STypes(x) -> Some(flatten_stypes x)
 	| SArray(_, _) -> None))
-
-let rec variable_in_dim_type var typ =
-	match typ with
-	| SType(t) -> variable_in_type var t
-	| STypes(t) -> List.exists t (variable_in_dim_type var)
-	| SArray(t, dt) -> variable_in_dim_type var t
-
-let rec get_dimension_intersections (dim_typesets_in: skeleton_dimension_group_type list) (variables: dimvar_mapping list) (original_valid_list: name_reference list) =
-	(* Get the right dims for each variable assigned.  *)
-	let var_typesets = List.map variables (fun mapping ->
-		match mapping with
-		| DimvarOneDimension(ExactVarMatch(fromv, tov)) ->
-		(* Get the type of the input dimension type that is
-		defined by variables.  *)
-		let artype: skeleton_dimension_group_type = 
-			match (List.find dim_typesets_in (fun (dim: skeleton_dimension_group_type) ->
-			match dim with
-			| SArray(artyps, ardims) ->
-					(* This should use the source of the assignment *)
-					if variable_in_dim_type fromv artyps then
-						true
-					else
-						false
-			| _ -> raise (SkeletonGenerationException "Can't look for dimension types in non dimension!")
-		)) with
-		| Some(v) -> v
-		| None -> raise (SkeletonGenerationException "Not Possible") in
-		let found_dims =
-			match artype with
-			| SArray(_, dims) -> (
-					match dims with
-					| Dimension(dimnames) -> dimnames
-					| _ -> raise (SkeletonGenerationException "Pretty sure that the type assignment phases should only assign single-dimensional names")
-			)
-			| _ -> raise (SkeletonGenerationException "Not possible")
-		in
-		found_dims
-	) in
-	(* Now we have a list of dimension vars, need to compute
-	   the intersection.  *)
-	big_intersection (original_valid_list :: var_typesets)
 
 let rec prepend_all_strings prep all =
     match all with
@@ -398,7 +371,8 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 					(* Put the undimensioned typelists back with their types.  *)
 					List.concat (List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun (flattened_undimensioned_typeset, dim_mapping) ->
 					(* Get the possible bindings.  *)
-					let poss_bindings: single_variable_binding_option list list  = possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
+					let poss_bindings: single_variable_binding_option list list =
+						possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
 					(* Now add the required dimension mappings.  *)
 					List.map poss_bindings (fun var_binds ->
 						List.map var_binds (fun bind ->

@@ -67,14 +67,26 @@ let generate_gir_for_binding (options: options) skeleton: gir list =
             generate_loop_wrappers_from_dimensions) in
 		(* Generate the possible assignments *)
 		let assign_funcs = generate_assign_functions single_variable_binding.fromvars single_variable_binding.tovar in
+        let () =
+            if options.debug_generate_gir then
+                let () = Printf.printf "------\n\nFor skeleton %s\n" (skeleton_list_to_string [skeleton]) in
+				let () = Printf.printf "Valid dimensions were %s\n" (dimvar_mapping_list_to_string single_variable_binding.valid_dimensions) in
+                let () = Printf.printf "Loop wrappers found are %d\n" (List.length loop_wrappers) in
+                Printf.printf "Loop assignment functions are %d\n" (List.length assign_funcs)
+            else
+                () in
 		(* Do every combination of assignment loops and assign funcs. *)
 		let assignment_statements =
-			List.concat (List.map loop_wrappers (fun lwrap ->
-				List.map assign_funcs (fun assfunc ->
-					(* Combine the loops! *)
-					lwrap assfunc
-				)
-			))
+			if (List.length loop_wrappers > 0) then
+				List.concat (List.map loop_wrappers (fun lwrap ->
+					List.map assign_funcs (fun assfunc ->
+						(* Combine the loops! *)
+						lwrap assfunc
+					)
+				))
+			else
+				(* If there are no loops, we can just do the raw assignments.  *)
+				assign_funcs
 		in
 		assignment_statements
 	) in
@@ -101,8 +113,9 @@ let generate_gir_for options ((pre_skeleton: skeleton_type_binding), (post_skele
 	let () = if options.debug_generate_gir then
 		let () = Printf.printf "Finished generation of candidata pre programs.  Program are:\n%s\n"
 			(String.concat ~sep:"\n\n" (List.map pre_gir gir_to_string)) in
-		Printf.printf "Finsihed generation of candiates post programs. Programs are:\n%s\n"
-			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string))
+		let () = Printf.printf "Finsihed generation of candiates post programs. Programs are:\n%s\n"
+			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
+		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
 	res
 
