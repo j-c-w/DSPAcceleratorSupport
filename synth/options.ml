@@ -1,4 +1,17 @@
+exception OptionsException of string
+
+type backend_target =
+	| CXX
+
+let backend_target_from_string str =
+	match str with
+	| "C++" -> CXX
+	| _ -> raise (OptionsException ("Unknown target " ^ str))
+
 type options = {
+	(* Configuration *)
+	target: backend_target;
+
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
     dump_skeletons: bool;

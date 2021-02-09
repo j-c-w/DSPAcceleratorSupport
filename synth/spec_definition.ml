@@ -28,6 +28,7 @@ and dimension_type =
 	| Dimension of name_reference list
     (* e.g. for a 2D array.  *)
     | HigherDimention of dimension_type * name_reference list
+	(* TODO --- Support dimension types with single options.  *)
 
 type synth_value =
     | Int16V of int
@@ -42,6 +43,7 @@ type synth_value =
     | FunV of string
 
 type iospec = {
+	funname: string;
 	livein: string list;
 	liveout: string list;
 	(* This should be an element of liveout, or empty.  *)

@@ -3,6 +3,8 @@ open Spec_definition;;
 open Assign_dimensions;;
 open Generate_gir;;
 open Generate_programs;;
+open Generate_code;;
+open Generate_io_tests;;
 open Skeleton
 open Options;;
 
@@ -45,9 +47,14 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     let () = if opts.print_synthesizer_numbers then
         Printf.printf "Number of programs from these pairs is %d\n" (List.length programs)
     else () in
+	(* Do some opts? *)
 	(* Generate some code.  *)
+	let generated_code = generate_code opts iospec programs in
 	(* Generate some I/O tests.  *)
+	(* let generated_io_tests = generate_io_tests iospec api in *)
 	(* Try the code until we find one that works.  *)
+	(* let working_codes = find_working_code generated_code generated_io_tests in *)
+	(* Do some opts? *)
 	()
 ;;
 
