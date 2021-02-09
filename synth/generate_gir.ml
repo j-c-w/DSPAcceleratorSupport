@@ -6,6 +6,7 @@ open Skeleton;;
 open Gir;;
 open Gir_utils;;
 
+exception GenerateGIRException of string
 
 let rec cross_product ls =
 	match ls with
@@ -21,6 +22,23 @@ let rec cross_product ls =
 			)
 			)
 
+let induction_variable_count = ref 0
+let new_induction_variable () =
+    let () = induction_variable_count := !induction_variable_count + 1 in
+    Name("i" ^ (string_of_int !induction_variable_count))
+
+(* This takes some expression, and turns it into
+   an equivalent expression indexed by some index
+   variable.  *)
+let rec add_dimension_to gir (index_variable: name_reference) =
+	match gir with
+	| Assignment(lval, Expression(rval)) ->
+			(* TODO -- this might need to become more
+			complicated to support more complicated assigns. *)
+			Assignment(LIndex(lval, VariableReference(index_variable)), Expression(ListIndex(rval, VariableReference(index_variable))))
+	| _ ->
+			raise (GenerateGIRException "More implementation work needed to support this.")
+
 (*  This should generate a list of functions
 that can be used to generate wrappers when
 given a simple assignment sequence Assignment.  *)
@@ -33,7 +51,8 @@ let rec generate_loop_wrappers_from_dimensions dim =
             | ExactVarMatch(from, tov) ->
                 [(fun assign -> assign);
                 (fun assign ->
-                    LoopOver(assign, from)
+					let indvar = new_induction_variable () in
+                    LoopOver(add_dimension_to assign indvar, indvar, from)
                 )]
     )
 	| DimvarHigherDimension(subdim, dim_mapping) ->
@@ -44,7 +63,8 @@ let rec generate_loop_wrappers_from_dimensions dim =
                 match dim_mapping with
                 | ExactVarMatch(from, tov) ->
                     fun assign ->
-                        LoopOver((sloop assign), from)
+						let indvar = new_induction_variable () in
+                        LoopOver(sloop (add_dimension_to assign indvar), indvar, from)
 			)
 
 let generate_assign_functions fvars tvar =
@@ -53,7 +73,7 @@ let generate_assign_functions fvars tvar =
 	(* TODO --- need to be able to generate more complex
        conversion functions here.  *)
 	| fvars, _ -> List.map fvars (fun fvar ->
-			Assignment(LVariable(tvar), RReference(fvar)))
+			Assignment(LVariable(tvar), Expression(VariableReference(fvar))))
 
 
 let generate_gir_for_binding (options: options) skeleton: gir list =
@@ -103,13 +123,24 @@ let generate_gir_for_binding (options: options) skeleton: gir list =
 	   to a sequence.  *)
 	List.map expr_lists (fun exprs -> Sequence(exprs))
 
-let generate_gir_for options ((pre_skeleton: skeleton_type_binding), (post_skeleton: skeleton_type_binding)) =
+let generate_define_statemens_for options api =
+    (* Generate a define for each input variable in the API *)
+    List.map api.livein (fun x -> Definition(Name(x)))
+
+let generate_gir_for options (api: apispec) ((pre_skeleton: skeleton_type_binding), (post_skeleton: skeleton_type_binding)) =
 	let () = if options.debug_generate_gir then
 		Printf.printf "Starting generation for new skeleton pair\n"
 	else () in
+    (* Get the define statements required for the API inputs.  *)
+    let define_statements = generate_define_statemens_for options api in
 	let pre_gir = generate_gir_for_binding options pre_skeleton in
 	let post_gir = generate_gir_for_binding options post_skeleton in
 	let res = List.cartesian_product pre_gir post_gir in
+    (* Prepend all the define statements onto the result. *)
+    let res_with_defines = List.map res (
+        fun (pre_result, post_result) ->
+            Sequence(define_statements @ [pre_result]), post_result
+    ) in
 	let () = if options.debug_generate_gir then
 		let () = Printf.printf "Finished generation of candidata pre programs.  Program are:\n%s\n"
 			(String.concat ~sep:"\n\n" (List.map pre_gir gir_to_string)) in
@@ -117,12 +148,12 @@ let generate_gir_for options ((pre_skeleton: skeleton_type_binding), (post_skele
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-	res
+    res_with_defines
 
 
 let generate_gir (options:options) classmap iospec api skeletons: ((gir * gir) list) =
 	let result = List.concat ((List.map skeletons (fun skel ->
-		generate_gir_for options skel))) in
+		generate_gir_for options api skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
 		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post) ->
