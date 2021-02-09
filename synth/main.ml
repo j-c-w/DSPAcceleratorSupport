@@ -12,7 +12,7 @@ let main options classspec_file iospec_file api_file  =
 	let classspec = load_classmap classspec_file in
     let iospec = load_iospec options iospec_file in
     let api = load_target_api api_file in
-    let synth_result = run_synthesis options classspec iospec api in
+    let synth_results = run_synthesis options classspec iospec api in
 	Printf.printf "Synthesizing...\n";
 	Printf.printf "json live in is ";
 	Printf.printf "%s\n" iospec_file;
@@ -22,9 +22,11 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions 
 		debug_load debug_generate_gir dump_generate_gir 
 		debug_generate_program dump_generate_program 
-		print_synth_program_nums =
+		print_synth_program_nums target =
     (* First make the options object, then call the normal main function.  *)
     let options = {
+        target = (backend_target_from_string target);
+
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
 		dump_generate_gir = dump_generate_gir;
@@ -54,6 +56,11 @@ let iospec =
 let apispec =
     let doc = "IO Specification for the target API" in
     Arg.(required & pos 2 (some string) None & info [] ~docv:"APISpec" ~doc)
+
+(* Configuration flags *)
+let target =
+	let doc = "Target generation language (default C++). Must be one of [C++] right now." in
+	Arg.(value & opt string "C++" & info [] ~docv:"Target" ~doc)
 
 (* Generic debug flags *)
 let print_synth_option_numbers =
@@ -101,5 +108,5 @@ let info =
 let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skeletons $
     debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
-	$ print_synth_option_numbers)
+	$ print_synth_option_numbers $ target)
 let () = Term.exit @@ Term.eval (args_t, info)
