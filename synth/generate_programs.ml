@@ -1,8 +1,31 @@
 open Core_kernel;;
 open Spec_definition;;
+open Spec_utils;;
 open Gir;;
 open Gir_utils;;
 open Options;;
+
+exception GenerateProgramException of string
+
+let rec add_index_variables_to_typemap typemap gir =
+    match gir with
+	| Definition(nref) -> ()
+	| Sequence(girs) -> ignore(List.map girs (add_index_variables_to_typemap typemap))
+	(* This can eitehr assign lists to lists, of variables to
+	   variables.  *)
+	| Assignment(lval, rval) -> () (* Should not be possible
+    to define a new index variable in an assignment.  *)
+	(* Body, induction variable name, loop max value *)
+    | LoopOver(body, indvar, maxvar) ->
+            (
+            match Hashtbl.add typemap (name_reference_to_string indvar) Int32 with
+            | `Duplicate -> raise (GenerateProgramException "Added same index var to the typemap twice!")
+            | `Ok -> ()
+            )
+	| Expression(expr) -> ()
+            (* Also not currently possible to have an index
+            variable in an expression *)
+	| EmptyGIR -> ()
 
 let add_all_types_to frommap tomap =
     ignore(Hashtbl.iter_keys frommap (fun (apitypekey: string) ->
@@ -35,6 +58,9 @@ let generate_program_for (apispec: apispec) (iospec: iospec) (pre, post) =
 			post]) in
     let unified_typemap =
         build_typemap_for apispec iospec body in
+	(* Need to add the index variables to the typemap.  *)
+	let () =
+		add_index_variables_to_typemap unified_typemap body in
     {
         in_variables = iospec.livein;
         gir = body;
