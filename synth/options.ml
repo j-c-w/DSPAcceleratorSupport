@@ -5,8 +5,9 @@ type backend_target =
 
 let backend_target_from_string str =
 	match str with
-	| "C++" -> CXX
-	| _ -> raise (OptionsException ("Unknown target " ^ str))
+	| Some("C++") -> CXX
+	| None -> CXX
+	| _ -> raise (OptionsException ("Unknown target "))
 
 type options = {
 	(* Configuration *)

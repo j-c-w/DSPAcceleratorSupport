@@ -60,7 +60,7 @@ let apispec =
 (* Configuration flags *)
 let target =
 	let doc = "Target generation language (default C++). Must be one of [C++] right now." in
-	Arg.(value & opt string "C++" & info [] ~docv:"Target" ~doc)
+	Arg.(value & opt (some string) None & info ["target"] ~docv:"Target" ~doc)
 
 (* Generic debug flags *)
 let print_synth_option_numbers =
