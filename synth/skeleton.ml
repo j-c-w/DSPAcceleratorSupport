@@ -84,7 +84,7 @@ let skeleton_dimension_group_type_list_to_string typs =
 	String.concat ~sep:", " (List.map typs skeleton_dimension_group_type_to_string)
 
 let skeleton_type_binding_to_string skeleton =
-	"SKELETON:" ^ String.concat ~sep:"\n" (
+	"SKELETON:\n" ^ String.concat ~sep:"\n" (
 	List.map skeleton.bindings (fun binding ->
 	"Mapping to " ^ (name_reference_to_string binding.tovar) ^
 	   " from vars " ^ (String.concat ~sep:", " (List.map binding.fromvars name_reference_to_string))
@@ -369,21 +369,24 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 				(* Recurse for the matches.  *)
 				let recurse_assignments: single_variable_binding_option list list =
 					(* Put the undimensioned typelists back with their types.  *)
-					List.concat (List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun (flattened_undimensioned_typeset, dim_mapping) ->
-					(* Get the possible bindings.  *)
-					let poss_bindings: single_variable_binding_option list list =
-						possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
-					(* Now add the required dimension mappings.  *)
-					List.map poss_bindings (fun var_binds ->
-						List.map var_binds (fun bind ->
-							{
-								fromvars = bind.fromvars;
+					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun (flattened_undimensioned_typeset, dim_mapping) ->
+						(* Get the possible bindings.  *)
+						let poss_bindings: single_variable_binding_option list list =
+							possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
+						(* Now add the required dimension mappings.  *)
+						List.concat(
+						List.map poss_bindings (fun var_binds ->
+							List.map var_binds (fun bind ->
+								{
+									fromvars = bind.fromvars;
 								tovar = bind.tovar;
 								valid_dimensions = dim_mapping
-							}
-						)
+	}
 					)
-				)) in
+						)
+							)
+						) in
+				let () = assert((List.length recurse_assignments) = (List.length valid_dimensioned_typesets_in)) in
 				let () = if options.debug_generate_skeletons then
 					let () = Printf.printf "ARRAY_ASSIGN: For the flattened subtypes %s\n" (skeleton_dimension_group_type_list_to_string flattened_arr_stypes) in
 					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string recurse_assignments) in
