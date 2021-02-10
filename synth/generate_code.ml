@@ -51,7 +51,7 @@ let rec cxx_definition_synth_type_to_string typ name =
     prefix ^ " " ^ name ^ postfix ^ ";"
 
 let cxx_names_to_type_definition (typemap: (string, synth_type) Hashtbl.t) names =
-    List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap name)) ^ name)
+    List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap name)) ^ " " ^ name)
 
 let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) gir =
     match gir with
@@ -61,7 +61,7 @@ let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) gir =
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
     | Assignment(fromv, tov) ->
-            (cxx_generate_from_lvalue fromv) ^ " = " ^ (cxx_generate_from_rvalue tov)
+			(cxx_generate_from_lvalue fromv) ^ " = " ^ (cxx_generate_from_rvalue tov) ^ ";"
     | LoopOver(gir, indvariable, loopmax) ->
             let indvar_name = (name_reference_to_string indvariable) in
             let loopmax_name = (name_reference_to_string loopmax) in
@@ -125,5 +125,11 @@ let generate_cxx (options: options) (iospec: iospec) program =
     the argtypes but not much.  *)
 
 let generate_code (options: options) (iospec: iospec) (programs: program list) =
-    match options.target with
+	let codes = match options.target with
 	| CXX -> List.map programs (generate_cxx options iospec)
+	in
+	let () =
+		if options.dump_generate_program then
+            Printf.printf "Generated codes are %s\n" (String.concat ~sep:"\nNEWPROGRAM\n\n" codes)
+        else () in
+    codes
