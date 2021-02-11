@@ -23,7 +23,7 @@ let build_code (opts: options) (code: string list) =
 	List.map (List.zip_exn code file_numbers) (fun (program_code, program_filename) ->
         (* Write the thing to a file *)
         let filename = target_file ^ "/" ^ program_filename ^ extension in
-		let cmd = compiler_cmd ^ " " ^ program_filename in
+		let cmd = compiler_cmd ^ " " ^ filename in
 		let () = if opts.debug_build_code then
 			let () = Printf.printf "Writing to filename %s\n" filename in
 			Printf.printf "Compilng with cmd %s\n" cmd
