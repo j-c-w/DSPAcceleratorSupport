@@ -123,9 +123,59 @@ let generate_gir_for_binding (options: options) skeleton: gir list =
 	   to a sequence.  *)
 	List.map expr_lists (fun exprs -> Sequence(exprs))
 
+let rec all_dimvars_from dimtype =
+	match dimtype with
+			| EmptyDimension -> []
+			| Dimension(nms) -> nms
+			| HigherDimention(subdims, nms) -> nms @ (all_dimvars_from subdims)
+
+let rec type_topo_dependencies (nam, typ) =
+	match typ with
+	| Array(subtyp, dimtype) ->
+			let _, subdeps = type_topo_dependencies (nam, subtyp) in
+			(* let () = Printf.printf "For name %s have deps %s \n " (name_reference_to_string nam) (String.concat (List.map (all_dimvars_from dimtype)name_reference_to_string )) in *)
+			(nam, (all_dimvars_from dimtype) @ (subdeps))
+	(* All non-array types are not dependent types
+		in the languages we are currently supporting.  *)
+	| _ -> (nam, [])
+
+(* Do a topological sort on a list of (name, depname) dependencies *)
+(* This is a horribly inefficient toposort, but I expect
+the input problem size to be quite small so shouldn't be an
+issue.  *)
+let rec member x ys =
+	match x, ys with
+	| _, [] -> false
+	| Name(nm), (Name(y) :: ys) -> (nm = y) || (member x ys)
+	| _ -> raise (GenerateGIRException "Unimplemented")
+
+let rec toposort_search_for_deps name possdeps =
+	match possdeps with
+	| [] -> [], []
+	| (nm, deps) :: rest -> 
+			let subdeps, nondeps = toposort_search_for_deps name rest in
+			if member name deps then
+				((nm, deps) :: subdeps), nondeps
+			else
+				subdeps, ((nm, deps) :: nondeps)
+
+let rec toposort names =
+	match names with
+	| [] -> []
+	| ((nm, deps)) :: rest ->
+			let afters, befores = toposort_search_for_deps nm rest in
+			(toposort befores) @ (nm :: (toposort afters))
+
+
 let generate_define_statemens_for options api =
+	(* Need to make sure that types that are dependent on each
+	   other are presented in the right order.  *)
+	let names = List.map api.livein (fun n -> (Name(n), Hashtbl.find_exn api.typemap n)) in
+	let sorted_names = toposort (List.map names type_topo_dependencies) in
+	(* let () = Printf.printf "Names %s\n" (String.concat((List.map names (fun (n, s) -> (match n with Name(x) -> x) ^ (synth_type_to_string s))))) in *)
+	(* let () = Printf.printf "Sorte names %s\n" (String.concat ~sep:", " (List.map sorted_names name_reference_to_string)) in *)
     (* Generate a define for each input variable in the API *)
-    List.map api.livein (fun x -> Definition(Name(x)))
+    List.map sorted_names (fun x -> Definition(x))
 
 let generate_gir_for options (api: apispec) ((pre_skeleton: skeleton_type_binding), (post_skeleton: skeleton_type_binding)) =
 	let () = if options.debug_generate_gir then
