@@ -4,6 +4,7 @@ open Assign_dimensions;;
 open Generate_gir;;
 open Generate_programs;;
 open Generate_code;;
+open Build_code;;
 open Generate_io_tests;;
 open Skeleton
 open Options;;
@@ -50,6 +51,11 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	(* Do some opts? *)
 	(* Generate some code.  *)
 	let generated_code = generate_code opts iospec programs in
+	let () = if opts.print_synthesizer_numbers then
+		Printf.printf "Number of codes generated is %d\n" (List.length generated_code)
+	else () in
+	(* Build the code *)
+	let code_files = build_code opts generated_code in
 	(* Generate some I/O tests.  *)
 	(* let generated_io_tests = generate_io_tests iospec api in *)
 	(* Try the code until we find one that works.  *)
