@@ -9,9 +9,15 @@ let backend_target_from_string str =
 	| None -> CXX
 	| _ -> raise (OptionsException ("Unknown target "))
 
+let get_compiler_cmd target =
+    match target with
+    | CXX -> "g++"
+
 type options = {
 	(* Configuration *)
-	target: backend_target;
+	target: backend_target; (* Language target *)
+	execution_folder: string; (* Where to keep the executables for testing *)
+    compiler_cmd: string;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
@@ -25,6 +31,7 @@ type options = {
 	debug_generate_skeletons: bool;
 	debug_generate_gir: bool;
     debug_generate_program: bool;
+	debug_build_code: bool;
 
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;

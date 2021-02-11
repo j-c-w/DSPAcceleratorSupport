@@ -18,14 +18,21 @@ let main options classspec_file iospec_file api_file  =
 	Printf.printf "%s\n" iospec_file;
 	Printf.printf "Done!\n";;
 
-let optswrapper classspec_file iospec_file api_file dump_skeletons 
-        debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions 
-		debug_load debug_generate_gir dump_generate_gir 
-		debug_generate_program dump_generate_program 
-		print_synth_program_nums target =
+let optswrapper classspec_file iospec_file api_file dump_skeletons
+        debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions
+		debug_load debug_generate_gir dump_generate_gir
+		debug_generate_program dump_generate_program
+		print_synth_program_nums target execution_folder
+		compiler_cmd debug_build_code =
     (* First make the options object, then call the normal main function.  *)
+    let target_type = backend_target_from_string target in
     let options = {
-        target = (backend_target_from_string target);
+        target = target_type;
+		execution_folder = execution_folder;
+		compiler_cmd = (match compiler_cmd with
+		| Some(cmd) -> cmd
+		| None -> get_compiler_cmd target_type
+        );
 
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
@@ -37,6 +44,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_assign_dimensions = debug_assign_dimensions;
 		debug_generate_gir = debug_generate_gir;
 		debug_generate_program = debug_generate_program;
+		debug_build_code = debug_build_code;
 
 		print_synthesizer_numbers = print_synth_program_nums;
     }
@@ -61,6 +69,12 @@ let apispec =
 let target =
 	let doc = "Target generation language (default C++). Must be one of [C++] right now." in
 	Arg.(value & opt (some string) None & info ["target"] ~docv:"Target" ~doc)
+let execution_folder =
+	let doc = "Folder in which to build/run all the potential programs" in
+	Arg.(value & opt string "synthethizer_temps" & info ["execution-folder"] ~docv:"ExecFolder" ~doc)
+let compiler_cmd =
+	let doc = "Build compiler command for internal IO analysis (default g++)" in
+	Arg.(value & opt (some string) None & info ["compiler-command"] ~docv:"CompilerCommand" ~doc)
 
 (* Generic debug flags *)
 let print_synth_option_numbers =
@@ -97,6 +111,9 @@ let debug_load =
 let debug_generate_program =
 	let doc = "Debug the generate program pass" in
 	Arg.(value & flag & info ["debug-generate-program"] ~docv:"DebugGenProgram" ~doc)
+let debug_build_code =
+	let doc = "Debug code building pass" in
+	Arg.(value & flag & info ["debug-build-code"] ~docv:"DebugBuildCode" ~doc)
 
 (* Debug flags *)
 let info =
@@ -108,5 +125,5 @@ let info =
 let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skeletons $
     debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
-	$ print_synth_option_numbers $ target)
+	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code)
 let () = Term.exit @@ Term.eval (args_t, info)
