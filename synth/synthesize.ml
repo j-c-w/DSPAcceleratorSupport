@@ -50,7 +50,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     else () in
 	(* Do some opts? *)
 	(* Generate some code.  *)
-	let generated_code = generate_code opts iospec programs in
+	let generated_code = generate_code opts api iospec programs in
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Number of codes generated is %d\n" (List.length generated_code)
 	else () in

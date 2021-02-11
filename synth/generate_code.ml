@@ -7,6 +7,10 @@ open Gir;;
 
 exception CXXGenerationException of string
 
+let cxx_generate_imports filenames =
+	(String.concat ~sep:"\n" (List.map filenames (fun name ->
+		"#include \"" ^ name ^ "\";"))) ^ "\n\n"
+
 (* Type signatures use pointer formatting.  *)
 let rec cxx_type_signature_synth_type_to_string typ =
     match typ with
@@ -96,7 +100,7 @@ and cxx_generate_from_vlist vlist =
     | VariableList(nrefs) ->
         String.concat ~sep:", " (List.map nrefs name_reference_to_string)
 
-let generate_cxx (options: options) (iospec: iospec) program =
+let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) program =
     (* C++ only allows for single return values.  *)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
@@ -115,18 +119,20 @@ let generate_cxx (options: options) (iospec: iospec) program =
     in
     (* Generate the actual program.  *)
     let program_string = cxx_generate_from_gir program.typemap program.gir in
+	let ioimports = cxx_generate_imports iospec.required_includes in
+    let apiimports = cxx_generate_imports apispec.required_includes in
     (* And generate the return statement *)
     let function_return =
         "return " ^ outv ^ "; }" in
     (* Generate the whole program.  *)
-    String.concat ~sep:"\n" [function_header; program_string; function_return]
+    String.concat ~sep:"\n" [ioimports; apiimports; function_header; program_string; function_return]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)
 
-let generate_code (options: options) (iospec: iospec) (programs: program list) =
+let generate_code (options: options) apispec (iospec: iospec) (programs: program list) =
 	let codes = match options.target with
-	| CXX -> List.map programs (generate_cxx options iospec)
+	| CXX -> List.map programs (generate_cxx options apispec iospec)
 	in
 	let () =
 		if options.dump_generate_program then

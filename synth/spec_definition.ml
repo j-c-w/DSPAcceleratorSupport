@@ -49,6 +49,7 @@ type iospec = {
 	(* This should be an element of liveout, or empty.  *)
     returnvar: string option;
 	execcmd: string;
+	required_includes: string list;
 	typemap: (string, synth_type) Hashtbl.t
 }
 
@@ -57,6 +58,7 @@ type apispec = {
     liveout: string list;
     execcmd: string;
 	funname: string;
+	required_includes: string list;
     typemap: (string, synth_type) Hashtbl.t
 }
 
