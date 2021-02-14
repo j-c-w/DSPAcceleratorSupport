@@ -61,3 +61,29 @@ let get_class_members smeta =
 	match smeta with
 	| ClassMetadata(cls) -> cls.members @ cls.functions
 	| StructMetadata(str) -> str.members
+
+let rec name_reference_equal n1 n2 =
+    match (n1, n2) with
+    | Name(x), Name(y) -> x = y
+    | StructName(xns), StructName(yns) -> (
+            match List.zip xns yns with
+            | Ok(nms) -> List.for_all nms (fun (a, b) -> name_reference_equal a b)
+            | Unequal_lengths -> false
+	)
+	(* Assume no funny-business with
+	oddly nested structnames *)
+	| _, _ -> false
+
+(*  checks if x is a chile of some class y, e.g.
+ if y is X and x is X.a, then it's true*)
+let rec name_reference_member x y =
+	match (x, y) with
+	| Name(x), Name(y) -> x = y
+	| StructName(x :: xs), Name(_) ->
+			name_reference_member x y
+	(* Really this shouldn't be possible,
+	but it's a hack to keep the recursio nworking *)
+	| StructName([]), StructName(_) -> true
+	| StructName(x :: xs), StructName(y :: ys) ->
+			(name_reference_equal x y) &&
+			(name_reference_member (StructName(xs)) (StructName(ys)))

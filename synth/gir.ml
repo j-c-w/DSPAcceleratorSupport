@@ -1,6 +1,13 @@
 open Core_kernel;;
 open Spec_definition;;
 
+(* NOTE: In GIR everything must be assigned to at most once.
+This can be in a loop, etc. but must be once to allow
+for topology computations.  *)
+(* UNTIL: everything is put in the program type -- at that point
+it is no longer SSA (since we need the underlying
+C to not be SSA).  *)
+
 type function_ref = FunctionRef of name_reference
 (* Needs a list name and the variable that we are considering. *)
 type expression =
