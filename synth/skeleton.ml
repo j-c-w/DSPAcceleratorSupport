@@ -212,6 +212,22 @@ let rec dimensions_overlap x y =
 	| Dimension(nrefs), Dimension(nrefs2) -> has_overlap nrefs nrefs2
 	| _ -> raise (SkeletonGenerationException "TODO May need to handle")
 
+let add_name_nr name ty =
+	match ty with
+    | Name(_) -> StructName([Name(name); ty])
+    | StructName(ns) ->
+            StructName(Name(name) :: ns)
+
+let rec add_name name ty =
+    match ty with
+    | SType(SInt(nr)) -> SType(SInt(add_name_nr name nr))
+    | SType(SFloat(nr)) -> SType(SFloat(add_name_nr name nr))
+    | STypes(subtyps) ->
+            STypes(List.map subtyps (add_name name))
+    | SArray(subty, dimvar) ->
+            (* I think? We don't have to do the dimvar here? *)
+            SArray((add_name name subty), dimvar)
+
 (* Generates the base typesets for a class. *)
 let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_type =
 	match inptype with
@@ -227,7 +243,10 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
             (* But need to use the classmap to recurse. *)
 			let types = List.map subtypes
 				(fun (memtyp, memname) -> (generate_typesets classmap memtyp memname)) in
-			STypes(types))
+			(* Prepend teh class names *)
+			let class_ref_types =
+				List.map types (fun ty -> add_name inpname ty) in
+			STypes(class_ref_types))
 	| Array(subtyp, lenvar) ->
             let subtyps = generate_typesets classmap subtyp inpname in
 			SArray(subtyps, lenvar)
