@@ -33,6 +33,9 @@ type options = {
     debug_generate_program: bool;
 	debug_build_code: bool;
 
+	(* GIR passes debug.  *)
+	debug_gir_topology_sort: bool;
+
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
 }
