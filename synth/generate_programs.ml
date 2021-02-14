@@ -4,6 +4,7 @@ open Spec_utils;;
 open Gir;;
 open Gir_utils;;
 open Options;;
+open Gir_topology;;
 
 exception GenerateProgramException of string
 
@@ -38,7 +39,23 @@ let build_typemap_for (apispec: apispec) (iospec: iospec) gir =
     let () = add_all_types_to iospec.typemap newtbl in
     newtbl
 
-let generate_program_for (apispec: apispec) (iospec: iospec) (pre, post) =
+let rec member x ys =
+	match ys with
+	| [] -> false
+	| y :: ys -> (x = y) || (member x ys)
+
+	(* Can't remmeber what this is actually called.
+	But I want all a in x with a not in y.  *)
+let rec disjoint_union x y =
+	match x with
+	| [] -> []
+	| (x :: xs) ->
+			if member x y then
+				disjoint_union xs y
+			else
+				x :: (disjoint_union xs y)
+
+let generate_program_for opts (apispec: apispec) (iospec: iospec) (pre, post) =
 	(* Generate the function call to the API.  *)
 	let api_funcname = FunctionRef(Name(apispec.funname)) in
 	let api_args = VariableList(List.map apispec.livein (fun v -> Name(v))) in
@@ -47,6 +64,10 @@ let generate_program_for (apispec: apispec) (iospec: iospec) (pre, post) =
 	   targetting C.  More for functional/tuple languages
 	   would not be hard.  *)
 	let rettype = Option.map iospec.returnvar (fun v -> LVariable(Name(v))) in
+	(* Build the typemap that we need.  Note we need
+	   to (a) build the typemap, then (b) schedule then
+		   rebuild the program again with the scheduled
+		   program.  *)
     let body = match rettype with
 	| None ->
 		(* This is a function call with no explicit
@@ -58,12 +79,27 @@ let generate_program_for (apispec: apispec) (iospec: iospec) (pre, post) =
 			post]) in
     let unified_typemap =
         build_typemap_for apispec iospec body in
+	(* Run scheduling on pre and post so things are computed
+	   before they are used.  *)
+	let scheduled_pre = topological_program_sort opts unified_typemap ~predefed:iospec.livein ~preassigned:iospec.livein pre in
+	(* May need to fiddle with the preassigned /defined with function return values.  *)
+	let scheduled_post = topological_program_sort opts unified_typemap ~predefed:(iospec.liveout @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) ~preassigned:(apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) post in
+	(* Finally rebuild the body.  *)
+	let final_body = match rettype with
+	| None ->
+		(* This is a function call with no explicit
+		   return arguments, so just splice the function call in.  *)
+		Sequence([scheduled_pre; Expression(funcall); scheduled_post])
+	| Some(resref) ->
+		Sequence([scheduled_pre;
+			Assignment(resref, Expression(funcall));
+			scheduled_post]) in
 	(* Need to add the index variables to the typemap.  *)
 	let () =
 		add_index_variables_to_typemap unified_typemap body in
     {
         in_variables = iospec.livein;
-        gir = body;
+        gir = final_body;
         out_variables = iospec.liveout;
         typemap = unified_typemap;
     }
@@ -72,10 +108,10 @@ let generate_program_for (apispec: apispec) (iospec: iospec) (pre, post) =
    that can be turned into C code.  *)
 let generate_programs (opts: options) classmap (iospec: iospec) (api: apispec)
 	(conversion_functions: (gir * gir) list)  =
-		let result_programs = List.map conversion_functions (generate_program_for api iospec) in
+		let result_programs = List.map conversion_functions (generate_program_for opts api iospec) in
 		let () = if opts.dump_generate_program then
 			Printf.printf "Generated Programs are: %s\n\n" (
 				program_list_to_string result_programs
 			)
 		else () in
-        result_programs
+		result_programs

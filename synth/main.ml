@@ -23,7 +23,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_load debug_generate_gir dump_generate_gir
 		debug_generate_program dump_generate_program
 		print_synth_program_nums target execution_folder
-		compiler_cmd debug_build_code =
+		compiler_cmd debug_build_code debug_gir_topology_sort =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -45,6 +45,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_generate_gir = debug_generate_gir;
 		debug_generate_program = debug_generate_program;
 		debug_build_code = debug_build_code;
+
+		debug_gir_topology_sort = debug_gir_topology_sort;
 
 		print_synthesizer_numbers = print_synth_program_nums;
     }
@@ -95,6 +97,11 @@ let dump_generate_program =
 	let doc = "Dump Generated program in gir form" in
 	Arg.(value & flag & info ["dump-generate-program"] ~docv:"DumpGenerateProg" ~doc)
 
+(* Debug GIR manipulation passes.  *)
+let debug_gir_topology_sort =
+	let doc = "Debug GIR topology passes" in
+	Arg.(value & flag & info ["debug-gir-topology"] ~docv:"DebugGIRTopo" ~doc)
+
 (* Debug pass internal flags *)
 let debug_generate_gir =
 	let doc = "Print debug information for generate_gir.ml" in
@@ -125,5 +132,6 @@ let info =
 let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skeletons $
     debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
-	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code)
+	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
+	debug_gir_topology_sort)
 let () = Term.exit @@ Term.eval (args_t, info)

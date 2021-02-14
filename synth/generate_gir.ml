@@ -5,6 +5,7 @@ open Spec_utils;;
 open Skeleton;;
 open Gir;;
 open Gir_utils;;
+open Gir_topology;;
 
 exception GenerateGIRException of string
 
@@ -75,8 +76,10 @@ let generate_assign_functions fvars tvar =
 	| fvars, _ -> List.map fvars (fun fvar ->
 			Assignment(LVariable(tvar), Expression(VariableReference(fvar))))
 
+let get_define_for vnameref =
+	Definition(vnameref)
 
-let generate_gir_for_binding (options: options) skeleton: gir list =
+let generate_gir_for_binding define_before_assign (options: options) skeleton: gir list =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
 	   x = cos(y) or x = sin(y) or x = y.  *)
@@ -87,6 +90,11 @@ let generate_gir_for_binding (options: options) skeleton: gir list =
             generate_loop_wrappers_from_dimensions) in
 		(* Generate the possible assignments *)
 		let assign_funcs = generate_assign_functions single_variable_binding.fromvars single_variable_binding.tovar in
+		(* Get the define if required.  *)
+		let define = if define_before_assign then
+			get_define_for single_variable_binding.tovar
+		else
+			EmptyGIR in
         let () =
             if options.debug_generate_gir then
                 let () = Printf.printf "------\n\nFor skeleton %s\n" (skeleton_list_to_string [skeleton]) in
@@ -108,7 +116,12 @@ let generate_gir_for_binding (options: options) skeleton: gir list =
 				(* If there are no loops, we can just do the raw assignments.  *)
 				assign_funcs
 		in
-		assignment_statements
+		let assigns_with_defines =
+			if define_before_assign then
+				List.map assignment_statements (fun ass -> Sequence([define; ass]))
+			else
+				assignment_statements in
+		assigns_with_defines
 	) in
 	(* We now have a expression list list, where we need one element
 	   from each sublist in sequence to form complete assignment
@@ -121,7 +134,8 @@ let generate_gir_for_binding (options: options) skeleton: gir list =
 	(* Now we have a expression list list where each set
 	   is a full set of assignments.  Convert each expr list
 	   to a sequence.  *)
-	List.map expr_lists (fun exprs -> Sequence(exprs))
+	let code_options = List.map expr_lists (fun exprs -> Sequence(exprs)) in
+    code_options
 
 let rec all_dimvars_from dimtype =
 	match dimtype with
@@ -182,15 +196,10 @@ let generate_gir_for options (api: apispec) ((pre_skeleton: skeleton_type_bindin
 		Printf.printf "Starting generation for new skeleton pair\n"
 	else () in
     (* Get the define statements required for the API inputs.  *)
-    let define_statements = generate_define_statemens_for options api in
-	let pre_gir = generate_gir_for_binding options pre_skeleton in
-	let post_gir = generate_gir_for_binding options post_skeleton in
+	(* Define the variables before assign in the pre-skeleton case.  *)
+	let pre_gir = generate_gir_for_binding true options pre_skeleton in
+	let post_gir = generate_gir_for_binding false options post_skeleton in
 	let res = List.cartesian_product pre_gir post_gir in
-    (* Prepend all the define statements onto the result. *)
-    let res_with_defines = List.map res (
-        fun (pre_result, post_result) ->
-            Sequence(define_statements @ [pre_result]), post_result
-    ) in
 	let () = if options.debug_generate_gir then
 		let () = Printf.printf "Finished generation of candidata pre programs.  Program are:\n%s\n"
 			(String.concat ~sep:"\n\n" (List.map pre_gir gir_to_string)) in
@@ -198,7 +207,7 @@ let generate_gir_for options (api: apispec) ((pre_skeleton: skeleton_type_bindin
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    res_with_defines
+    res
 
 
 let generate_gir (options:options) classmap iospec api skeletons: ((gir * gir) list) =
