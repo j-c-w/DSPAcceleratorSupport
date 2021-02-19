@@ -1,6 +1,6 @@
 all:
 	ocamlbuild -just-plugin
-	ocamlbuild main.native -pkg core_kernel -pkg yojson -pkg cmdliner
+	ocamlbuild main.native -pkg core_kernel -pkg yojson -pkg cmdliner -cflag -g
 
 clean:
 	rm -rf _build
