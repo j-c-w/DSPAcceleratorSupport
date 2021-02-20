@@ -28,7 +28,8 @@ and skeleton_dimension_group_type =
 	(* Dimension types -- we don't give these names directly.  *)
 	| SType of skeleton_type
 	| STypes of skeleton_dimension_group_type list
-	| SArray of skeleton_dimension_group_type * dimension_type
+    (* Except for this one :) because it's really a type and has a name *)
+	| SArray of name_reference * skeleton_dimension_group_type * dimension_type
 
 (* Keep track of dimvar mappings required for
    certain loops.  We envision that this will
@@ -43,8 +44,14 @@ type dimvar_mapping =
 
 (* These store bindings.  They are both of the form <from> * <to> *)
 type single_variable_binding_option = {
-	fromvars: name_reference list;
-	tovar: name_reference;
+    (* What parts of the names apply to each fromvar? *)
+    (* ie. this is trying to keep track of where the list
+       index should go, e.g. complexes[i].real vs complexes.real[i].
+
+       One list for each fromvars
+       *)
+    fromvars_index_nesting: name_reference list list;
+    tovar_index_nesting: name_reference list;
 	(* Which dimensions is this assignment valid over? *)
 	valid_dimensions: dimvar_mapping list
 }
@@ -77,30 +84,30 @@ let rec skeleton_dimension_group_type_to_string stype =
 	match stype with
 	| SType(subtype) -> skeleton_type_to_string subtype
 	| STypes(subtype) -> "STypes(" ^ (String.concat ~sep:", " (List.map subtype skeleton_dimension_group_type_to_string)) ^ ")"
-	| SArray(subdim, lenvar) -> "SArray(" ^ (skeleton_dimension_group_type_to_string subdim) ^
+	| SArray(name, subdim, lenvar) -> "SArray(" ^ (name_reference_to_string name) ^ ": "
+                                ^ (skeleton_dimension_group_type_to_string subdim) ^
 								": with lenvar " ^ (dimension_type_to_string lenvar) ^ ")"
 
 let skeleton_dimension_group_type_list_to_string typs =
 	String.concat ~sep:", " (List.map typs skeleton_dimension_group_type_to_string)
 
+let single_variable_binding_to_string binding =
+	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
+	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
+		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]"
+
 let skeleton_type_binding_to_string skeleton =
 	"SKELETON:\n" ^ String.concat ~sep:"\n" (
-	List.map skeleton.bindings (fun binding ->
-	"Mapping to " ^ (name_reference_to_string binding.tovar) ^
-	   " from vars " ^ (String.concat ~sep:", " (List.map binding.fromvars name_reference_to_string))
-	))
+	List.map skeleton.bindings single_variable_binding_to_string)
 
 let skeleton_dimension_group_types_to_string typs =
     String.concat ~sep:", DimensionType:" (List.map typs skeleton_dimension_group_type_to_string)
 
 let skeleton_list_to_string bindings =
 	"BINDINGS:\n"^ (String.concat ~sep:">(new binding): \n" (
-		List.map bindings (fun bindings_for_var -> String.concat (
-			List.map bindings_for_var.bindings (fun (bindings) ->
-			"From " ^ (String.concat (List.map bindings.fromvars name_reference_to_string)) ^ 
-			" to " ^ (name_reference_to_string bindings.tovar) ^ "\n"
-			)))
-	)) ^ "\n"
+		List.map bindings (fun bindings_for_var ->
+			skeleton_type_binding_to_string bindings_for_var
+	))) ^ "\n"
 
 let double_binding_options_list_to_string opts =
 	skeleton_list_to_string (List.map opts (fun o -> { bindings = o }))
@@ -135,7 +142,7 @@ let rec flatten_stype_list stype =
 	   need to make sure that the subtyps are flattened
 	   but I've decided that that should happen right
 	   before the call to inspect this type.  *)
-	| SArray(subtyps, lenvar) as t -> [t]
+	| SArray(name, subtyps, lenvar) as t -> [t]
 
 let rec contains x ys =
 	match ys with
@@ -169,7 +176,7 @@ let rec flatten_stypes sty =
 	(fun ty -> match ty with
 	| SType(x) -> Some([x])
 	| STypes(x) -> Some(flatten_stypes x)
-	| SArray(_, _) -> None))
+	| SArray(_, _, _) -> None))
 
 let rec prepend_all_strings prep all =
     match all with
@@ -186,6 +193,9 @@ let rec prepend_all_name_refs prep all =
 	| [] -> []
 	| v :: vs -> (
 		match v with
+        (* Not 100% sure that this decision is the right decision.
+        Perhaps we should preserve anonymity? *)
+        | AnonymousName -> v
 		| Name(_) as other_name -> StructName([prep; other_name])
 		| StructName(existing_list) -> StructName(v :: existing_list)
 	) :: (prepend_all_name_refs prep vs)
@@ -214,6 +224,9 @@ let rec dimensions_overlap x y =
 
 let add_name_nr name ty =
 	match ty with
+    (* Not 100% sure that this is the right decision.  May be
+    bset to preserve anonymity *)
+    | AnonymousName -> Name(name)
     | Name(_) -> StructName([Name(name); ty])
     | StructName(ns) ->
             StructName(Name(name) :: ns)
@@ -224,9 +237,14 @@ let rec add_name name ty =
     | SType(SFloat(nr)) -> SType(SFloat(add_name_nr name nr))
     | STypes(subtyps) ->
             STypes(List.map subtyps (add_name name))
-    | SArray(subty, dimvar) ->
+    | SArray(aname, subty, dimvar) ->
             (* I think? We don't have to do the dimvar here? *)
-            SArray((add_name name subty), dimvar)
+            SArray((add_name_nr name aname), subty, dimvar)
+
+let name_from_opt opt =
+    match opt with
+    | None -> AnonymousName
+    | Some(n) -> Name(n)
 
 (* Generates the base typesets for a class. *)
 let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_type =
@@ -242,31 +260,47 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
             let subtypes = List.map members (fun mem -> (Hashtbl.find_exn structtypemap mem, mem)) in
             (* But need to use the classmap to recurse. *)
 			let types = List.map subtypes
-				(fun (memtyp, memname) -> (generate_typesets classmap memtyp memname)) in
+				(fun (memtyp, memname) -> (generate_typesets classmap memtyp (Some(memname)))) in
 			(* Prepend teh class names *)
 			let class_ref_types =
-				List.map types (fun ty -> add_name inpname ty) in
+				match inpname with
+				| None -> types
+				| Some(inpname) ->
+					List.map types (fun ty -> add_name inpname ty)
+			in
 			STypes(class_ref_types))
 	| Array(subtyp, lenvar) ->
-            let subtyps = generate_typesets classmap subtyp inpname in
-			SArray(subtyps, lenvar)
+			(* So here's the thing with passing inpname rather than None here.
+			   Let's say you've got char x[] --- what has the name?  the array?
+			   or the char?  Passing inpname here basically says both
+			   get that name.  Not 100% sure it's the right decision.
+			   passing None would mean the char is anon and the array
+			   get sthe name.  *)
+            let subtyps = generate_typesets classmap subtyp None in
+			(* This gives the array the name, so 'x' belongs to '[]'.  *)
+			SArray(name_from_opt inpname, subtyps, lenvar)
 	| Unit -> raise (SkeletonGenerationException "Can't Unit typesets")
 	| Fun(_, _) -> raise (SkeletonGenerationException "Cannot generate typesets from a fun")
 	(* Everything else goes to itself.  *)
-	| Int16 -> SType(SInt(Name(inpname)))
-	| Int32 -> SType(SInt(Name(inpname)))
-	| Int64 -> SType(SInt(Name(inpname)))
-	| Float16 -> SType(SFloat(Name(inpname)))
-	| Float32 -> SType(SFloat(Name(inpname)))
-	| Float64 -> SType(SFloat(Name(inpname)))
+	| Int16 -> SType(SInt(name_from_opt inpname))
+	| Int32 -> SType(SInt(name_from_opt inpname))
+	| Int64 -> SType(SInt(name_from_opt inpname))
+	| Float16 -> SType(SFloat(name_from_opt inpname))
+	| Float32 -> SType(SFloat(name_from_opt inpname))
+	| Float64 -> SType(SFloat(name_from_opt inpname))
 
 let skeleton_type_lookup classmap (typemap: (string, synth_type) Hashtbl.t) names =
-    List.map names (fun name -> generate_typesets classmap (Hashtbl.find_exn typemap name) name)
+    List.map names (fun name -> generate_typesets classmap (Hashtbl.find_exn typemap name) (Some(name)))
 
 let rec prepend_all prep all =
 	match all with
 	| [] -> []
 	| x :: xs -> (prep :: x) :: (prepend_all prep xs)
+
+let rec repeat n item =
+    match n with
+    | 0 -> []
+    | n -> item :: (repeat (n - 1) item)
 
 
 (* TODO --- We can reduce the number of bindings we need to check here. *)
@@ -359,10 +393,10 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 		   into the subtypes, which might also be dimension types.
 		   (And then we need to find appropriate assignments for
 		   those). *)
-		| SArray(array_subtyps, dim_options) ->
+		| SArray(sarray_nam, array_subtyps, dim_options) ->
 				let valid_dimensioned_typesets_in, dim_mappings  = List.unzip (List.filter_map typesets_in (fun intype ->
 					match intype with
-					| SArray(_, in_dim_options) ->
+					| SArray(_, _, in_dim_options) ->
 							(* Get the set of possible typevar
 							   bindings that would make this mapping
 							   possible.  *)
@@ -375,20 +409,20 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 				let valid_undimensioned_typesets_in =
 						List.map valid_dimensioned_typesets_in (fun intype ->
 							match intype with
-							| SArray(artyp, dims) -> artyp
+							| SArray(parent_array_name, artyp, dims) -> (parent_array_name, artyp)
 							| _ -> raise (SkeletonGenerationException "")
 						) in
 				let () = if options.debug_generate_skeletons then
 					Printf.printf "Recursing from ARRAY_ASSIGN using valid assignment vars %s\n"
-						(skeleton_dimension_group_type_list_to_string valid_undimensioned_typesets_in)
+						(skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b) -> b)))
 				else () in
 				(* Flatten the arstyles into a list.  *)
 				let flattened_arr_stypes = flatten_stype_list array_subtyps in
-				let flattened_undimensioned_typesets = List.map valid_undimensioned_typesets_in flatten_stype_list in
+				let flattened_undimensioned_typesets = List.map valid_undimensioned_typesets_in (fun (nam, typ) -> (nam, flatten_stype_list typ)) in
 				(* Recurse for the matches.  *)
 				let recurse_assignments: single_variable_binding_option list list =
 					(* Put the undimensioned typelists back with their types.  *)
-					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun (flattened_undimensioned_typeset, dim_mapping) ->
+					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun ((arrnam, flattened_undimensioned_typeset), dim_mapping) ->
 						(* Get the possible bindings.  *)
 						let poss_bindings: single_variable_binding_option list list =
 							possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
@@ -397,20 +431,20 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 						List.map poss_bindings (fun var_binds ->
 							List.map var_binds (fun bind ->
 								{
-									fromvars = bind.fromvars;
-								tovar = bind.tovar;
-								valid_dimensions = dim_mapping
-	}
-					)
-						)
-							)
-						) in
+                                    fromvars_index_nesting = prepend_all arrnam bind.fromvars_index_nesting;
+                                    tovar_index_nesting = sarray_nam :: bind.tovar_index_nesting;
+                                    valid_dimensions = dim_mapping
+                                }
+                            )
+                        )
+                        )
+                    ) in
 				let () = assert((List.length recurse_assignments) = (List.length valid_dimensioned_typesets_in)) in
 				let () = if options.debug_generate_skeletons then
 					let () = Printf.printf "ARRAY_ASSIGN: For the flattened subtypes %s\n" (skeleton_dimension_group_type_list_to_string flattened_arr_stypes) in
 					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string recurse_assignments) in
 					let () = Printf.printf "Had the following types available to find these assignments %s\n" (skeleton_dimension_group_type_list_to_string typesets_in) in
-					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string valid_undimensioned_typesets_in)
+					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b) -> b)))
 				else
 					() in
 				recurse_assignments
@@ -428,7 +462,11 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
            name_binding types.  This needs to add the informtion about
            the out variable to each set to achieve that.  *)
 		[List.map allbindings (fun binding ->
-			{fromvars = List.map binding name_refs_from_skeleton; tovar = name_refs_from_skeleton stype_out; valid_dimensions = []})]
+			{
+				fromvars_index_nesting = List.map binding (fun b -> [name_refs_from_skeleton b]);
+                tovar_index_nesting = [name_refs_from_skeleton stype_out];
+                valid_dimensions = [];
+            })]
 		))
 
 (* Given a list of variables, and an equally sized list of
@@ -451,7 +489,7 @@ let rec find_possible_skeletons options (possible_bindings_for_var: single_varia
 			let () = if options.debug_generate_skeletons then
 				let () = Printf.printf "Number of options for this variable is %d\n" (List.length binding) in
 				let () = if List.length binding > 0 then
-					Printf.printf "Working on binding from var %s\n" (name_reference_to_string (List.hd_exn binding).tovar)
+					Printf.printf "Working on binding from vars %s\n" (name_reference_list_to_string (List.hd_exn binding).tovar_index_nesting)
 				else () in
 				()
 			else () in

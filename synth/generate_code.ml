@@ -11,6 +11,10 @@ let cxx_generate_imports filenames =
 	(String.concat ~sep:"\n" (List.map filenames (fun name ->
 		"#include \"" ^ name ^ "\";"))) ^ "\n\n"
 
+let cxx_gir_name_to_string nm =
+	match nm with
+	| Name(n) -> n
+
 (* Type signatures use pointer formatting.  *)
 let rec cxx_type_signature_synth_type_to_string typ =
     match typ with
@@ -32,7 +36,6 @@ let rec cxx_dimtype_to_definition dimtype =
             | HigherDimention(subdimtype, x :: [])  ->
                     (cxx_dimtype_to_definition subdimtype) ^ "[" ^ (name_reference_to_string x) ^ "]"
             | _ -> raise (CXXGenerationException "Expected individual array types to be selected by the generate pass")
-
 
 let rec cxx_definition_synth_type_to_string_prefix_postfix typ name =
     match typ with
@@ -60,15 +63,15 @@ let cxx_names_to_type_definition (typemap: (string, synth_type) Hashtbl.t) names
 let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) gir =
     match gir with
     | Definition(nref) ->
-            let defntype = (Hashtbl.find_exn typemap (name_reference_to_string nref)) in
-            cxx_definition_synth_type_to_string defntype (name_reference_to_string nref)
+            let defntype = (Hashtbl.find_exn typemap (cxx_gir_name_to_string nref)) in
+            cxx_definition_synth_type_to_string defntype (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
     | Assignment(fromv, tov) ->
 			(cxx_generate_from_lvalue fromv) ^ " = " ^ (cxx_generate_from_rvalue tov) ^ ";"
     | LoopOver(gir, indvariable, loopmax) ->
-            let indvar_name = (name_reference_to_string indvariable) in
-            let loopmax_name = (name_reference_to_string loopmax) in
+            let indvar_name = (cxx_gir_name_to_string indvariable) in
+            let loopmax_name = (cxx_generate_from_variable_reference loopmax) in
             "for (int " ^ indvar_name ^ " = 0; " ^ indvar_name ^ " < " ^ loopmax_name ^ "; " ^ indvar_name ^ "++) {\n\t\t" ^
             (cxx_generate_from_gir typemap gir) ^
             "\n\t}"
@@ -78,27 +81,34 @@ let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) gir =
 
 and cxx_generate_from_lvalue lvalue =
     match lvalue with
-    | LVariable(nref) -> (name_reference_to_string nref)
-    | LIndex(lval, indexpr) -> (cxx_generate_from_lvalue lval) ^ "["
-        ^ (cxx_generate_from_expression indexpr) ^ "]"
+    | LVariable(nref) -> (cxx_generate_from_variable_reference nref)
+
+and cxx_generate_from_variable_reference vref =
+	match vref with
+	| Variable(nm) ->
+			cxx_gir_name_to_string nm
+	| MemberReference(structref, member) ->
+			(* TODO -- need to support pointer-ref
+			   generation.  *)
+			(cxx_generate_from_variable_reference structref) ^ "." ^ (cxx_gir_name_to_string member)
+	| IndexReference(arr, ind) ->
+			(cxx_generate_from_variable_reference arr) ^ "[" ^ (cxx_generate_from_expression ind) ^ "]"
 
 and cxx_generate_from_rvalue rvalue =
     match rvalue with
     | Expression(expr) -> (cxx_generate_from_expression expr)
 and cxx_generate_from_expression expr =
     match expr with
-    | VariableReference(nref) -> (name_reference_to_string nref)
-    | ListIndex(nref, expr) -> (cxx_generate_from_expression nref) ^ "[" ^
-        (cxx_generate_from_expression expr) ^ "]"
+    | VariableReference(nref) -> (cxx_generate_from_variable_reference nref)
     | FunctionCall(fref, vlist) ->
             (cxx_generate_from_function_ref fref) ^ "(" ^ (cxx_generate_from_vlist vlist) ^ ");"
 and cxx_generate_from_function_ref fref =
     match fref with
-    | FunctionRef(nref) -> (name_reference_to_string nref)
+    | FunctionRef(nref) -> (cxx_gir_name_to_string nref)
 and cxx_generate_from_vlist vlist =
     match vlist with
     | VariableList(nrefs) ->
-        String.concat ~sep:", " (List.map nrefs name_reference_to_string)
+        String.concat ~sep:", " (List.map nrefs cxx_generate_from_variable_reference)
 
 let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) program =
     (* C++ only allows for single return values.  *)

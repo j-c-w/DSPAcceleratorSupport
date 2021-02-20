@@ -1,8 +1,11 @@
 open Core_kernel;;
 open Spec_definition;;
 
+exception SpecException of string
+
 let rec name_reference_to_string nref =
 	match nref with
+	| AnonymousName -> "Annon"
 	| Name(s) -> s
 	| StructName(ns) -> (String.concat ~sep:"." (List.map ns name_reference_to_string))
 
@@ -64,6 +67,7 @@ let get_class_members smeta =
 
 let rec name_reference_equal n1 n2 =
     match (n1, n2) with
+	| AnonymousName, AnonymousName -> raise (SpecException "Can't compare annonymous and annonmous")
     | Name(x), Name(y) -> x = y
     | StructName(xns), StructName(yns) -> (
             match List.zip xns yns with
@@ -74,10 +78,18 @@ let rec name_reference_equal n1 n2 =
 	oddly nested structnames *)
 	| _, _ -> false
 
+let name_reference_is_struct nr =
+	match nr with
+	| AnonymousName -> false
+	| Name(_) -> false
+	| StructName(_) -> true
+
 (*  checks if x is a chile of some class y, e.g.
  if y is X and x is X.a, then it's true*)
 let rec name_reference_member x y =
 	match (x, y) with
+	| AnonymousName, _ -> raise (SpecException "Can't compare annonymous to anything")
+	| _, AnonymousName -> raise (SpecException "Can't compare annonymous to anything")
 	| Name(x), Name(y) -> x = y
 	| StructName(x :: xs), Name(_) ->
 			name_reference_member x y

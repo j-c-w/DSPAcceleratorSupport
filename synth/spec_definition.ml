@@ -5,6 +5,7 @@ exception ParseException of string
 (* We need to have recursive types to store the name mappings,
    since that's what the type inputs that we take can be.  *)
 type name_reference =
+	| AnonymousName
 	| Name of string
 	(* To represent class names and member variables.  This
 	   DOES NOT mean the list of all members of a class, but

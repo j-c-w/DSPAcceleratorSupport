@@ -7,63 +7,137 @@ open Gir_reduce;;
 open Options;;
 
 exception TopologicalSortException of string
+exception UseDefException of string
 
+type use_def_name =
+	| UDName of gir_name
+	(* ie. to represent x.y *)
+	| UDNameNest of use_def_name * gir_name
+
+(* an expression can only use values, not assign.  *)
 type use_def_info_expr = {
-	uses: name_reference list;
-	(* Expressions can only use, not define or assign.  *)
-	(* defs: name_reference list; *)
-	(* assigns: name_reference list; *)
+	uses: use_def_name list;
+}
+
+type use_def_info_variable_reference = {
+	uses: use_def_name list;
+	(* depending on the location of the expr,
+	there might be assigns or might be uses,
+	e.g. x[i] = y[i]. (x vs y)
+	(x[i] is lvalue, y[i] is expr) *)
+	maybe_assigns: use_def_name list;
 }
 
 type use_def_info_rval = {
-	uses: name_reference list;
+	uses: use_def_name list;
 }
 
 type use_def_info_lval = {
-	uses: name_reference list;
-	assigns: name_reference list;
+	uses: use_def_name list;
+	assigns: use_def_name list;
 }
 
 (* Information stored for each gir node.  *)
 (* Note that this is not a typical use-def --- it
 is a use-def-assign. *)
 type use_def_info = {
-	uses: name_reference list;
-	defs: name_reference list;
-	assigns: name_reference list;
+	uses: use_def_name list;
+	defs: use_def_name list;
+	assigns: use_def_name list;
 	gir: gir;
 }
 
+let rec ud_name_equal udname1 udname2 =
+	match udname1, udname2 with
+	| UDName(n1), UDName(n2) ->
+			gir_name_equal n1 n2
+	| UDNameNest(before, ns), UDNameNest(before2, ns2) ->
+			(gir_name_equal ns ns2) &&  (ud_name_equal before before2)
+    | _, _ -> false
+
+let rec ud_name_to_string udname =
+	match udname with
+	| UDName(girname) -> gir_name_to_string girname
+	| UDNameNest(udname, girname) ->
+			(ud_name_to_string udname) ^ "." ^ (gir_name_to_string girname)
+
+let ud_name_list_to_string uds =
+	String.concat ~sep:"," (List.map uds ud_name_to_string)
+
 let use_def_to_string ud =
     "GIR: " ^ (gir_to_string ud.gir) ^ "\n" ^
-	"Uses: " ^ (name_reference_list_to_string ud.uses) ^ "\n" ^
-    "Defs: " ^ (name_reference_list_to_string ud.defs) ^ "\n" ^
-    "Assigns: " ^ (name_reference_list_to_string ud.assigns) ^ "\n"
+	"Uses: " ^ (ud_name_list_to_string ud.uses) ^ "\n" ^
+    "Defs: " ^ (ud_name_list_to_string ud.defs) ^ "\n" ^
+    "Assigns: " ^ (ud_name_list_to_string ud.assigns) ^ "\n"
 
 let use_def_list_to_string udl =
 	String.concat ~sep:"\n" (List.map udl use_def_to_string)
 
+let ud_name_from_gir n =
+	UDName(n)
+
+let rec gnames_from_ud ud =
+	match ud with
+	| UDName(n) -> [n]
+	| UDNameNest(rest, n) ->
+			(gnames_from_ud rest) @ [n]
+
 let rec compute_use_def_assign_for_expr expr: use_def_info_expr =
 	match expr with
 	| VariableReference(nm) ->
+		let vuse_defs = compute_use_def_assign_for_vref nm in
 		{
-			uses = [nm]
-		}
-	| ListIndex(expr_base, expr_ind) ->
-		let base = compute_use_def_assign_for_expr expr_base in
-		let ind = compute_use_def_assign_for_expr expr_ind in
-		{
-			uses = base.uses @ ind.uses
+			(* We know that the mauybe assigns
+			are actually uses since this is
+			an expression.  *)
+			uses = vuse_defs.uses @ vuse_defs.maybe_assigns;
 		}
 	(* No dnamically evaluated fcalls right now.  May change
 	when we support function calls that are made from objects. *)
 	| FunctionCall(_, vars) -> (
 		match vars with
 		| VariableList(nms) ->
+                let vref_use_defs = List.map nms compute_use_def_assign_for_vref in
 				{
-					uses = nms
+                    (* In a variable list, we don't define anything so all maybe
+                    assigns are actually uses. :) *)
+                    uses = List.concat (List.map vref_use_defs (fun ud -> ud.uses @ ud.maybe_assigns));
 				}
 	)
+
+and compute_use_def_assign_for_vref vref: use_def_info_variable_reference =
+	(* In this case, what is a use and what is a def
+	depends on the context.  *)
+	match vref with
+	| Variable(name) ->
+			{
+				uses = [];
+				maybe_assigns = [ud_name_from_gir name]
+			}
+	| MemberReference(vref, memname) ->
+			let sub_ud = compute_use_def_assign_for_vref vref in
+			{
+				uses = sub_ud.uses;
+				(* Compute the full name for the maybe defs *)
+				maybe_assigns = 
+					let () = (assert (List.length sub_ud.maybe_assigns = 1)) in
+					(* Compute the new gir_name *)
+					(* Note that this assert
+				and method is what I'm using
+				here just because that's what
+				I currently expect this
+				to do.  There's nothing implicit
+				about requigin only one here.  *)
+                    [UDNameNest(List.hd_exn sub_ud.maybe_assigns, memname)]
+
+			}
+	| IndexReference(variable_reference, expr) ->
+			let index_ud = compute_use_def_assign_for_expr expr in
+			let refs_ud = compute_use_def_assign_for_vref variable_reference in
+			{
+				uses = index_ud.uses @ refs_ud.uses;
+				maybe_assigns = refs_ud.maybe_assigns
+			}
 
 let compute_use_def_assign_for_rvalue (rval: rvalue): use_def_info_rval =
 	match rval with
@@ -76,37 +150,41 @@ let compute_use_def_assign_for_rvalue (rval: rvalue): use_def_info_rval =
 let rec compute_use_def_assign_for_lvalue lval: use_def_info_lval =
 	match lval with
 	| LVariable(nm) ->
+			let udefs = compute_use_def_assign_for_vref nm in
 			{
-				uses = [];
-				assigns = [nm]
-			}
-	| LIndex(lval, lind) ->
-			let index_use_defs = compute_use_def_assign_for_expr lind in
-			let var_use_defs = compute_use_def_assign_for_lvalue lval in
-			{
-				uses = index_use_defs.uses @ var_use_defs.uses;
-				assigns = var_use_defs.assigns
+				uses = udefs.uses;
+				(* since it's in an lvalue, we
+				know that the maybe assigns are
+				really assigns.  *)
+				assigns = udefs.maybe_assigns
 			}
 
 let rec get_uses_defining_type typ =
     match typ with
     | Array(subtyp, dim) ->
             let this_dim = match dim with
-            | Dimension(nm) -> nm
+            | Dimension(nm) ->
+                    List.map nm (fun n -> match n with
+					| AnonymousName -> raise (TopologicalSortException "No anon names in the typemap!")
+					| Name(n) -> UDName(Name(n))
+					| StructName(ns) -> raise (TopologicalSortException "Congratualations, you hit the case
+					that means you need to do a f*ck of a lot of work fixing the typemaps so that
+					they are actually sane and are recursive rather than the weird implicit
+					'.' that they use now.  Enjoy!"))
             | _ -> raise (TopologicalSortException "Don't think this is possible?") in
             this_dim @ (get_uses_defining_type subtyp)
     | _ -> []
 
 let get_uses_defining_variable typemap name =
     (* Compute the variables that get used when defining this.  *)
-    get_uses_defining_type (Hashtbl.find_exn typemap (name_reference_to_string name))
+    get_uses_defining_type (Hashtbl.find_exn typemap (gir_name_to_string name))
 
 
 let rec compute_use_def_assign_for_node typemap gir =
 	match gir with
 	| Definition(ndefed) -> {
 		uses = get_uses_defining_variable typemap ndefed;
-		defs = [ndefed];
+		defs = [UDName(ndefed)];
 		assigns = [];
 		gir = gir
 	}
@@ -129,11 +207,12 @@ let rec compute_use_def_assign_for_node typemap gir =
 		}
 	| LoopOver(body, indvar, maxvar) ->
 		let subuses = compute_use_def_assign_for_node typemap body in
+        let maxv_uses = compute_use_def_assign_for_vref maxvar in
 		(* Filter out the indvar, since that is
 		defined and assigned in the loop header.  *)
 		let subuses_without_index = List.filter subuses.uses (fun i ->
-			not (name_reference_equal i indvar)) in
-		let uses = maxvar :: subuses_without_index in
+			not (ud_name_equal i (UDName(indvar)))) in
+		let uses = maxv_uses.uses @ maxv_uses.maybe_assigns @ subuses_without_index in
 		let defs = subuses.defs in
 		let assigns = subuses.assigns in
 		{
@@ -158,12 +237,35 @@ let rec compute_use_def_assign_for_node typemap gir =
 			gir = EmptyGIR
 		}
 
+
+(* Converts a UDName to a list, e.g. x.y -> [x, y] *)
+let rec ud_name_to_list x = match x with
+	| UDName(x) -> [x]
+	| UDNameNest(rest, x) ->
+			(ud_name_to_list rest) @ [x]
+
+let rec is_prefix x y =
+	match x, y with
+	| [], ys -> true
+	| xs, [] -> false
+	| x :: xs, y :: ys ->
+			(gir_name_equal x y) && (is_prefix xs ys)
+
+(*  checks if x is a child of some class y, e.g.
+if y is X and x is X.a then it's true. *)
+let ud_member x y =
+	(* let () = Printf.printf "Checking membership of %s in %s\n" (ud_name_to_string x) (ud_name_to_string y) in *)
+	let xlist = ud_name_to_list x in
+	let ylist = ud_name_to_list y in
+	(* Check if y is a prefix of x *)
+	let res = is_prefix ylist xlist in
+	(* let () = Printf.printf "Result was %b\n" res in *)
+	res
+
 let rec member x ys =
-	let () = Printf.printf "Checking membership of %s in %s\n" (name_reference_to_string x) (name_reference_list_to_string ys) in
 	let res = match ys with
     | [] -> false
-    | y :: ys -> (name_reference_member x y) || (member x ys) in
-	let () = Printf.printf "Result is %b\n" res in
+    | y :: ys -> (ud_member x y) || (member x ys) in
 	res
 
 let rec has_overlap xs ys =
@@ -171,12 +273,12 @@ let rec has_overlap xs ys =
     | [] -> false
     | x :: xs -> (member x ys) || (has_overlap xs ys)
 
-let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info list) (defed: name_reference list) (assigned: name_reference list) accum: gir list = match s with
+let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info list) (defed: use_def_name list) (assigned: use_def_name list) accum: gir list = match s with
     | [] ->
 			let () = if (List.length girs <> 0) then
 				let () = Printf.printf "FAILED\n" in
-				let () = Printf.printf "Had defed list of %s\n" (name_reference_list_to_string defed) in
-				let () = Printf.printf "Had assed list of %s\n" (name_reference_list_to_string assigned) in
+				let () = Printf.printf "Had defed list of %s\n" (ud_name_list_to_string defed) in
+				let () = Printf.printf "Had assed list of %s\n" (ud_name_list_to_string assigned) in
 				let () = Printf.printf "And had GIRs left %s\n" (use_def_list_to_string girs) in
 				assert false
 				else () in
@@ -187,8 +289,8 @@ let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info
 			let assigned = n.assigns @ assigned in
 			let () = if options.debug_gir_topology_sort then
 					let () = Printf.printf "Pre-mapping is %s\n" (use_def_list_to_string girs) in
-					let () = Printf.printf "Defined vars %s\n" (name_reference_list_to_string n.defs) in
-					let () = Printf.printf "Assed vars %s\n" (name_reference_list_to_string n.assigns) in
+					let () = Printf.printf "Defined vars %s\n" (ud_name_list_to_string n.defs) in
+					let () = Printf.printf "Assed vars %s\n" (ud_name_list_to_string n.assigns) in
 					() else () in
             (* Now, we need to check if any of these
             nodes were 'freed' anc should be added
@@ -243,8 +345,8 @@ let topo_sort (options: options) (gir_uses: use_def_info list) (predefed: string
 		let () = Printf.printf "Predefed vnames is %s" (String.concat ~sep:", " predefed) in
 		Printf.printf "Preassed vnames is %s" (String.concat ~sep:", " preassigned)
 		else () in
-	let predefined_vars_name_refs = List.map predefed (fun nr -> Name(nr)) in
-    let preassigned_vars_name_refs = List.map preassigned (fun nr -> Name(nr)) in
+	let predefined_vars_name_refs = List.map predefed (fun nr -> UDName(Name(nr))) in
+    let preassigned_vars_name_refs = List.map preassigned (fun nr -> UDName(Name(nr))) in
 	let () = if options.debug_gir_topology_sort then
 		Printf.printf "Running new TOPO SORT==========\n"
 	else () in

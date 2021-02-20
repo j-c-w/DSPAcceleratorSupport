@@ -8,6 +8,8 @@ open Synthesize
 open Api
 open Options
 
+let () = Printexc.record_backtrace true;;
+
 let main options classspec_file iospec_file api_file  =
 	let classspec = load_classmap classspec_file in
     let iospec = load_iospec options iospec_file in

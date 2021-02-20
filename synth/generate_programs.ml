@@ -19,7 +19,7 @@ let rec add_index_variables_to_typemap typemap gir =
 	(* Body, induction variable name, loop max value *)
     | LoopOver(body, indvar, maxvar) ->
             (
-            match Hashtbl.add typemap (name_reference_to_string indvar) Int32 with
+            match Hashtbl.add typemap (gir_name_to_string indvar) Int32 with
             | `Duplicate -> raise (GenerateProgramException "Added same index var to the typemap twice!")
             | `Ok -> ()
             )
@@ -58,12 +58,12 @@ let rec disjoint_union x y =
 let generate_program_for opts (apispec: apispec) (iospec: iospec) (pre, post) =
 	(* Generate the function call to the API.  *)
 	let api_funcname = FunctionRef(Name(apispec.funname)) in
-	let api_args = VariableList(List.map apispec.livein (fun v -> Name(v))) in
+	let api_args = VariableList(List.map apispec.livein (fun v -> Variable(Name(v)))) in
 	let funcall = FunctionCall(api_funcname, api_args) in
 	(* Ret type --- currently only support one since we are
 	   targetting C.  More for functional/tuple languages
 	   would not be hard.  *)
-	let rettype = Option.map iospec.returnvar (fun v -> LVariable(Name(v))) in
+	let rettype = Option.map iospec.returnvar (fun v -> LVariable(Variable(Name(v)))) in
 	(* Build the typemap that we need.  Note we need
 	   to (a) build the typemap, then (b) schedule then
 		   rebuild the program again with the scheduled
