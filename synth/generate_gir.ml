@@ -81,7 +81,7 @@ let rec generate_loop_wrappers_from_dimensions dim =
 			)
 
 let rec maybe_create_reference_from post_indexes indvarnames =
-	let post_indexes_str =
+	(* let post_indexes_str =
 		String.concat ~sep:", " (List.map post_indexes (fun p ->
 			match p with
 			| None -> "None"
@@ -89,7 +89,7 @@ let rec maybe_create_reference_from post_indexes indvarnames =
 		)
 		) in
 	let indvarnames_str = gir_name_list_to_string indvarnames in
-	let () = Printf.printf "Looking at names %s and %s\n" (post_indexes_str) (indvarnames_str) in
+	let () = Printf.printf "Looking at names %s and %s\n" (post_indexes_str) (indvarnames_str) in *)
 	match post_indexes, indvarnames with
 	| [], [] -> raise (GenerateGIRException "Must be non empty!")
 	| p :: [], [] -> p
