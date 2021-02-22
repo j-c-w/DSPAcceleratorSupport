@@ -64,6 +64,14 @@ let get_class_members smeta =
 	match smeta with
 	| ClassMetadata(cls) -> cls.members @ cls.functions
 	| StructMetadata(str) -> str.members
+let get_class_fields smeta =
+	match smeta with
+	| ClassMetadata(cls) -> cls.members
+	| StructMetadata(str) -> str.members
+let is_class smeta =
+	match smeta with
+	| ClassMetadata(_) -> true
+	| StructMetadata(_) -> false
 
 let rec name_reference_equal n1 n2 =
     match (n1, n2) with
@@ -83,19 +91,3 @@ let name_reference_is_struct nr =
 	| AnonymousName -> false
 	| Name(_) -> false
 	| StructName(_) -> true
-
-(*  checks if x is a chile of some class y, e.g.
- if y is X and x is X.a, then it's true*)
-let rec name_reference_member x y =
-	match (x, y) with
-	| AnonymousName, _ -> raise (SpecException "Can't compare annonymous to anything")
-	| _, AnonymousName -> raise (SpecException "Can't compare annonymous to anything")
-	| Name(x), Name(y) -> x = y
-	| StructName(x :: xs), Name(_) ->
-			name_reference_member x y
-	(* Really this shouldn't be possible,
-	but it's a hack to keep the recursio nworking *)
-	| StructName([]), StructName(_) -> true
-	| StructName(x :: xs), StructName(y :: ys) ->
-			(name_reference_equal x y) &&
-			(name_reference_member (StructName(xs)) (StructName(ys)))
