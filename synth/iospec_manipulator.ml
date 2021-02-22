@@ -10,10 +10,13 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
 	List.map inp_files (fun infile ->
         let outfile = infile ^ "_result.json" in
         let runcmd = progexec ^ " " ^ infile ^ " " ^ outfile in
+		let () = if opts.debug_iospec_manipulator then
+			Printf.printf "Runcmd is %s\n" (runcmd)
+		else () in
         (* TODO -- Need to have a timeout here.  *)
         let res = Sys.command runcmd in
         if res <> 0 then
-            Failure
+            RunFailure
         else
-            Success(outfile)
+            RunSuccess(outfile)
 	)
