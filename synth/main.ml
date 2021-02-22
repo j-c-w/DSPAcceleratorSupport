@@ -25,7 +25,9 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_load debug_generate_gir dump_generate_gir
 		debug_generate_program dump_generate_program
 		print_synth_program_nums target execution_folder
-		compiler_cmd debug_build_code debug_gir_topology_sort debug_generate_code =
+		compiler_cmd debug_build_code debug_gir_topology_sort
+        debug_generate_code number_of_tests debug_generate_io_tests
+        debug_synth_topology =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -35,6 +37,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		| Some(cmd) -> cmd
 		| None -> get_compiler_cmd target_type
         );
+
+        number_of_tests = number_of_tests;
 
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
@@ -48,8 +52,11 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_generate_program = debug_generate_program;
 		debug_generate_code = debug_generate_code;
 		debug_build_code = debug_build_code;
+        debug_generate_io_tests = debug_generate_io_tests;
 
 		debug_gir_topology_sort = debug_gir_topology_sort;
+
+        debug_synth_topology = debug_synth_topology;
 
 		print_synthesizer_numbers = print_synth_program_nums;
     }
@@ -81,6 +88,11 @@ let compiler_cmd =
 	let doc = "Build compiler command for internal IO analysis (default g++)" in
 	Arg.(value & opt (some string) None & info ["compiler-command"] ~docv:"CompilerCommand" ~doc)
 
+(* Testing configuration flags.  *)
+let number_of_tests =
+    let doc = "Max number of tests to generate.  " in
+    Arg.(value & opt int 10 & info ["number-of-tests"] ~docv:"NumberOfTests" ~doc)
+
 (* Generic debug flags *)
 let print_synth_option_numbers =
 	let doc = "Print number of options the synthesizer has at each stage" in
@@ -105,6 +117,11 @@ let debug_gir_topology_sort =
 	let doc = "Debug GIR topology passes" in
 	Arg.(value & flag & info ["debug-gir-topology"] ~docv:"DebugGIRTopo" ~doc)
 
+(* debug stype passes.  *)
+let debug_synth_topology =
+    let doc = "Debug the synth topology sort pass" in
+    Arg.(value & flag & info ["debug-synth-topology"] ~docv:"DebugSynthTopo" ~doc)
+
 (* Debug pass internal flags *)
 let debug_generate_gir =
 	let doc = "Print debug information for generate_gir.ml" in
@@ -127,6 +144,9 @@ let debug_generate_code =
 let debug_build_code =
 	let doc = "Debug code building pass" in
 	Arg.(value & flag & info ["debug-build-code"] ~docv:"DebugBuildCode" ~doc)
+let debug_generate_io_tests =
+    let doc = "Debug generation of IO tests " in
+    Arg.(value & flag & info ["debug-generate-io-tests"] ~docv:"DebugGenerateIO" ~doc)
 
 (* Debug flags *)
 let info =
@@ -139,5 +159,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
     debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
-	debug_gir_topology_sort $ debug_generate_code)
+	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
+    debug_synth_topology)
 let () = Term.exit @@ Term.eval (args_t, info)

@@ -14,10 +14,13 @@ let get_compiler_cmd target =
     | CXX -> "g++"
 
 type options = {
-	(* Configuration *)
+	(* Generic configuration *)
 	target: backend_target; (* Language target *)
 	execution_folder: string; (* Where to keep the executables for testing *)
     compiler_cmd: string;
+
+	(* Testing configuration *)
+	number_of_tests: int;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
@@ -33,9 +36,13 @@ type options = {
     debug_generate_program: bool;
     debug_generate_code: bool;
 	debug_build_code: bool;
+	debug_generate_io_tests: bool;
 
 	(* GIR passes debug.  *)
 	debug_gir_topology_sort: bool;
+
+	(* SType passes debug.  *)
+	debug_synth_topology: bool;
 
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
