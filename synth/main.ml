@@ -27,7 +27,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		print_synth_program_nums target execution_folder
 		compiler_cmd debug_build_code debug_gir_topology_sort
         debug_generate_code number_of_tests debug_generate_io_tests
-        debug_synth_topology =
+        debug_synth_topology debug_iospec_manipulator
+		test_only dump_test_results debug_test =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -40,10 +41,13 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 
         number_of_tests = number_of_tests;
 
+		test_only = test_only;
+
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
 		dump_generate_gir = dump_generate_gir;
 		dump_generate_program = dump_generate_program;
+		dump_test_results = dump_test_results;
 
 		debug_load = debug_load;
 		debug_generate_skeletons = debug_generate_skeletons;
@@ -53,6 +57,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_generate_code = debug_generate_code;
 		debug_build_code = debug_build_code;
         debug_generate_io_tests = debug_generate_io_tests;
+		debug_iospec_manipulator = debug_iospec_manipulator;
+		debug_test = debug_test;
 
 		debug_gir_topology_sort = debug_gir_topology_sort;
 
@@ -98,6 +104,11 @@ let print_synth_option_numbers =
 	let doc = "Print number of options the synthesizer has at each stage" in
 	Arg.(value & flag & info ["print-synthesizer-numbers"] ~docv:"PrintSkeletonNumbers" ~doc)
 
+(* Debug flags to be used with care. *)
+let test_only =
+	let doc = "Only run testing and not generation. Debug only. " in
+	Arg.(value & flag & info ["test-only"] ~docv:"TestOnly" ~doc)
+
 (* Print IR flags *)
 let dump_skeletons =
     let doc = "Dump skeletons" in
@@ -111,6 +122,9 @@ let dump_generate_gir =
 let dump_generate_program =
 	let doc = "Dump Generated program in gir form" in
 	Arg.(value & flag & info ["dump-generate-program"] ~docv:"DumpGenerateProg" ~doc)
+let dump_test_results =
+	let doc = "Dump the results of testing " in
+	Arg.(value & flag & info ["dump-test-results"] ~docv:"DumpTestResults" ~doc)
 
 (* Debug GIR manipulation passes.  *)
 let debug_gir_topology_sort =
@@ -147,6 +161,12 @@ let debug_build_code =
 let debug_generate_io_tests =
     let doc = "Debug generation of IO tests " in
     Arg.(value & flag & info ["debug-generate-io-tests"] ~docv:"DebugGenerateIO" ~doc)
+let debug_iospec_manipulator =
+	let doc = "Debug iospec manipulator (e.g. running the generated tests over the tested API" in
+	Arg.(value & flag & info ["debug-iospec-manipulator"] ~docv:"DebugIOSpecManip" ~doc)
+let debug_test =
+	let doc = "Debug the testing phase.  " in
+	Arg.(value & flag & info ["debug-test"] ~docv:"DebugTest" ~doc)
 
 (* Debug flags *)
 let info =
@@ -160,5 +180,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
-    debug_synth_topology)
+    debug_synth_topology $ debug_iospec_manipulator $ test_only $ dump_test_results $ debug_test)
 let () = Term.exit @@ Term.eval (args_t, info)

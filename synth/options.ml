@@ -22,11 +22,15 @@ type options = {
 	(* Testing configuration *)
 	number_of_tests: int;
 
+	(* Speedup configs to enable partial runs during debugging. *)
+	test_only: bool;
+
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
     dump_skeletons: bool;
 	dump_generate_gir: bool;
 	dump_generate_program: bool;
+	dump_test_results: bool;
 
 	(* Pass debug *)
 	debug_load: bool;
@@ -37,6 +41,8 @@ type options = {
     debug_generate_code: bool;
 	debug_build_code: bool;
 	debug_generate_io_tests: bool;
+    debug_iospec_manipulator: bool;
+	debug_test: bool;
 
 	(* GIR passes debug.  *)
 	debug_gir_topology_sort: bool;
@@ -46,4 +52,47 @@ type options = {
 
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
+}
+
+(* this is a dirty hack --- fix the multiple frontends
+   one opt parser issue is a better way to deal with this. *)
+let default_options = {
+	(* Generic configuration *)
+	target = CXX;
+	execution_folder = "synth_temps";
+	compiler_cmd = "g++";
+
+	(* Testing configuration *)
+	number_of_tests = 100;
+
+	(* Speedup configs to enable partial runs during debugging. *)
+	test_only = false;
+
+	(* IR Dumps *)
+	dump_assigned_dimensions = false;
+	dump_skeletons = false;
+	dump_generate_gir = false;
+	dump_generate_program = false;
+	dump_test_results = false;
+
+	(* Pass debug *)
+	debug_load = false;
+	debug_generate_skeletons = false;
+	debug_assign_dimensions = false;
+	debug_generate_gir = false;
+	debug_generate_program = false;
+	debug_generate_code = false;
+	debug_build_code = false;
+	debug_generate_io_tests = false;
+    debug_iospec_manipulator = false;
+	debug_test = false;
+
+	(* GIR passes debug.  *)
+	debug_gir_topology_sort = false;
+
+	(* SType passes debug.  *)
+	debug_synth_topology = false;
+
+	(* Generic debug *)
+	print_synthesizer_numbers = false;
 }
