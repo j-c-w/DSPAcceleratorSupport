@@ -60,6 +60,12 @@ let cxx_dimtype_to_name dimtype =
     match dimtype with
     | Dimension(x :: []) ->
             (name_reference_to_string x)
+	| EmptyDimension -> "TOFILL"
+            (* Think this can be achieved in the gen_json call.
+               Just return a TODO note, since that's what
+               has to happen.  If it's (incorrectly)
+               called in the synthesis pipeline, then it'll
+               error later anyway.  *)
     | _ -> raise (CXXGenerationException "Pretty sure this can't happen?")
 
 let rec cxx_dimtype_to_definition dimtype =
@@ -210,9 +216,9 @@ let rec generate_input_assigns classmap inps typemap json_ref =
 
 (* Given a list of the liveout vars, produce an asssignment
 that produces the output JSON.*)
-let rec generate_output_assigns options classmap types outvars outjson =
+let rec generate_output_assigns options classmap types outvars outprefix outjson =
 	let asses = List.map (List.zip_exn outvars types) (fun (out, typ) ->
-		let defcode, vname = (generate_output_assign options classmap typ out) in
+		let defcode, vname = (generate_output_assign options classmap typ out outprefix) in
 		(* Defcode is the code to define any intermediate values needed. *)
 		defcode ^ "\n" ^
 		outjson ^ "[\"" ^ out ^ "\"] = " ^ vname ^ ";"
@@ -222,7 +228,7 @@ let rec generate_output_assigns options classmap types outvars outjson =
 (* note that this is a slightly confusing definition, because we are
 trying to input from the 'out' variable into the json, not assign
 to it.  *)
-and generate_output_assign options classmap typ out =
+and generate_output_assign options classmap typ out out_prefix =
 	let () = if options.debug_generate_code then
 		Printf.printf "Generating outupt for %s\n" (out)
 	else () in
@@ -237,10 +243,10 @@ and generate_output_assign options classmap typ out =
 		(* TODO--- need to actually properly handle multi-dimensions here.  *)
 		(* (Array indexing like this won't work for the C view of the world --probaly
 		need multipied indexes or some shit. ) *)
-		let assloop_header = "for (int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ length ^ "; " ^ ivar ^ "++) {" in
+		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ length ^ "; " ^ ivar ^ "++) {" in
 		let newout = generate_out_tmp() in
 		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ out ^ "[" ^ ivar ^ "];" in
-		let assbody, assresvar = generate_output_assign options classmap artyp newout in
+		let assbody, assresvar = generate_output_assign options classmap artyp newout out_prefix in
 		(* Add to the array. *)
 		let inloopassign = outtmp ^ ".push_back(" ^ assresvar ^ ");" in
 		let loop_end = "}" in
@@ -251,18 +257,23 @@ and generate_output_assign options classmap typ out =
 		let json_tmp = generate_out_tmp () in
 		let defn = "json " ^ json_tmp ^ ";" in
 		let structdefn = Hashtbl.find_exn classmap n in
-		let sub_assigns = List.map (get_class_fields structdefn) (fun a -> out ^ "." ^ a) in
+		let sub_assigns = List.map (get_class_fields structdefn) (fun a -> a) in
 		(* Need the unprefixed assigns so we can get their types from the typemap.  *)
 		let unprefixed_assigns = get_class_fields structdefn in
 		let sub_typemap = get_class_typemap structdefn in
-		let () = Printf.printf "Found %s \n" (String.concat unprefixed_assigns) in
 		let sub_types = List.map unprefixed_assigns (fun ass -> Hashtbl.find_exn sub_typemap ass) in
-		let asscode = generate_output_assigns options classmap sub_types sub_assigns json_tmp in
+		let asscode = generate_output_assigns options classmap sub_types sub_assigns (out ^ ".") json_tmp in
 		String.concat ~sep:"\n" [defn; asscode], json_tmp
 	| _ ->
 		(* We can literally just put the variable name.  *)
-		"", out
+		"", out_prefix ^ out
 
+(* Imports needed for the running infrastructure.  *)
+let otherimports = String.concat ~sep:"\n" [
+    "#include<vector>"; "#include<nlohmann/json.hpp>";
+    "#include<fstream>"; "#include<iomanip>";
+    "using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
+]
 
 (* Given the IOSpec, generate the main function required to actually run this
 thing --- it should respect the specification for taking in
@@ -281,7 +292,7 @@ let cxx_main_function options classmap (iospec: iospec) =
 	let json_out_name = "output_json" in
 	let write_json_def = "    json " ^ json_out_name ^ ";" in
 	let liveouttypes = List.map iospec.liveout (fun i -> Hashtbl.find_exn iospec.typemap i) in
-	let gen_results = generate_output_assigns options classmap liveouttypes iospec.liveout json_out_name in
+	let gen_results = generate_output_assigns options classmap liveouttypes iospec.liveout "" json_out_name in
 	let ofstream_create = "std::ofstream out_str(outname); " in
 	let ofstream_write = "out_str << std::setw(4) << " ^ json_out_name ^ " << std::endl;" in
 	let tail = "}" in
@@ -310,12 +321,6 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
     let program_string = cxx_generate_from_gir program.typemap program.gir in
 	let ioimports = cxx_generate_imports iospec.required_includes in
     let apiimports = cxx_generate_imports apispec.required_includes in
-	(* Imports needed for the running infrastructure.  *)
-	let otherimports = String.concat ~sep:"\n" [
-		"#include<vector>"; "#include<nlohmann/json.hpp>";
-		"#include<fstream>"; "#include<iomanip>";
-		"using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
-	] in
     (* And generate the return statement *)
     let function_return =
         "return " ^ outv ^ "; }" in
