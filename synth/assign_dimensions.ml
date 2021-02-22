@@ -34,6 +34,7 @@ let valid_lenvar tbl name =
         | _ -> false
         )
     | StructName(_) -> raise (AssignDimensionsException "Didn't know how to deal with a struct name here")
+    | AnonymousName -> raise (AssignDimensionsException "Don't know how to deal with anon name here")
 
 let rec find_possible_dimensions opts typemap all_vars_at_level name =
     (* Only apply to dimensioned types, e.g. arrays.  *)
