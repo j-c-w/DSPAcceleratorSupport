@@ -20,7 +20,9 @@ let build_code (opts: options) (code: string list) =
 	let file_numbers = generate_file_numbers (List.length code) in
 	let extension = get_extension opts in
     let compiler_cmd = opts.compiler_cmd in
-	List.map (List.zip_exn code file_numbers) (fun (program_code, program_filename) ->
+	(* Don't use too many cores --- just thrashing the system with GCC
+		instances seems like the wrong approach.  *)
+	Parmap.parmap ~ncores:20 (fun (program_code, program_filename) ->
         (* Write the thing to a file *)
         let filename = target_file ^ "/" ^ program_filename ^ extension in
 		let outname = target_file ^ "/" ^ program_filename ^ "_exec" in
@@ -34,4 +36,4 @@ let build_code (opts: options) (code: string list) =
         let result = Sys.command cmd in
         let () = (assert (result = 0)) in
         ()
-    )
+    ) (Parmap.L (List.zip_exn code file_numbers))
