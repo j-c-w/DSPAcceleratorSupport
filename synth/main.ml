@@ -25,7 +25,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_load debug_generate_gir dump_generate_gir
 		debug_generate_program dump_generate_program
 		print_synth_program_nums target execution_folder
-		compiler_cmd debug_build_code debug_gir_topology_sort =
+		compiler_cmd debug_build_code debug_gir_topology_sort debug_generate_code =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -46,6 +46,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_assign_dimensions = debug_assign_dimensions;
 		debug_generate_gir = debug_generate_gir;
 		debug_generate_program = debug_generate_program;
+		debug_generate_code = debug_generate_code;
 		debug_build_code = debug_build_code;
 
 		debug_gir_topology_sort = debug_gir_topology_sort;
@@ -120,6 +121,9 @@ let debug_load =
 let debug_generate_program =
 	let doc = "Debug the generate program pass" in
 	Arg.(value & flag & info ["debug-generate-program"] ~docv:"DebugGenProgram" ~doc)
+let debug_generate_code =
+	let doc = "Debug the generate code pass" in
+	Arg.(value & flag & info ["debug-generate-code"] ~docv:"DebugGenCode" ~doc)
 let debug_build_code =
 	let doc = "Debug code building pass" in
 	Arg.(value & flag & info ["debug-build-code"] ~docv:"DebugBuildCode" ~doc)
@@ -135,5 +139,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
     debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
-	debug_gir_topology_sort)
+	debug_gir_topology_sort $ debug_generate_code)
 let () = Term.exit @@ Term.eval (args_t, info)

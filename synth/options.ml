@@ -31,6 +31,7 @@ type options = {
 	debug_generate_skeletons: bool;
 	debug_generate_gir: bool;
     debug_generate_program: bool;
+    debug_generate_code: bool;
 	debug_build_code: bool;
 
 	(* GIR passes debug.  *)
