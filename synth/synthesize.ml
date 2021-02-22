@@ -57,48 +57,14 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	(* Build the code *)
 	let code_files = build_code opts generated_code in
 	(* Generate some I/O tests.  *)
-	(* let generated_io_tests = generate_io_tests iospec api in *)
+	let io_tests = generate_io_tests opts classmap iospec in
+	let () = if opts.print_synthesizer_numbers then
+		Printf.printf "Number of IO tests generated is %d\n" (List.length io_tests)
+	else () in
+	(* Generate the 'correct' responses for the IO tests *)
+	(* let real_response_files = generate_results_for iospec in *)
 	(* Try the code until we find one that works.  *)
 	(* let working_codes = find_working_code generated_code generated_io_tests in *)
 	(* Do some opts? *)
 	()
 ;;
-
-let _ = Random.init 0
-
-(* TODO --- Could do with making this a bit more deterministic. *)
-let rec generate_inputs_for t structure_metadata =
-    match t with
-    (* TODO -- Support negative values.  *)
-    | Int16 -> Int16V(Random.int (1000))
-    | Int32 -> Int32V(Random.int (1000))
-    | Int64 -> Int64V(Random.int (1000))
-    | Float16 -> Float16V(Random.float (100.0))
-    | Float32 -> Float32V(Random.float (100.0))
-    | Float64 -> Float64V(Random.float (100.0))
-    | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
-    | Unit -> UnitV
-    (* TODO --- Probably need to 
-       make a distinction between square and non
-       square arrays.  *)
-    (* TODO --- Need to support array lengths somehow.  *)
-	(* TODO --- need to support array lengths consistently
-	   across different arrays with the same dimension. *)
-    | Array(subtype, dimvar) ->
-            let maxlen = Random.int (maxarraylength) in
-            ArrayV(List.map (List.range 0 maxlen) (fun _ -> generate_inputs_for subtype structure_metadata))
-    | Struct(name) ->
-            let metadata = Hashtbl.find structure_metadata name in
-            (* Get the strcuture metadata *)
-            let (members, tmap) = match metadata with
-            | Some(ClassMetadata(ctype)) -> (ctype.members, ctype.typemap)
-            | Some(StructMetadata(stype)) -> (stype.members, stype.typemap)
-            | None -> raise (TypeException("Unbound type " ^ name))
-            in
-            (* Generate a value for each type in the
-              metadata.  *)
-            let valuetbl = Hashtbl.create (module String) in
-            let member_datas = List.map members (fun member -> (generate_inputs_for (Hashtbl.find_exn tmap member) structure_metadata, member)) in
-            (* Now, put those generated values in a map.  *)
-            ignore(List.map member_datas (fun (data, m) -> Hashtbl.add valuetbl m data));
-            StructV(name, valuetbl)
