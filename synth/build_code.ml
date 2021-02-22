@@ -1,6 +1,8 @@
 open Core_kernel;;
 open Options;;
 
+exception BuildingException of string
+
 let rec generate_file_numbers upto =
 	if upto = 1 then
 		["1"]
@@ -22,7 +24,8 @@ let build_code (opts: options) (code: string list) =
     let compiler_cmd = opts.compiler_cmd in
 	(* Don't use too many cores --- just thrashing the system with GCC
 		instances seems like the wrong approach.  *)
-	Parmap.parmap ~ncores:20 (fun (program_code, program_filename) ->
+    let () = Printf.printf "Starting!\n" in
+	let results = Parmap.parmap ~ncores:6 (fun (program_code, program_filename) ->
         (* Write the thing to a file *)
         let filename = target_file ^ "/" ^ program_filename ^ extension in
 		let outname = target_file ^ "/" ^ program_filename ^ "_exec" in
@@ -34,6 +37,11 @@ let build_code (opts: options) (code: string list) =
         let () = Out_channel.write_all filename ~data:program_code in
         (* then build the file *)
         let result = Sys.command cmd in
-        let () = (assert (result = 0)) in
-        ()
-    ) (Parmap.L (List.zip_exn code file_numbers))
+		result
+    ) (Parmap.L (List.zip_exn code file_numbers)) in
+	let () = ignore(
+		List.map results (fun r ->
+			assert (r = 0)
+		)
+	) in
+	()
