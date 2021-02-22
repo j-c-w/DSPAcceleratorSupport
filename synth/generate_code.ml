@@ -9,7 +9,7 @@ exception CXXGenerationException of string
 
 let cxx_generate_imports filenames =
 	(String.concat ~sep:"\n" (List.map filenames (fun name ->
-		"#include \"" ^ name ^ "\";"))) ^ "\n\n"
+		"#include \"" ^ name ^ "\""))) ^ "\n\n"
 
 let cxx_gir_name_to_string nm =
 	match nm with
