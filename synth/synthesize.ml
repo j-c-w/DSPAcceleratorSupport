@@ -7,6 +7,7 @@ open Generate_code;;
 open Build_code;;
 open Generate_io_tests;;
 open Skeleton
+open Iospec_manipulator;;
 open Options;;
 
 exception TypeException of string
@@ -62,7 +63,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 		Printf.printf "Number of IO tests generated is %d\n" (List.length io_tests)
 	else () in
 	(* Generate the 'correct' responses for the IO tests *)
-	(* let real_response_files = generate_results_for iospec in *)
+	let real_response_files = generate_results_for opts iospec in
 	(* Try the code until we find one that works.  *)
 	(* let working_codes = find_working_code generated_code generated_io_tests in *)
 	(* Do some opts? *)
