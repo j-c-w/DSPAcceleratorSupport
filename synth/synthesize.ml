@@ -8,6 +8,7 @@ open Build_code;;
 open Generate_io_tests;;
 open Skeleton
 open Iospec_manipulator;;
+open Executable_test;;
 open Options;;
 
 exception TypeException of string
@@ -50,6 +51,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
         Printf.printf "Number of programs from these pairs is %d\n" (List.length programs)
     else () in
 	(* Do some opts? *)
+    (* Do some filtering pre-generation? *)
 	(* Generate some code.  *)
 	let generated_code = generate_code opts classmap api iospec programs in
 	let () = if opts.print_synthesizer_numbers then
@@ -63,9 +65,11 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 		Printf.printf "Number of IO tests generated is %d\n" (List.length io_tests)
 	else () in
 	(* Generate the 'correct' responses for the IO tests *)
-	let real_response_files = generate_results_for opts iospec in
+	let real_response_files = generate_results_for opts iospec io_tests in
 	(* Try the code until we find one that works.  *)
-	(* let working_codes = find_working_code generated_code generated_io_tests in *)
+	let working_codes = find_working_code opts code_files io_tests real_response_files in
 	(* Do some opts? *)
-	()
+    let () = print_working_code code_files working_codes in
+    let () = Printf.printf "Done!\n" in
+    ()
 ;;
