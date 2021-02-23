@@ -40,7 +40,6 @@ type one_dim_var_mapping =
 
 type dimvar_mapping =
     | DimvarOneDimension of one_dim_var_mapping
-    | DimvarHigherDimension of dimvar_mapping * one_dim_var_mapping
 
 (* These store bindings.  They are both of the form <from> * <to> *)
 type single_variable_binding_option = {
@@ -68,9 +67,6 @@ let one_dim_var_mapping_to_string map =
 
 let rec dimvar_mapping_to_string mapping = match mapping with
 	| DimvarOneDimension(map) -> one_dim_var_mapping_to_string map
-	| DimvarHigherDimension(submapping, onedmap) ->
-			"HigherDimension(" ^ (dimvar_mapping_to_string submapping) ^
-			": " ^ (one_dim_var_mapping_to_string onedmap) ^ ")"
 
 let dimvar_mapping_list_to_string mapping =
     String.concat ~sep:"\n" (List.map mapping dimvar_mapping_to_string)
@@ -168,8 +164,6 @@ let dimension_types_to_names d =
 	match d with
 	| EmptyDimension -> []
 	| Dimension(nrs) -> nrs
-	(* Don't think I should have to impelemnt this?*)
-	| HigherDimention(_, _) -> raise (SkeletonGenerationException "Unimplemented")
 
 let rec flatten_stypes sty = 
 	List.concat (List.filter_map sty
@@ -220,7 +214,6 @@ let rec dimensions_overlap x y =
 	| EmptyDimension, _ -> []
 	| _, EmptyDimension -> []
 	| Dimension(nrefs), Dimension(nrefs2) -> has_overlap nrefs nrefs2
-	| _ -> raise (SkeletonGenerationException "TODO May need to handle")
 
 let add_name_nr name ty =
 	match ty with

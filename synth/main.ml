@@ -1,4 +1,3 @@
-open Generatec
 open Cmdliner
 open Gir
 open Parse_iospec

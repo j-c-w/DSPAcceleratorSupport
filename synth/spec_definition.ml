@@ -27,8 +27,6 @@ and dimension_type =
 	(* This should be assigned in the assign_dimensions pass.  *)
     | EmptyDimension
 	| Dimension of name_reference list
-    (* e.g. for a 2D array.  *)
-    | HigherDimention of dimension_type * name_reference list
 	(* TODO --- Support dimension types with single options.  *)
 
 type synth_value =

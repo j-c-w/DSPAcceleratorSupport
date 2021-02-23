@@ -17,9 +17,6 @@ let rec dimension_type_to_string dim =
     | EmptyDimension -> "No dimensions set!"
     | Dimension(nrefs) ->
             (String.concat ~sep:", " (List.map nrefs name_reference_to_string))
-    | HigherDimention(subdim, dimvars) ->
-            "[" ^ (dimension_type_to_string (Dimension(dimvars))) ^ "]" ^
-            (dimension_type_to_string subdim)
 
 let rec synth_type_to_string t =
     match t with

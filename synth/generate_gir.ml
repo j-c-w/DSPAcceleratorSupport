@@ -66,19 +66,6 @@ let rec generate_loop_wrappers_from_dimensions dim =
                     ) in
                 [(in_loop_assign, [indvar])]
     )
-	| DimvarHigherDimension(subdim, dim_mapping) ->
-			(* Compute the loops for the subdimensions,
-			   then add this loop on top.  *)
-			let subloops = generate_loop_wrappers_from_dimensions subdim in
-            List.map subloops (fun (sloop, subinds) ->
-                match dim_mapping with
-                | ExactVarMatch(from, tov) ->
-                    let indvar = new_induction_variable () in (
-                    (fun assign ->
-                        LoopOver(sloop assign, indvar, generate_variable_reference_to from)
-                        (* Also keep track of all the index variables added by these loops. *)),
-                     indvar :: subinds)
-			)
 
 let rec maybe_create_reference_from post_indexes indvarnames =
 	(* let post_indexes_str =
@@ -282,7 +269,6 @@ let rec all_dimvars_from dimtype =
 	match dimtype with
 			| EmptyDimension -> []
 			| Dimension(nms) -> generate_unwrapped_gir_names_for nms
-			| HigherDimention(subdims, nms) -> (generate_unwrapped_gir_names_for nms) @ (all_dimvars_from subdims)
 
 let rec type_topo_dependencies (nam, typ) =
 	match typ with
