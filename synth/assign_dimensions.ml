@@ -46,6 +46,10 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name =
             (* If this = 1, then the io file has
                already specified this.  Don't override it
                for now, since we don't even support that.  *)
+            (* Due to my lazyness, this is also called multiple
+            times for each variable.  Could just sort out
+            at call site, but not likely to be a performance
+            issue so... *)
             if existing_dims <> EmptyDimension then
                 Array(newsubtyp, existing_dims)
             else
@@ -93,7 +97,7 @@ let assign_dimensions (options: options) (classmap: (string, structure_metadata)
     ignore(List.map inps (assign_dimensions_to_type options typemap top_level_wrapped_names));
     let () = if options.debug_assign_dimensions then
         let () = Printf.printf "Executed top level assigns!\n" in
-        let () = Printf.printf "Names assigned to were %s\n" (String.concat inps) in
+        let () = Printf.printf "Names assigned to were %s\n" (String.concat ~sep:", " inps) in
         ()
 	else
         () in

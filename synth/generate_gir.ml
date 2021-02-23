@@ -4,25 +4,13 @@ open Spec_definition;;
 open Spec_utils;;
 open Skeleton;;
 open Skeleton_definition;;
+open Skeleton_utils;;
 open Gir;;
 open Gir_utils;;
 open Gir_topology;;
+open Utils;;
 
 exception GenerateGIRException of string
-
-let rec cross_product ls =
-	match ls with
-	| [] -> []
-	| [x] -> List.map x (fun value -> [value])
-	| (x :: xs) ->
-			let subcross = cross_product xs in
-			List.concat(
-			List.map subcross (fun subprod ->
-				List.map x (fun value -> 
-					value :: subprod
-				)
-			)
-			)
 
 let induction_variable_count = ref 0
 let new_induction_variable () =
@@ -120,8 +108,8 @@ let generate_assign_functions fvar_index_nestings tvar_index_nesting =
                 (* We expect one index_var for each fromvar_index and each tovar_index --- those
                 capture the parts of the variable names
                 that are refered to by each.  *)
-				let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
-				let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in
+				(* let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
+				let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in *)
                 let () = assert(List.length(fvar_ind_nest) - 1 = List.length index_vars) in
                 let () = assert(List.length(tvar_index_nesting) - 1 = List.length index_vars) in
                 (* Get the LVars --- if there

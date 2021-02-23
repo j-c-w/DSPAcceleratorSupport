@@ -24,6 +24,11 @@ let rec dimension_type_to_string dim =
     | Dimension(nrefs) ->
             (String.concat ~sep:", " (List.map nrefs name_reference_to_string))
 
+let dimension_type_list_to_string dims =
+	String.concat ~sep:"DIM: " (
+		List.map dims dimension_type_to_string
+	)
+
 let rec synth_type_to_string t =
     match t with
     | Int16 -> "int16"

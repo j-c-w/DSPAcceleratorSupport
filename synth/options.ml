@@ -50,6 +50,9 @@ type options = {
 	(* SType passes debug.  *)
 	debug_synth_topology: bool;
 
+	(* Skeleton passes debug.  *)
+	debug_skeleton_flatten: bool;
+
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
 }
@@ -92,6 +95,9 @@ let default_options = {
 
 	(* SType passes debug.  *)
 	debug_synth_topology = false;
+
+	(* Skeleton passes debug.  *)
+	debug_skeleton_flatten = false;
 
 	(* Generic debug *)
 	print_synthesizer_numbers = false;

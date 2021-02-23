@@ -27,7 +27,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		compiler_cmd debug_build_code debug_gir_topology_sort
         debug_generate_code number_of_tests debug_generate_io_tests
         debug_synth_topology debug_iospec_manipulator
-		test_only dump_test_results debug_test =
+		test_only dump_test_results debug_test debug_skeleton_flatten =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -62,6 +62,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_gir_topology_sort = debug_gir_topology_sort;
 
         debug_synth_topology = debug_synth_topology;
+		
+		debug_skeleton_flatten = debug_skeleton_flatten;
 
 		print_synthesizer_numbers = print_synth_program_nums;
     }
@@ -134,6 +136,11 @@ let debug_gir_topology_sort =
 let debug_synth_topology =
     let doc = "Debug the synth topology sort pass" in
     Arg.(value & flag & info ["debug-synth-topology"] ~docv:"DebugSynthTopo" ~doc)
+	
+(* debug skeleton passes *)
+let debug_skeleton_flatten =
+	let doc = "Debug skeleton flatten pass" in
+	Arg.(value & flag & info ["debug-skeleton-flatten"] ~docv:"DebugSkeletonFlatten" ~doc)
 
 (* Debug pass internal flags *)
 let debug_generate_gir =
@@ -179,5 +186,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
-    debug_synth_topology $ debug_iospec_manipulator $ test_only $ dump_test_results $ debug_test)
+    debug_synth_topology $ debug_iospec_manipulator $ test_only $ dump_test_results $ debug_test $
+	debug_skeleton_flatten)
 let () = Term.exit @@ Term.eval (args_t, info)

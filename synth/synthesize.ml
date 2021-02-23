@@ -6,7 +6,8 @@ open Generate_programs;;
 open Generate_code;;
 open Build_code;;
 open Generate_io_tests;;
-open Skeleton
+open Skeleton;;
+open Skeleton_utils;;
 open Iospec_manipulator;;
 open Executable_test;;
 open Options;;
@@ -21,11 +22,11 @@ let intmax = 1000;;
 let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (api: apispec) =
 	(* Assign possible dimension equalities between vector types.  *)
 	(* This updates the type ref tables in place, so no reassigns needed.  *)
-	let _ = assign_dimensions opts classmap iospec.typemap iospec.livein in
+	let _ = assign_dimensions opts classmap iospec.typemap (iospec.livein @ iospec.liveout) in
 	(* We currently also do the same for the API, although it is plenty
 	   possible to ask the accelerator designer to specify this for the API.
 	   Bit more scalable if we dont :) *)
-	let _ = assign_dimensions opts classmap api.typemap api.livein in
+	let _ = assign_dimensions opts classmap api.typemap (api.livein @ api.liveout) in
     (* Generate the possible skeletons to consider *)
     let skeleton_pairs = generate_skeleton_pairs opts classmap iospec api in
 	let () = if opts.dump_skeletons = true then
