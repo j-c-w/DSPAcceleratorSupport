@@ -12,6 +12,7 @@ let load_target_api filename: apispec =
 	let liveout = List.map (json |> member "liveout" |> to_list) to_string in
 	let typemap = load_typemap json (livein @ liveout) in
 	let funname = json |> member "functionname" |> to_string in
+	let funargs = List.map (json |> member "functionargs" |> to_list) to_string in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
 	{
 		livein = livein;
@@ -19,5 +20,6 @@ let load_target_api filename: apispec =
 		execcmd=execcmd;
 		typemap=typemap;
 		funname = funname;
+		funargs = funargs;
 		required_includes = required_includes;
 	};;
