@@ -3,6 +3,7 @@ open Options;;
 open Spec_definition;;
 open Spec_utils;;
 open Skeleton;;
+open Skeleton_definition;;
 open Gir;;
 open Gir_utils;;
 open Gir_topology;;
@@ -119,6 +120,8 @@ let generate_assign_functions fvar_index_nestings tvar_index_nesting =
                 (* We expect one index_var for each fromvar_index and each tovar_index --- those
                 capture the parts of the variable names
                 that are refered to by each.  *)
+				let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
+				let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in
                 let () = assert(List.length(fvar_ind_nest) - 1 = List.length index_vars) in
                 let () = assert(List.length(tvar_index_nesting) - 1 = List.length index_vars) in
                 (* Get the LVars --- if there
@@ -193,18 +196,18 @@ let generate_unwrapped_gir_name_for (nref: name_reference): gir_name =
 let generate_unwrapped_gir_names_for nrefs =
     List.map nrefs generate_unwrapped_gir_name_for
 
-let generate_gir_for_binding define_before_assign (options: options) skeleton: gir list =
+let generate_gir_for_binding define_before_assign (options: options) (skeleton: flat_skeleton_binding): gir list =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
 	   x = cos(y) or x = sin(y) or x = y.  *)
-	let expression_options = List.map skeleton.bindings (fun single_variable_binding ->
+	let expression_options = List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
 		(* There may be more than one valid dimension value.
 		   generate assignments based on all the dimension values. *)
         (* TODO --- fix this shit -- I'm pretty sure
         the loop gen is broken for 2D loops.  *)
 		let () = if options.debug_generate_gir then
 			let () = Printf.printf "Starting new binding gen for binding\n" in
-			Printf.printf "%s\n" (single_variable_binding_to_string single_variable_binding)
+			Printf.printf "%s\n" (flat_single_variable_binding_to_string single_variable_binding)
 		else () in
 		let loop_wrappers = List.concat (List.map single_variable_binding.valid_dimensions 
             generate_loop_wrappers_from_dimensions) in
@@ -225,7 +228,7 @@ let generate_gir_for_binding define_before_assign (options: options) skeleton: g
 			EmptyGIR in
         let () =
             if options.debug_generate_gir then
-                let () = Printf.printf "------\n\nFor skeleton %s\n" (skeleton_list_to_string [skeleton]) in
+                let () = Printf.printf "------\n\nFor flat skeleton %s\n" (flat_skeleton_list_to_string [skeleton]) in
 				let () = Printf.printf "Valid dimensions were %s\n" (dimvar_mapping_list_to_string single_variable_binding.valid_dimensions) in
                 let () = Printf.printf "Loop wrappers found are %d\n" (List.length loop_wrappers) in
                 Printf.printf "Loop assignment functions are %d\n" (List.length assign_funcs)
@@ -318,7 +321,7 @@ let generate_define_statemens_for options api =
     (* Generate a define for each input variable in the API *)
     List.map sorted_names (fun x -> Definition(x))
 
-let generate_gir_for options (api: apispec) ((pre_skeleton: skeleton_type_binding), (post_skeleton: skeleton_type_binding)) =
+let generate_gir_for options (api: apispec) ((pre_skeleton: flat_skeleton_binding), (post_skeleton: flat_skeleton_binding)) =
 	let () = if options.debug_generate_gir then
 		Printf.printf "Starting generation for new skeleton pair\n"
 	else () in

@@ -12,6 +12,12 @@ let rec name_reference_to_string nref =
 let name_reference_list_to_string nrefs =
 	String.concat ~sep:", " (List.map nrefs name_reference_to_string)
 
+let name_reference_option_list_to_string nrefs =
+	String.concat ~sep:", " (List.map nrefs (fun n ->
+		match n with
+		| None -> "None"
+		| Some(n) -> name_reference_to_string n))
+
 let rec dimension_type_to_string dim =
     match dim with
     | EmptyDimension -> "No dimensions set!"

@@ -61,8 +61,14 @@ let program_to_string (program: program) =
     (gir_to_string program.gir) ^ "\n EndFunction (outvars: " ^
     (String.concat ~sep:"," program.out_variables) ^ ")\n"
 
-let variable_reference_name_list_to_string nms =
+let variable_reference_list_to_string nms =
 	String.concat ~sep:", " (List.map nms variable_reference_to_string)
+
+let variable_reference_option_list_to_string nms =
+	String.concat ~sep:", " (List.map nms (fun n ->
+		match n with
+		| None -> "None"
+		| Some(n) -> variable_reference_to_string n))
 
 let gir_name_list_to_string gnames =
 	String.concat ~sep:", " (List.map gnames gir_name_to_string)

@@ -2,63 +2,14 @@ open Spec_definition;;
 open Spec_utils;;
 open Core_kernel;;
 open Options;;
+open Skeleton_flatten;;
+open Skeleton_definition;;
 
 (* This module deals with generating synthesis skeletons.
   It uses a number of heuristics to deal with the problems involved
   in doing so.  *)
 
 exception SkeletonGenerationException of string
-
-(* This is an abstracted type that is used
-   for matching different likely compatible types
-   together.  It is for the signitures only.  *)
-(* The idea is to create an abstraction that represents
-   values that are of a similar dimension.
-   We have the two base types, SInt and SFloat,
-   and then a 'dimension' of SArray.
-   Other dimensions would be sensible, e.g. maybe
-   a pointer type.  *)
-(* Ultimately, we might like to include other
-   analysis information along with these types. *)
-type skeleton_type =
-	(* Base types *)
-	| SInt of name_reference
-	| SFloat of name_reference
-and skeleton_dimension_group_type =
-	(* Dimension types -- we don't give these names directly.  *)
-	| SType of skeleton_type
-	| STypes of skeleton_dimension_group_type list
-    (* Except for this one :) because it's really a type and has a name *)
-	| SArray of name_reference * skeleton_dimension_group_type * dimension_type
-
-(* Keep track of dimvar mappings required for
-   certain loops.  We envision that this will
-   eventually include more complicated mappings
-   than the direct mappings entailed by this.  *)
-type one_dim_var_mapping =
-	| ExactVarMatch of name_reference * name_reference
-
-type dimvar_mapping =
-    | DimvarOneDimension of one_dim_var_mapping
-
-(* These store bindings.  They are both of the form <from> * <to> *)
-type single_variable_binding_option = {
-    (* What parts of the names apply to each fromvar? *)
-    (* ie. this is trying to keep track of where the list
-       index should go, e.g. complexes[i].real vs complexes.real[i].
-
-       One list for each fromvars
-       *)
-    fromvars_index_nesting: name_reference list list;
-    tovar_index_nesting: name_reference list;
-	(* Which dimensions is this assignment valid over? *)
-	valid_dimensions: dimvar_mapping list
-}
-
-(* Storing one binding for every variable.  *)
-type skeleton_type_binding = {
-	bindings: single_variable_binding_option list
-}
 
 let one_dim_var_mapping_to_string map =
 	match map with
@@ -87,7 +38,22 @@ let rec skeleton_dimension_group_type_to_string stype =
 let skeleton_dimension_group_type_list_to_string typs =
 	String.concat ~sep:", " (List.map typs skeleton_dimension_group_type_to_string)
 
-let single_variable_binding_to_string binding =
+let flat_single_variable_binding_to_string (binding: flat_single_variable_binding) =
+	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
+	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
+		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]"
+
+let flat_skeleton_type_binding_to_string skeleton =
+	"SKELETON:\n" ^ String.concat ~sep:"\n" (
+	List.map skeleton.flat_bindings flat_single_variable_binding_to_string)
+
+let flat_skeleton_list_to_string bindings =
+	"FLAT BINDINGS:\n"^ (String.concat ~sep:">(new binding): \n" (
+		List.map bindings (fun bindings_for_var ->
+			flat_skeleton_type_binding_to_string bindings_for_var
+	))) ^ "\n"
+
+let single_variable_binding_to_string (binding: single_variable_binding_option_group) =
 	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
 		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]"
@@ -111,10 +77,10 @@ let double_binding_options_list_to_string opts =
 let skeletons_to_string skeletons =
 	String.concat ~sep:"\n" (List.map skeletons skeleton_type_binding_to_string)
 
-let skeleton_pairs_to_string skeletons =
+let flat_skeleton_pairs_to_string skeletons =
 	String.concat ~sep:"\n" (List.map skeletons (fun (pre, post) ->
-		"Pre: " ^ (skeleton_type_binding_to_string pre) ^
-		"\n\nPost" ^ (skeleton_type_binding_to_string post)))
+		"Pre: " ^ (flat_skeleton_type_binding_to_string pre) ^
+		"\n\nPost" ^ (flat_skeleton_type_binding_to_string post)))
 
 let typesets_to_string t =
 	String.concat ~sep:") List (" (List.map t (fun t -> (String.concat ~sep:", " (List.map t skeleton_type_to_string))))
@@ -377,7 +343,7 @@ and bindings_for (typesets_in: skeleton_type list) (output: skeleton_type): skel
 
    Need to get a set of assignments for each
    output. *)
-and possible_bindings options (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option list list = 
+and possible_bindings options (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
     List.concat (List.map types_out (fun type_out ->
 		(*  Make sure that all the possible assingments
 		    have the same dimension.  *)
@@ -413,11 +379,11 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 				let flattened_arr_stypes = flatten_stype_list array_subtyps in
 				let flattened_undimensioned_typesets = List.map valid_undimensioned_typesets_in (fun (nam, typ) -> (nam, flatten_stype_list typ)) in
 				(* Recurse for the matches.  *)
-				let recurse_assignments: single_variable_binding_option list list =
+				let recurse_assignments: single_variable_binding_option_group list list =
 					(* Put the undimensioned typelists back with their types.  *)
 					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun ((arrnam, flattened_undimensioned_typeset), dim_mapping) ->
 						(* Get the possible bindings.  *)
-						let poss_bindings: single_variable_binding_option list list =
+						let poss_bindings: single_variable_binding_option_group list list =
 							possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
 						(* Now add the required dimension mappings.  *)
 						List.concat(
@@ -426,7 +392,7 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 								{
                                     fromvars_index_nesting = prepend_all arrnam bind.fromvars_index_nesting;
                                     tovar_index_nesting = sarray_nam :: bind.tovar_index_nesting;
-                                    valid_dimensions = dim_mapping
+                                    valid_dimensions_set = dim_mapping :: bind.valid_dimensions_set
                                 }
                             )
                         )
@@ -458,7 +424,7 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 			{
 				fromvars_index_nesting = List.map binding (fun b -> [name_refs_from_skeleton b]);
                 tovar_index_nesting = [name_refs_from_skeleton stype_out];
-                valid_dimensions = [];
+                valid_dimensions_set = [];
             })]
 		))
 
@@ -467,7 +433,7 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
    for each variable.  *)
 (* For now we try to create all possible bindings and filter them
    later.   May need a more efficient search strategy eventually.  *)
-let rec find_possible_skeletons options (possible_bindings_for_var: single_variable_binding_option list list): skeleton_type_binding list =
+let rec find_possible_skeletons options (possible_bindings_for_var: single_variable_binding_option_group list list): skeleton_type_binding list =
     (* TODO --- Fix this function so it isn't empty *)
 	let () = if options.debug_generate_skeletons then
 		Printf.printf "Number of Varibales left to bind: %d\n" (List.length possible_bindings_for_var)
@@ -512,7 +478,7 @@ let binding_skeleton options classmap typesets_in typesets_out =
 	(* Get a list of list of possible inputs for each
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
-	let possible_bindings_list: single_variable_binding_option list list = possible_bindings options typesets_in flattened_typesets_out in
+	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options typesets_in flattened_typesets_out in
 	(* Verify that there is exactly one variable per list, and that
 	   there is not more than one list per variable.  *)
 	(* Then, filter out various bindings that might not make any sense.  *)
@@ -541,7 +507,7 @@ let binding_skeleton options classmap typesets_in typesets_out =
 (* Given the input classmap, IOSpec, and APISpec, generate
    the pre- and post-skeletons.  Pair them, and do some
    filtering to check for sanity.  *)
-let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (apispec: apispec): (skeleton_type_binding * skeleton_type_binding) list =
+let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (apispec: apispec): (flat_skeleton_binding * flat_skeleton_binding) list =
     (* Get the types of the varios input variables.  *)
     let livein_types = skeleton_type_lookup classmap iospec.typemap iospec.livein in
     let livein_api_types = skeleton_type_lookup classmap apispec.typemap apispec.livein in
@@ -550,16 +516,19 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
     (* Now use these to create skeletons.  *)
 	let pre_skeletons: skeleton_type_binding list = binding_skeleton options classmap livein_types livein_api_types in
     let post_skeletons = binding_skeleton options classmap liveout_api_types liveout_types in
+	(* Flatten the skeletons that had multiple options for dimvars.  *)
+	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
+	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
     (* Do skeleton pairing *)
-    let all_skeleton_paris = List.cartesian_product pre_skeletons post_skeletons in
+    let all_skeleton_paris = List.cartesian_product flattened_pre_skeletons flattened_post_skeletons in
     (* Do joint filtering *)
     let sensible_skeleton_pairs = List.filter all_skeleton_paris skeleton_pair_check in
 	let () = if options.print_synthesizer_numbers || options.debug_generate_skeletons then
         (Printf.printf "Number of types (livein IO=%d, livein API=%d, liveout API=%d, liveout IO=%d)\n"
             (List.length livein_types) (List.length livein_api_types)
             (List.length liveout_api_types) (List.length liveout_types);
-        Printf.printf "Number of pre-bindings generated is %d\n" (List.length pre_skeletons);
-        Printf.printf "Number of post-bindings generated is %d\n" (List.length post_skeletons);
+        Printf.printf "Number of pre-bindings generated is %d\n" (List.length flattened_pre_skeletons);
+        Printf.printf "Number of post-bindings generated is %d\n" (List.length flattened_post_skeletons);
         Printf.printf "Number of skeletons generated is %d\n" (List.length all_skeleton_paris);
         Printf.printf "Number of skeletons post-filtering is %d\n" (List.length sensible_skeleton_pairs);
         )
