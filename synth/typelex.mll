@@ -4,7 +4,10 @@
 
 let white = [' ']+
 (* Should be fixed to match C++ tokens ideally. *)
-let ident = ['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*
+(* Well, kind of.  We don't support any 'understanding'
+   of templates, so we just treat those as long class
+   names.  *)
+let ident = ['a'-'z''A'-'Z''_']['<''>''a'-'z''A'-'Z''_''0'-'9']*
 
 rule read =
 	parse
