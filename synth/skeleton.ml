@@ -187,6 +187,24 @@ let rec repeat n item =
     | 0 -> []
     | n -> item :: (repeat (n - 1) item)
 
+(* Given a list of list of assignment sets, merge
+them by the variables they assign to.  *)
+let merge_skeleton_assigns (assigns: single_variable_binding_option_group list list list) =
+	(* We do this by constructing a hash table, then putting it back into a list list. *)
+	let joined = List.concat (List.concat assigns) in
+	let lookuptbl = Hashtbl.create (module String) in
+	(* List deconstruction.  *)
+	let _ = List.map joined (fun assigns ->
+		let name_entry = name_reference_list_to_string assigns.tovar_index_nesting in
+		let existing_entries = Hashtbl.find lookuptbl name_entry in
+		let new_entry = match existing_entries with
+		| None -> assigns :: []
+		| Some(x) -> assigns :: x
+		in
+		Hashtbl.set lookuptbl name_entry new_entry
+	) in
+	(* Now, create the list from the hashtbl.  *)
+	Hashtbl.data lookuptbl
 
 (* TODO --- We can reduce the number of bindings we need to check here. *)
 let binding_check binding = true
@@ -304,18 +322,26 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
 				(* Flatten the arstyles into a list.  *)
 				let flattened_arr_stypes = flatten_stype_list array_subtyps in
 				let flattened_undimensioned_typesets = List.map valid_undimensioned_typesets_in (fun (nam, typ) -> (nam, flatten_stype_list typ)) in
+				let () = if options.debug_generate_skeletons then
+					Printf.printf "Have %d assigns to generate.\n" (List.length flattened_undimensioned_typesets)
+				else () in
 				(* Recurse for the matches.  *)
-				let recurse_assignments: single_variable_binding_option_group list list =
+				let recurse_assignments: single_variable_binding_option_group list list list =
 					(* Put the undimensioned typelists back with their types.  *)
-					List.concat (
 					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun ((arrnam, flattened_undimensioned_typeset), dim_mapping) ->
                         let () = assert ((List.length dim_mapping) > 0) in
+						let () = if options.debug_generate_skeletons then
+							let () = Printf.printf "Looking at array with name %s\n" (name_reference_to_string arrnam) in
+							let () = Printf.printf "Has flattened undimed typeset %s\n" (skeleton_dimension_group_type_list_to_string flattened_undimensioned_typeset) in
+							()
+						else () in
 						(* Get the possible bindings.  *)
 						let poss_bindings: single_variable_binding_option_group list list =
 							possible_bindings options flattened_undimensioned_typeset flattened_arr_stypes in
+						let () = verify_single_binding_option_groups poss_bindings in
 						(* Now add the required dimension mappings.  *)
 						(* For each variable assignment *)
-						List.map poss_bindings (fun var_binds ->
+						let result = List.map poss_bindings (fun var_binds ->
 							(* For each possible bind to that variable.  *)
 							List.map var_binds (fun bind ->
 								(* Add the array prefixes.  *)
@@ -324,19 +350,22 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
                                     tovar_index_nesting = sarray_nam :: bind.tovar_index_nesting;
                                     valid_dimensions_set = dim_mapping :: bind.valid_dimensions_set
                                 }
-                            )
-                        )
+							)
+                        ) in
+						let () = verify_single_binding_option_groups result in
+						result
                     )
-					)
-						in
+					in
+				let concated_recurse_assignments = merge_skeleton_assigns recurse_assignments in
 				let () = if options.debug_generate_skeletons then
 					let () = Printf.printf "ARRAY_ASSIGN: For the flattened subtypes %s\n" (skeleton_dimension_group_type_list_to_string flattened_arr_stypes) in
-					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string recurse_assignments) in
+					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string concated_recurse_assignments) in
 					let () = Printf.printf "Had the following types available to find these assignments %s\n" (skeleton_dimension_group_type_list_to_string typesets_in) in
 					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b) -> b)))
 				else
 					() in
-				recurse_assignments
+				let () = verify_single_binding_option_groups concated_recurse_assignments in
+				concated_recurse_assignments
 		(* If this isn't an array, then allow any type
 		   that isn't an array. *)
 		| STypes(_) -> raise (SkeletonGenerationException "Need to flatten STypes out before getting mappings")
@@ -350,12 +379,14 @@ and possible_bindings options (typesets_in: skeleton_dimension_group_type list) 
         (* The bindings_for doesn't create the whole skeleton_type_binding or
            name_binding types.  This needs to add the informtion about
            the out variable to each set to achieve that.  *)
-		[List.map allbindings (fun binding ->
+			let results = [List.map allbindings (fun binding ->
 			{
 				fromvars_index_nesting = List.map binding (fun b -> [name_refs_from_skeleton b]);
                 tovar_index_nesting = [name_refs_from_skeleton stype_out];
                 valid_dimensions_set = [];
-            })]
+            })] in
+			let () = verify_single_binding_option_groups results in
+			results
 		))
 
 (* Given a list of variables, and an equally sized list of
@@ -456,6 +487,7 @@ let assign_and_define_bindings options typesets_in typesets_out typesets_define_
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
 	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options typesets_in flattened_typesets_out in
+	let () = verify_single_binding_option_groups possible_bindings_list in
 	(* Now, generate a set of empty assigns for the variables
 	that don't have to have anything assigned to them.
 	Perhaps we should use a type for this rather than just

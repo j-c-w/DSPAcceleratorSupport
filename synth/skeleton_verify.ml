@@ -72,6 +72,30 @@ let check_not_double_defined vars =
 	) in
 	check_non_dup defs
 
+let single_bind_opt_check_not_double_defined (binds: single_variable_binding_option_group list list) =
+	let defs =
+		List.map binds (fun bindset ->
+			(* Assume that there is at least one assign
+			for each bind set--- if this fails,
+			that's a problem of it's own.  *)
+			let tvar = StructName((List.hd_exn bindset).tovar_index_nesting) in
+			tvar
+		) in
+	check_non_dup defs
+
+let single_bind_opt_check_sets (binds: single_variable_binding_option_group list list) =
+	let defs =
+		List.map binds (fun bindset ->
+			let tvar = StructName((List.hd_exn bindset).tovar_index_nesting) in
+			(tvar, List.map bindset (fun b -> StructName(b.tovar_index_nesting)))
+		) in
+	let result = List.for_all defs (fun (v, vs) ->
+		List.for_all vs (fun e ->
+			name_reference_equal v e
+		)
+	) in
+	assert (result = true)
+
 let rec get_names typemap classmap x =
     List.concat (List.map x (fun x ->
 		let typ = Hashtbl.find_exn typemap x in
@@ -120,3 +144,10 @@ let verify_skeleton_pairs options classmap (iospec: iospec) (apispec: apispec) p
         ()
     )
     )
+
+let verify_single_binding_option_groups ingroups =
+	(* Check that each variable is defined exactly once.  *)
+	let () = single_bind_opt_check_not_double_defined ingroups in
+	(* Check that each set only defines a single tovar.  *)
+	let () = single_bind_opt_check_sets ingroups in
+	()

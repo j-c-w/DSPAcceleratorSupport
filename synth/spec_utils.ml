@@ -83,7 +83,7 @@ let is_class smeta =
 
 let rec name_reference_equal n1 n2 =
     match (n1, n2) with
-	| AnonymousName, AnonymousName -> raise (SpecException "Can't compare annonymous and annonmous")
+	| AnonymousName, AnonymousName -> true
     | Name(x), Name(y) -> x = y
     | StructName(xns), StructName(yns) -> (
             match List.zip xns yns with
@@ -109,8 +109,10 @@ let name_reference_base_name nr =
 
 let dimension_type_equal d1 d2 = match d1, d2 with
     | EmptyDimension, EmptyDimension -> true
-    | Dimension(nlist1), Dimension(nlist2) ->
+    | Dimension(nlist1), Dimension(nlist2) -> (
             match List.zip nlist1 nlist2 with
             | Ok(l) ->
                     List.for_all l (fun (a, b) -> name_reference_equal a b)
             | Unequal_lengths -> false
+	)
+	| _ -> false

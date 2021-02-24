@@ -46,7 +46,7 @@ let flat_single_variable_binding_list_list_to_string skels =
     )
 
 let flat_skeleton_type_binding_to_string skeleton =
-	"SKELETON:\n" ^ String.concat ~sep:"\n" (
+	"SKELETON:\n" ^ String.concat ~sep:"\n\n>(new binding): \n" (
 	List.map skeleton.flat_bindings flat_single_variable_binding_to_string)
 
 let flat_skeleton_list_to_string bindings =
@@ -60,9 +60,12 @@ let single_variable_binding_to_string (binding: single_variable_binding_option_g
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
 		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]"
 
-let skeleton_type_binding_to_string skeleton =
+let single_variable_binding_list_to_string binds =
 	"SKELETON:\n" ^ String.concat ~sep:"\n" (
-	List.map skeleton.bindings single_variable_binding_to_string)
+	List.map binds single_variable_binding_to_string)
+
+let skeleton_type_binding_to_string binds =
+    single_variable_binding_list_to_string binds.bindings
 
 let skeleton_dimension_group_types_to_string typs =
     String.concat ~sep:", DimensionType:" (List.map typs skeleton_dimension_group_type_to_string)
