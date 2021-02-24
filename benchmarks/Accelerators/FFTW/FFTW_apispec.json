@@ -1,0 +1,14 @@
+{
+	"livein":["api_in", "interface_len", "dir"],
+	"liveout": ["api_out"],
+	"functionargs": ["api_in", "api_out", "interface_len", "dir"],
+	"execcmd": "../../../benchmarks/Accelerators/FFTW/FFTW",
+	"functionname": "fftw_example_api",
+	"typemap": {
+		"api_in": "array(std::complex<double>)",
+		"api_out": "array(std::complex<double>)",
+		"dir": "int16",
+		"interface_len": "int32"
+	},
+	"required_includes": ["../../../benchmarks/Accelerators/FFTW/interface.hpp", "complex"]
+}
