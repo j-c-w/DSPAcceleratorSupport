@@ -16,34 +16,61 @@ unnest -- don't think it has to though. *)
 let rec join_index_nesting_helper indnest =
     match indnest with
     | [] -> []
-    | x :: [] -> [x]
+    | x :: [] -> (match x with
+				| AnonymousName -> []
+				| Name(_) -> [x]
+				| StructName(ns) ->
+						let sub_flattened = join_index_nesting_helper ns in
+						sub_flattened
+	)
     | x :: xs ->
             let subjoin = join_index_nesting_helper xs in
             match x with
             | AnonymousName -> assert false
             | Name(_) -> x :: subjoin
-            | StructName(ns) -> ns @ subjoin
+			(* Remove the anon names that are
+			sub elets of StructName, sicne we aren't
+			considering any indexing with this.  *)
+            | StructName(ns) ->
+					let sub_flattened = join_index_nesting_helper ns in
+					sub_flattened @ subjoin
 
 let join_index_nesting indnest =
     let nestlist = join_index_nesting_helper indnest in
-    match nestlist with
-    | [] -> AnonymousName
-    | x :: [] -> x
-    | xs -> StructName(xs)
+	nestlist
 
 let check_all_defined vars binding_list =
-    let bound_defins = List.map binding_list.flat_bindings (
-        fun bind -> join_index_nesting bind.tovar_index_nesting) in
-    ignore(List.map vars (fun v ->
-        if member v bound_defins then
-            ()
-        else
-			let () = Printf.printf "Binding list is %s\n" (flat_skeleton_type_binding_to_string binding_list) in
-			let () = Printf.printf "Binding list length is %d\n" (List.length binding_list.flat_bindings) in
-            let () = Printf.printf "Variable %s not found, only have defines %s" (name_reference_to_string v) (name_reference_list_to_string bound_defins) in
-            assert false
+    let bound_defins = List.concat (List.map binding_list.flat_bindings (
+        fun bind -> join_index_nesting bind.tovar_index_nesting)) in
+    ignore(List.map (join_index_nesting vars) (fun v ->
+			if member v bound_defins then
+				()
+			else
+				let () = Printf.printf "Binding list is %s\n" (flat_skeleton_type_binding_to_string binding_list) in
+				let () = Printf.printf "Binding list length is %d\n" (List.length binding_list.flat_bindings) in
+				let () = Printf.printf "Variable %s not found, only have defines %s" (name_reference_to_string v) (name_reference_list_to_string bound_defins) in
+				assert false
     )
     )
+
+let rec check_non_dup vars =
+	match vars with
+	| [] -> ()
+	| x :: xs ->
+			let ismem = (member x xs) in
+			if ismem then
+				let () = Printf.printf "Variable %s was defined more than once\n" (name_reference_to_string x) in
+				let () = Printf.printf "Rest of the list is %s\n" (name_reference_list_to_string xs) in
+				assert false
+			else
+				check_non_dup xs
+
+let check_not_double_defined vars =
+	let defs =
+		List.map vars.flat_bindings (
+			fun bind -> StructName(bind.tovar_index_nesting)
+	) in
+	check_non_dup defs
 
 let rec get_names typemap classmap x =
     List.concat (List.map x (fun x ->
@@ -78,10 +105,12 @@ let rec get_names typemap classmap x =
 
 let verify_pre classmap (iospec: iospec) (apispec: apispec) pre_binding_list =
     let () = check_all_defined (get_names apispec.typemap classmap apispec.livein) pre_binding_list in
+	let () = check_not_double_defined pre_binding_list in
     ()
 
 let verify_post classmap (iospec: iospec) (apispec: apispec) post_binding_list =
     let () = check_all_defined (get_names iospec.typemap classmap iospec.liveout) post_binding_list in
+	let () = check_not_double_defined post_binding_list in
     ()
 
 let verify_skeleton_pairs options classmap (iospec: iospec) (apispec: apispec) pairs =
