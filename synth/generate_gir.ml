@@ -103,24 +103,29 @@ let create_reference_from post_indexes indvarnames =
 a list representing the variables that are used to index
 this.  *)
 let generate_assign_functions fvar_index_nestings tvar_index_nesting =
-	List.map fvar_index_nestings (fun fvar_ind_nest -> (
-            fun index_vars ->
-                (* We expect one index_var for each fromvar_index and each tovar_index --- those
-                capture the parts of the variable names
-                that are refered to by each.  *)
-				(* let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
-				let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in *)
-                let () = assert(List.length(fvar_ind_nest) - 1 = List.length index_vars) in
-                let () = assert(List.length(tvar_index_nesting) - 1 = List.length index_vars) in
-                (* Get the LVars --- if there
-                are no indexes then it is just
-                a list, otherwise we need to do 
-                a fold. *)
-                let lvars = LVariable(create_reference_from tvar_index_nesting index_vars) in
-                let rvars: rvalue = Expression(VariableReference(create_reference_from fvar_ind_nest index_vars)) in
-				Assignment(lvars, rvars)
-        )
-    )
+	if (List.length fvar_index_nestings) = 0 then
+		[]
+	else
+		List.map fvar_index_nestings (fun fvar_ind_nest -> (
+				fun index_vars ->
+					(* We expect one index_var for each fromvar_index and each tovar_index --- those
+					capture the parts of the variable names
+					that are refered to by each.  *)
+					let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
+					let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in
+					let () = Printf.printf "tvars is %s\n" (variable_reference_option_list_to_string tvar_index_nesting) in
+					let () = Printf.printf "fvar ind nest length is %d \n " (List.length fvar_index_nestings) in
+					let () = assert(List.length(fvar_ind_nest) - 1 = List.length index_vars) in
+					let () = assert(List.length(tvar_index_nesting) - 1 = List.length index_vars) in
+					(* Get the LVars --- if there
+					are no indexes then it is just
+					a list, otherwise we need to do 
+					a fold. *)
+					let lvars = LVariable(create_reference_from tvar_index_nesting index_vars) in
+					let rvars: rvalue = Expression(VariableReference(create_reference_from fvar_ind_nest index_vars)) in
+					Assignment(lvars, rvars)
+			)
+		)
 
 let get_define_for vnameref =
     match vnameref with
@@ -237,7 +242,11 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 		in
 		let assigns_with_defines =
 			if define_before_assign then
-				List.map assignment_statements (fun ass -> Sequence([define; ass]))
+				if (List.length assignment_statements) > 0 then
+					List.map assignment_statements (fun ass -> Sequence([define; ass]))
+				else
+					(* Some vars can be define-only *)
+					[define]
 			else
 				assignment_statements in
 		assigns_with_defines

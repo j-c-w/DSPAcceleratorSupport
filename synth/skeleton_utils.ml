@@ -90,3 +90,5 @@ let typesets_to_string t =
 let types_to_string t =
 	String.concat ~sep:", " (List.map t skeleton_type_to_string)
 
+let single_variable_binding_equal s1 s2 =
+	s1 = s2

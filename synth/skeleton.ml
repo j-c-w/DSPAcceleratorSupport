@@ -6,6 +6,7 @@ open Skeleton_flatten;;
 open Skeleton_verify;;
 open Skeleton_definition;;
 open Skeleton_utils;;
+open Utils;;
 
 (* This module deals with generating synthesis skeletons.
   It uses a number of heuristics to deal with the problems involved
@@ -97,14 +98,14 @@ let rec dimvar_contains x y =
 	| (y :: ys) ->
 			(dimvar_match x y) :: (dimvar_contains x ys)
 
-let rec has_overlap x y =
+let rec dim_has_overlap x y =
 	List.concat (List.map x (fun xel -> dimvar_contains xel y ))
 
 let rec dimensions_overlap x y =
 	match x, y with
 	| EmptyDimension, _ -> []
 	| _, EmptyDimension -> []
-	| Dimension(nrefs), Dimension(nrefs2) -> has_overlap nrefs nrefs2
+	| Dimension(nrefs), Dimension(nrefs2) -> dim_has_overlap nrefs nrefs2
 
 let add_name_nr name ty =
 	match ty with
@@ -388,8 +389,84 @@ let rec find_possible_skeletons options (possible_bindings_for_var: single_varia
                occasion.  *)
 			List.concat (List.map binding (fun b -> List.map subbindings (fun sub -> { bindings = (b :: sub.bindings)})))
 
+(* Given some variable that only has to be defined
+and not assigned to, create a binding for it.  This
+is more challenging that it seems at first maybe.
+I'm not sure.  Doing it the simple way, may have
+to flatten the define list and do it the more complicated
+way (ie. work out which defs actually need to be defed
+).  *)
+let rec define_bindings_for valid_dimvars vs =
+	List.map vs (fun v ->
+		match v with
+        | SArray(_, _, EmptyDimension) ->
+                raise (SkeletonGenerationException "Can't have empty dim")
+		| SArray(arnam, _, Dimension(dms)) ->
+                let dimvar_bindings = dim_has_overlap valid_dimvars dms in
+				[{
+					(* May have to properly
+					deal with array childer. *)
+					tovar_index_nesting = [name_reference_base_name arnam; AnonymousName];
+					fromvars_index_nesting = [];
+                    valid_dimensions_set = [dimvar_bindings]
+                }]
+		| SType(SInt(n)) ->
+				[{
+					tovar_index_nesting = [name_reference_base_name n];
+					fromvars_index_nesting = [[]];
+                    valid_dimensions_set = []
+                }]
+		| SType(SFloat(n)) ->
+				[{
+					tovar_index_nesting = [name_reference_base_name n];
+					fromvars_index_nesting = [[]];
+                    valid_dimensions_set = []
+                }]
+        | STypes(ts) ->
+                (* Think we can get away with nly defing
+                the top level one.  Not 100% sure.  *)
+                let sbase_names = (define_bindings_for valid_dimvars ts) in
+                List.concat(
+                List.map sbase_names (remove_duplicates single_variable_binding_equal)
+                )
+    )
+
 let possible_skeletons options possible_bindings_for_var =
-    find_possible_skeletons options possible_bindings_for_var
+	(* Get the skeletons for assigining to variables.  *)
+	find_possible_skeletons options possible_bindings_for_var
+
+let get_dimvars_used typeset =
+    let with_dups =
+        List.concat (
+            List.map typeset (fun typ ->
+                match typ with
+                | SArray(_, _, EmptyDimension) -> []
+                | SArray(_, _, Dimension(vs)) -> vs
+                | _ -> []
+            )
+        )in
+    remove_duplicates name_reference_equal with_dups
+
+let assign_and_define_bindings options typesets_in typesets_out typesets_define_only =
+	(* Need to flatten the output typesets to make sure we only
+	   look for one type at a type --- this takes the STypes([...])
+	   and converts it to [...] *)
+	let flattened_typesets_out = List.concat (List.map typesets_out flatten_stype_list) in
+	(* Get a list of list of possible inputs for each
+	   output.  This is type filtered, so the idea
+	   is that it is sane.  *)
+	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options typesets_in flattened_typesets_out in
+	(* Now, generate a set of empty assigns for the variables
+	that don't have to have anything assigned to them.
+	Perhaps we should use a type for this rather than just
+	an empty list.  *)
+    (* Toplevel dimvars.  *)
+    let valid_dimvars = get_dimvars_used typesets_in in
+	let define_bindings =
+		define_bindings_for valid_dimvars typesets_define_only in
+	List.concat [
+			possible_bindings_list; define_bindings
+		]
 
 (* TODO --- Some filtering here might be a good idea.  *)
 let skeleton_check skel = true
@@ -399,15 +476,8 @@ let skeleton_pair_check p = true
 
 (* The algorithm should produce bindings from the inputs
    the outputs. *)
-let binding_skeleton options classmap typesets_in typesets_out =
-	(* Need to flatten the output typesets to make sure we only
-	   look for one type at a type --- this takes the STypes([...])
-	   and converts it to [...] *)
-	let flattened_typesets_out = List.concat (List.map typesets_out flatten_stype_list) in
-	(* Get a list of list of possible inputs for each
-	   output.  This is type filtered, so the idea
-	   is that it is sane.  *)
-	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options typesets_in flattened_typesets_out in
+let binding_skeleton options classmap typesets_in typesets_out typesets_define =
+	let possible_bindings_list = assign_and_define_bindings options typesets_in typesets_out typesets_define in
 	(* Verify that there is exactly one variable per list, and that
 	   there is not more than one list per variable.  *)
 	(* Then, filter out various bindings that might not make any sense.  *)
@@ -442,9 +512,11 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
     let livein_api_types = skeleton_type_lookup classmap apispec.typemap apispec.livein in
     let liveout_api_types = skeleton_type_lookup classmap apispec.typemap apispec.liveout in
     let liveout_types = skeleton_type_lookup classmap iospec.typemap iospec.liveout in
+    (* Get the types that are not livein, but are function args.  *)
+    let define_only_api_types = skeleton_type_lookup classmap apispec.typemap (set_difference (fun a -> fun b -> a = b) apispec.funargs apispec.livein) in
     (* Now use these to create skeletons.  *)
-	let pre_skeletons: skeleton_type_binding list = binding_skeleton options classmap livein_types livein_api_types in
-    let post_skeletons = binding_skeleton options classmap liveout_api_types liveout_types in
+	let pre_skeletons: skeleton_type_binding list = binding_skeleton options classmap livein_types livein_api_types define_only_api_types in
+    let post_skeletons = binding_skeleton options classmap liveout_api_types liveout_types [] in
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
