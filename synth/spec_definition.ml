@@ -57,6 +57,7 @@ type apispec = {
     liveout: string list;
     execcmd: string;
 	funname: string;
+	funargs: string list;
 	required_includes: string list;
     typemap: (string, synth_type) Hashtbl.t
 }
