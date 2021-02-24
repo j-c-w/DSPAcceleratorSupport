@@ -53,7 +53,7 @@ let rec generate_loop_wrappers_from_dimensions dim =
                 let in_loop_assign =(fun assign ->
                     LoopOver(assign, indvar, generate_variable_reference_to from)
                     ) in
-                [(in_loop_assign, [indvar])]
+                (in_loop_assign, [indvar])
     )
 
 let rec maybe_create_reference_from post_indexes indvarnames =
@@ -111,10 +111,10 @@ let generate_assign_functions fvar_index_nestings tvar_index_nesting =
 					(* We expect one index_var for each fromvar_index and each tovar_index --- those
 					capture the parts of the variable names
 					that are refered to by each.  *)
-					let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
+					(* let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
 					let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in
 					let () = Printf.printf "tvars is %s\n" (variable_reference_option_list_to_string tvar_index_nesting) in
-					let () = Printf.printf "fvar ind nest length is %d \n " (List.length fvar_index_nestings) in
+					let () = Printf.printf "fvar ind nest length is %d \n " (List.length fvar_index_nestings) in *)
 					let () = assert(List.length(fvar_ind_nest) - 1 = List.length index_vars) in
 					let () = assert(List.length(tvar_index_nesting) - 1 = List.length index_vars) in
 					(* Get the LVars --- if there
@@ -202,8 +202,8 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 			let () = Printf.printf "Starting new binding gen for binding\n" in
 			Printf.printf "%s\n" (flat_single_variable_binding_to_string single_variable_binding)
 		else () in
-		let loop_wrappers = List.concat (List.map single_variable_binding.valid_dimensions 
-            generate_loop_wrappers_from_dimensions) in
+		let loop_wrappers = List.map single_variable_binding.valid_dimensions 
+			generate_loop_wrappers_from_dimensions in
         let fvars_indexes = List.map single_variable_binding.fromvars_index_nesting generate_gir_names_for in
         let tovar_indexes = generate_gir_names_for single_variable_binding.tovar_index_nesting in
         (* Convert the variable references mentioned
@@ -224,7 +224,8 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
                 let () = Printf.printf "------\n\nFor flat skeleton %s\n" (flat_skeleton_list_to_string [skeleton]) in
 				let () = Printf.printf "Valid dimensions were %s\n" (dimvar_mapping_list_to_string single_variable_binding.valid_dimensions) in
                 let () = Printf.printf "Loop wrappers found are %d\n" (List.length loop_wrappers) in
-                Printf.printf "Loop assignment functions are %d\n" (List.length assign_funcs)
+				let () = Printf.printf "Loop assignment functions are %d\n" (List.length assign_funcs) in
+				Printf.printf "Define used is %s\n" (gir_to_string define)
             else
                 () in
 		(* Do every combination of assignment loops and assign funcs. *)
