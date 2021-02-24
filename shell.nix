@@ -3,7 +3,7 @@
 with pkgs;
 mkShell {
 	buildInputs = [
-		cloc ocaml
+		cloc ocaml gdb
 		# Ocaml packages
 		ocamlPackages.findlib ocamlPackages.ocamlbuild ocamlPackages.yojson
 		ocamlPackages.core_kernel opam ocamlPackages.cmdliner
@@ -12,6 +12,8 @@ mkShell {
 		gcc nlohmann_json
 		# Other indirect deps for the synthesizer.
 		parallel
+		# Deps for tests
+		fftw
 	];
 	# Enable ocaml stack traces.
 	OCAMLRUNPARAM = "b";
