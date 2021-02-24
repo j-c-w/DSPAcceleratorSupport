@@ -1,4 +1,4 @@
 _build
-main.native
-json_gen.native
+*.native
+*.byte
 synthethizer_temps/
