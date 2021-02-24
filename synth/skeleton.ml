@@ -6,6 +6,7 @@ open Skeleton_flatten;;
 open Skeleton_verify;;
 open Skeleton_definition;;
 open Skeleton_utils;;
+open Skeleton_filter;;
 open Utils;;
 
 (* This module deals with generating synthesis skeletons.
@@ -499,12 +500,6 @@ let assign_and_define_bindings options typesets_in typesets_out typesets_define_
 	List.concat [
 			possible_bindings_list; define_bindings
 		]
-
-(* TODO --- Some filtering here might be a good idea.  *)
-let skeleton_check skel = true
-
-(* TODO --- Some filtering here would be a good idea.  *)
-let skeleton_pair_check p = true
 
 (* The algorithm should produce bindings from the inputs
    the outputs. *)
