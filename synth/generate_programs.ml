@@ -58,7 +58,7 @@ let rec disjoint_union x y =
 let generate_program_for opts (apispec: apispec) (iospec: iospec) (pre, post) =
 	(* Generate the function call to the API.  *)
 	let api_funcname = FunctionRef(Name(apispec.funname)) in
-	let api_args = VariableList(List.map apispec.livein (fun v -> Variable(Name(v)))) in
+	let api_args = VariableList(List.map apispec.funargs (fun v -> Variable(Name(v)))) in
 	let funcall = FunctionCall(api_funcname, api_args) in
 	(* Ret type --- currently only support one since we are
 	   targetting C.  More for functional/tuple languages
@@ -101,6 +101,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (pre, post) =
         in_variables = iospec.livein;
         gir = final_body;
         out_variables = iospec.liveout;
+        returnvar = iospec.returnvar;
         typemap = unified_typemap;
     }
 
