@@ -6,6 +6,7 @@ open Skeleton;;
 open Skeleton_definition;;
 open Skeleton_utils;;
 open Gir;;
+open Gir_clean;;
 open Gir_utils;;
 open Gir_topology;;
 open Utils;;
@@ -48,8 +49,8 @@ let rec generate_loop_wrappers_from_dimensions dim =
 			(* Generate a loop for each of the dimvars.  *)
 			(* Also try just a straight up assignment.  *)
             match dimvar with
-            | ExactVarMatch(from, tov) ->
-                let indvar = new_induction_variable () in
+			| ExactVarMatch(from, tov) ->
+				let indvar = new_induction_variable () in
                 let in_loop_assign =(fun assign ->
                     LoopOver(assign, indvar, generate_variable_reference_to from)
                     ) in
@@ -200,7 +201,8 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
         the loop gen is broken for 2D loops.  *)
 		let () = if options.debug_generate_gir then
 			let () = Printf.printf "Starting new binding gen for binding\n" in
-			Printf.printf "%s\n" (flat_single_variable_binding_to_string single_variable_binding)
+			let () = Printf.printf "%s\n" (flat_single_variable_binding_to_string single_variable_binding) in
+            ()
 		else () in
 		let loop_wrappers = List.map single_variable_binding.valid_dimensions 
 			generate_loop_wrappers_from_dimensions in
@@ -256,15 +258,20 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 	   from each sublist in sequence to form complete assignment
 	   tree.  *)
 	let () = if options.debug_generate_gir then
-		Printf.printf "Have the following expression options before cross product: %s\n"
-			(gir_list_list_to_string expression_options)
+		let () = Printf.printf "Have the following expression options before cross product: %s\n"
+			(gir_list_list_to_string expression_options) in
+		let () = Printf.printf "This amounts to %d lists\n" (List.length expression_options) in
+		()
 	else () in
 	let expr_lists: gir list list = cross_product expression_options in
 	(* Now we have a expression list list where each set
 	   is a full set of assignments.  Convert each expr list
 	   to a sequence.  *)
 	let code_options = List.map expr_lists (fun exprs -> Sequence(exprs)) in
-    code_options
+	(* Do a quick cleanup --- e.g. making sure that there are no double
+	defines, which this approach is prone to generating.  *)
+	let cleaned_code_options = List.map code_options gir_double_define_clean in
+	cleaned_code_options
 
 let rec all_dimvars_from dimtype =
 	match dimtype with
