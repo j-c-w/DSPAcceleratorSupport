@@ -1,10 +1,13 @@
 {
-	"livein":["re", "im", "len"],
-	"liveout": ["re", "im"],
-	"execcmd": "./a.out $INPUT_JSON",
+	"livein":["api_in", "interface_len"],
+	"liveout": ["api_out"],
+	"functionargs": ["api_in", "api_out", "interface_len"],
+	"execcmd": "../../test/api",
+	"functionname": "fft_example_api",
 	"typemap": {
-		"re": "array(float32)",
-		"im": "array(float32)",
-		"len": "int32"
-	}
+		"api_in": "array(complex_double_)",
+		"api_out": "array(complex_double_)",
+		"interface_len": "int32"
+	},
+	"required_includes": ["../../test/interface.hpp"]
 }
