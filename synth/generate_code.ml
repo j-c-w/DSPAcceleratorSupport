@@ -303,11 +303,9 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
     let (function_type, outv) =
-        match program.out_variables with
-        | [] -> "void", ""
-        | x :: [] -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap x), x
-        | xs ->
-            raise (CXXGenerationException "Can't have multi-output C++ functions")
+        match program.returnvar with
+        | None -> "void", ""
+        | Some(x) -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap x), x
     in
     (* Generate the function header *)
     let function_header =
