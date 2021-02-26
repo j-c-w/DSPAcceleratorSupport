@@ -1,5 +1,6 @@
 open Core_kernel;;
 open Spec_definition;;
+open Skeleton_definition;;
 
 (* NOTE: In GIR everything must be assigned to at most once.
 This can be in a loop, etc. but must be once to allow
@@ -48,5 +49,15 @@ type program = {
     in_variables: string list;
     gir: gir;
     out_variables: string list;
-    typemap: (string, synth_type) Hashtbl.t
+    typemap: (string, synth_type) Hashtbl.t;
+	returnvar: string option;
+	lenvar_bindings: (string, dimvar_mapping) Hashtbl.t
+}
+
+type gir_pair = {
+	pre: gir;
+	post: gir;
+	(* Which lenvar assignments are being used by this
+	   for each array type? *)
+	lenvar_bindings: (string, dimvar_mapping) Hashtbl.t
 }
