@@ -2,6 +2,7 @@ open Core_kernel;;
 open Cmdliner;;
 open Generate_code;;
 open Parse_iospec;;
+open Parse_api;;
 open Parse_classmap;;
 open Options;;
 
@@ -15,7 +16,9 @@ The idea is to pass in the IOSpec that it needs to handle,
 this this produces some code that goes around that as a wrapper.
 *)
 let main iospec_file classspec_file output_file =
-	let iospec = load_iospec default_options iospec_file in
+    (* Yes, this is a terrible hack I am 100% going to regret
+    because I have no clear understanding why it needs both.  *)
+    let iospec = load_iospec default_options iospec_file in
 	let classspec = load_classmap classspec_file in
 	(* Generate the JSON wrapper: *)
 	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec in
