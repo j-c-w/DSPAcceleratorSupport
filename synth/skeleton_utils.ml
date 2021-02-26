@@ -14,6 +14,16 @@ let rec dimvar_mapping_to_string mapping = match mapping with
 let dimvar_mapping_list_to_string mapping =
     String.concat ~sep:"\n" (List.map mapping dimvar_mapping_to_string)
 
+let one_dimension_mapping_equal m1 m2 =
+    match m1, m2 with
+    | ExactVarMatch(fromv1, tov1), ExactVarMatch(fromv2, tov2) ->
+            (name_reference_equal fromv1 fromv2) &&
+            (name_reference_equal tov1 tov2)
+
+let dimvar_equal m1 m2 =
+	match m1, m2 with
+	| DimvarOneDimension(map1), DimvarOneDimension(map2) -> one_dimension_mapping_equal map1 map2
+
 let skeleton_type_to_string stype =
 	match stype with
 	| SInt(name) -> "SInt(" ^ (name_reference_to_string name) ^ ")"
@@ -33,7 +43,9 @@ let skeleton_dimension_group_type_list_to_string typs =
 let flat_single_variable_binding_to_string (binding: flat_single_variable_binding) =
 	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
-		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]"
+		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]" ^
+       "\nUnder dimensions [" ^ (String.concat ~sep:", "
+            (List.map binding.valid_dimensions dimvar_mapping_to_string)) ^ "]"
 
 let flat_single_variable_binding_list_to_string skels =
     String.concat ~sep:"\n" (
@@ -58,7 +70,10 @@ let flat_skeleton_list_to_string bindings =
 let single_variable_binding_to_string (binding: single_variable_binding_option_group) =
 	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
-		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]"
+		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]" ^
+       "\nUnder dimensions [" ^ (String.concat ~sep:", "
+            (List.map binding.valid_dimensions_set (fun dimset ->
+                String.concat ~sep:" or " (List.map dimset dimvar_mapping_to_string)))) ^ "]"
 
 let single_variable_binding_list_to_string binds =
 	"SKELETON:\n" ^ String.concat ~sep:"\n" (

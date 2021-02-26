@@ -3,12 +3,16 @@ open Spec_definition;;
 open Spec_utils;;
 open Skeleton_definition;;
 open Skeleton_utils;;
+open Skeleton_filter;;
 open Options;;
 open Utils;;
 
 let flatten_binding (svar_binding: single_variable_binding_option_group) =
 	if List.length svar_binding.valid_dimensions_set > 0 then
-		List.map svar_binding.valid_dimensions_set (fun dim ->
+		let reduced_dimvar_set = List.map svar_binding.valid_dimensions_set filter_dimvar_set in
+		let combinations = cross_product reduced_dimvar_set in
+		List.map combinations (fun dim ->
+		let () = Printf.printf "Building for dimensions %s" (dimvar_mapping_list_to_string dim) in
 		{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
 			tovar_index_nesting = svar_binding.tovar_index_nesting;
@@ -60,4 +64,5 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	else () in
 	(* There must be more things after we expand them. *)
 	let () = assert ((List.length result) >= (List.length skels)) in
+	let result = List.filter result length_variable_compatability in
 	result
