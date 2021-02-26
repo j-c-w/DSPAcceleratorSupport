@@ -190,7 +190,35 @@ let generate_unwrapped_gir_name_for (nref: name_reference): gir_name =
 let generate_unwrapped_gir_names_for nrefs =
     List.map nrefs generate_unwrapped_gir_name_for
 
-let generate_gir_for_binding define_before_assign (options: options) (skeleton: flat_skeleton_binding): gir list =
+let rec get_bindings_by_name tvars dims =
+    match tvars, dims with
+    | _, [] -> []
+    | t :: tvars, d :: dims ->
+            let subdims = get_bindings_by_name tvars dims in
+            (* Need to put the tvar name on the front of all
+               those. *)
+            let prepended_subsims = List.map subdims (fun (sname, sdim) ->
+                match sname with
+                | StructName(ns) -> (StructName(t :: ns), sdim)
+                | Name(_) -> (StructName([t; sname]), sdim)
+                | AnonymousName -> (t, sdim)
+            ) in
+            (t, d) :: prepended_subsims
+    | [], _ :: _ -> raise (GenerateGIRException "Can't have fewer dims than var splits\n")
+
+let merge_bindings_by_name binds1 binds2 =
+    remove_duplicates (fun (n1, dv1) -> fun (n2, dv2) ->
+        let eq = name_reference_equal n1 n2 in
+        let () = if eq then assert (dimvar_equal dv1 dv2) else () in
+        eq
+    ) (binds1 @ binds2)
+
+let binding_lists_to_string bs =
+    List.map bs (fun (from, tom) ->
+        (name_reference_to_string from, tom)
+    )
+
+let generate_gir_for_binding define_before_assign (options: options) (skeleton: flat_skeleton_binding) =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
 	   x = cos(y) or x = sin(y) or x = y.  *)
@@ -254,6 +282,10 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 				assignment_statements in
 		assigns_with_defines
 	) in
+    (* Get the length variable bindings *)
+    let len_bindings = List.concat (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
+        get_bindings_by_name single_variable_binding.tovar_index_nesting single_variable_binding.valid_dimensions
+    )) in
 	(* We now have a expression list list, where we need one element
 	   from each sublist in sequence to form complete assignment
 	   tree.  *)
@@ -271,7 +303,7 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 	(* Do a quick cleanup --- e.g. making sure that there are no double
 	defines, which this approach is prone to generating.  *)
 	let cleaned_code_options = List.map code_options gir_double_define_clean in
-	cleaned_code_options
+	cleaned_code_options, len_bindings
 
 let rec all_dimvars_from dimtype =
 	match dimtype with
@@ -332,8 +364,11 @@ let generate_gir_for options (api: apispec) ((pre_skeleton: flat_skeleton_bindin
 	else () in
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
-	let pre_gir = generate_gir_for_binding true options pre_skeleton in
-	let post_gir = generate_gir_for_binding false options post_skeleton in
+	let pre_gir, pre_lenbinds = generate_gir_for_binding true options pre_skeleton in
+	let post_gir, post_lenbinds = generate_gir_for_binding false options post_skeleton in
+    (* Keep track of the variable length assignments that have been made. *)
+    let merged_lenbinds = binding_lists_to_string (merge_bindings_by_name pre_lenbinds post_lenbinds) in
+    let table_lenbinds = hash_table_from_list (module String) merged_lenbinds in
 	let res = List.cartesian_product pre_gir post_gir in
 	let () = if options.debug_generate_gir then
 		let () = Printf.printf "Finished generation of candidata pre programs.  Program are:\n%s\n"
@@ -342,15 +377,20 @@ let generate_gir_for options (api: apispec) ((pre_skeleton: flat_skeleton_bindin
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    res
+    List.map res (fun (pre, post) -> (pre, post, table_lenbinds))
 
 
-let generate_gir (options:options) classmap iospec api skeletons: ((gir * gir) list) =
+let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) list) =
 	let result = List.concat ((List.map skeletons (fun skel ->
 		generate_gir_for options api skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
-		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post) ->
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds) ->
 			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
 	else () in
-	result
+	List.map result (fun (pre, post, bindings) ->
+		{
+			pre = pre;
+            post = pre;
+            lenvar_bindings = bindings
+		})
