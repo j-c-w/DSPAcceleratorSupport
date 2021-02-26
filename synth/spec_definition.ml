@@ -46,6 +46,13 @@ type iospec = {
 	livein: string list;
 	liveout: string list;
 	(* This should be an element of liveout, or empty.  *)
+	(* This of course does not reflex 'real' C --- we don't
+	try to do that here --- the compiler framework can
+	easily change this to a traditional return variable
+	and it means we don't have to deal with return types
+	in the JSON formats.  We do perhaps need a pointer
+	type to implement this correctly, but that is a future
+	challenge.  *)
     returnvar: string option;
 	execcmd: string;
 	required_includes: string list;
