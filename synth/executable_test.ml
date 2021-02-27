@@ -21,16 +21,17 @@ let rec compare_jsons j1 j2 =
                   match List.zip sorted_p1 sorted_p2 with
                   | Ok(ls) ->
 						  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
-                              (name1 = name2) && (compare_jsons json1 json2)
+                              ((String.compare name1 name2) = 0) && (compare_jsons json1 json2)
                           ) in
 						  r
                   | Unequal_lengths -> false
                   )
           | `Bool(b1), `Bool(b2) ->
-                  b1 = b2
+                  (Bool.compare b1 b2) = 0
           | `Float(f1), `Float(f2) ->
                   (* TODO --- fix *)
-                  (f1 <= (f2 +. 0.001)) && (f1 >= (f2 -. 0.001))
+                  ((Float.compare f1 (f2 +. 0.001)) = -1) &&
+				  ((Float.compare f1 (f2 -. 0.001) = 1))
           | `Int(i1), `Int(i2) ->
                   i1 = i2
           | `List(l1), `List(l2) ->
@@ -40,7 +41,7 @@ let rec compare_jsons j1 j2 =
                   )
           | `Null, `Null -> true
           | `String(s1), `String(s2) ->
-                  s1 = s2
+				  (String.compare s1 s2) = 0
           | _ -> false
 
     )

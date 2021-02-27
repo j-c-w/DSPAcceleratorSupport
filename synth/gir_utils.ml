@@ -9,7 +9,7 @@ let gir_name_to_string gname =
 
 let gir_name_equal n1 n2 =
     match (n1, n2) with
-    | Name(n1), Name(n2) -> n1 = n2
+    | Name(n1), Name(n2) -> (String.compare n1 n2) = 0
 
 let rec gir_to_string gir =
 	match gir with

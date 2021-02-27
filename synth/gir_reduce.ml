@@ -35,7 +35,7 @@ let rec reduce_gir (options: options) gir: gir =
 				| _ -> true
 			)
 			in
-			if filtered = [] then
+			if (List.is_empty filtered) then
 				EmptyGIR
 			else
 				Sequence(filtered)

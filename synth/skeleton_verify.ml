@@ -94,7 +94,7 @@ let single_bind_opt_check_sets (binds: single_variable_binding_option_group list
 			name_reference_equal v e
 		)
 	) in
-	assert (result = true)
+	assert result
 
 let rec get_names typemap classmap x =
     List.concat (List.map x (fun x ->

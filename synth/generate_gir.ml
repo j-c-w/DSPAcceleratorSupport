@@ -327,7 +327,7 @@ issue.  *)
 let rec member x ys =
 	match x, ys with
 	| _, [] -> false
-	| Name(nm), (Name(y) :: ys) -> (nm = y) || (member x ys)
+	| Name(nm), (Name(y) :: ys) -> ((String.compare nm y) = 0) || (member x ys)
 	(* | _ -> raise (GenerateGIRException "Unimplemented") *)
 
 let rec toposort_search_for_deps name possdeps =

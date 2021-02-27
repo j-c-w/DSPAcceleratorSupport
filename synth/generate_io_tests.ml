@@ -75,7 +75,7 @@ let rec generate_io_values_worker generated_vs vs typmap classmap =
 			let typx = Hashtbl.find_exn typmap (name_reference_to_string x) in
 			let inps = generate_inputs_for generated_vs typx classmap in
 			let res = Hashtbl.add generated_vs (name_reference_to_string x) inps in
-            let () = assert (res = `Ok) in
+            let () = assert (match res with | `Ok -> true | _ -> false) in
 			(generate_io_values_worker generated_vs xs typmap classmap)
 
 let rec generate_io_values num_tests livein typemap classmap =

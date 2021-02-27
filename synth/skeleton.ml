@@ -50,8 +50,8 @@ let rec big_intersection lists =
 
 let variable_in_type var typ =
 	match var, typ with
-	| n1, SInt(n2) -> (n1 = n2)
-	| n1, SFloat(n2) -> (n1 = n2)
+	| n1, SInt(n2) -> (name_reference_equal n1 n2)
+	| n1, SFloat(n2) -> (name_reference_equal n1 n2)
 
 let dimension_types_to_names d =
 	match d with
@@ -267,7 +267,7 @@ and bindings_for (typesets_in: skeleton_type list) (output: skeleton_type): skel
 			(* With the assignments made here. *)
 			let subtask_with_intersection: skeleton_type list list =
                 (* The match wasn't complete, so recurse *)
-				if otypeset_remaining <> [] then
+				if not (List.is_empty otypeset_remaining) then
                     let (subtask_with_intersection: skeleton_type list list) = bindings_for rtypesets_in output in
                     (List.map subtask_with_intersection (fun (target_vars_lists: skeleton_type list): skeleton_type list ->
 						(List.concat [intersection_types; target_vars_lists])))
@@ -459,7 +459,7 @@ let rec define_bindings_for valid_dimvars vs =
                 the top level one.  Not 100% sure.  *)
                 let sbase_names = (define_bindings_for valid_dimvars ts) in
                 List.concat(
-                List.map sbase_names (remove_duplicates single_variable_binding_equal)
+                    List.map sbase_names (remove_duplicates single_variable_binding_equal)
                 )
     )
 
@@ -540,7 +540,7 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
     let liveout_api_types = skeleton_type_lookup classmap apispec.typemap apispec.liveout in
     let liveout_types = skeleton_type_lookup classmap iospec.typemap iospec.liveout in
     (* Get the types that are not livein, but are function args.  *)
-    let define_only_api_types = skeleton_type_lookup classmap apispec.typemap (set_difference (fun a -> fun b -> a = b) apispec.funargs apispec.livein) in
+    let define_only_api_types = skeleton_type_lookup classmap apispec.typemap (set_difference (fun a -> fun b -> (String.compare a b) = 0) apispec.funargs apispec.livein) in
     (* Now use these to create skeletons.  *)
 	let pre_skeletons: skeleton_type_binding list = binding_skeleton options classmap livein_types livein_api_types define_only_api_types in
     let post_skeletons = binding_skeleton options classmap liveout_api_types liveout_types [] in

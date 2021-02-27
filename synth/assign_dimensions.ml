@@ -50,7 +50,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name =
             times for each variable.  Could just sort out
             at call site, but not likely to be a performance
             issue so... *)
-            if existing_dims <> EmptyDimension then
+            if not (empty_dimension existing_dims) then
                 Array(newsubtyp, existing_dims)
             else
                 (* Get all the possible types that are sitting
@@ -82,7 +82,7 @@ let assign_dimensions_to_type opts typemap inptypes typename =
 	else () in
     let typ = debug_find_exn typemap typename in
     let restyp = find_possible_dimensions opts typemap inptypes typ in
-    if typ = restyp then
+    if synth_type_equal typ restyp then
         ()
     else
         (* Only update if the type has changed. *)

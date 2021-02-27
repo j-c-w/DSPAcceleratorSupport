@@ -27,7 +27,7 @@ let rec gir_double_define_clean_internal deftbl gir =
 			(* Can't have the ind vars defined more than once.
 			Could replace this with a clever-er fix, e.g.
 			replacing the vars.  *)
-			let () = assert (defined = None) in
+			let () = assert (Option.is_none defined) in
 			LoopOver(gir_double_define_clean_internal deftbl body, indv, maxv)
 	| Expression(_) ->
 			gir

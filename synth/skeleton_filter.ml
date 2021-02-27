@@ -63,13 +63,13 @@ let build_whole_arnm arnms =
    *)
 let length_variable_compatability (skel: flat_skeleton_binding) =
 	let lenvars_for = Hashtbl.create (module String) in
-	let () = Printf.printf "Staritng new interation\n" in
+	(* let () = Printf.printf "Staritng new interation\n" in*)
 	List.for_all skel.flat_bindings (fun bind ->
 		let built_up_arnms =
 			build_whole_arnm bind.tovar_index_nesting in
 		List.for_all (truncate_zip built_up_arnms bind.valid_dimensions) (fun (arnm, dimvar) ->
 			let arnm_so_far_str = (name_reference_to_string arnm) in
-			let () = Printf.printf "Arnm is %s\n" arnm_so_far_str in
+			(* let () = Printf.printf "Arnm is %s\n" arnm_so_far_str in *)
 			let v_used = Hashtbl.find lenvars_for arnm_so_far_str in
 			let _ = Hashtbl.set lenvars_for arnm_so_far_str dimvar in
 			match v_used with

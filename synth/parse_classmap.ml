@@ -11,14 +11,14 @@ let load_individual_type json_definition =
 	let isstruct = json_definition |> member "type" |> to_string in
 	let symbols = List.map (json_definition |> member "symbols" |> to_list) (fun j -> j |> to_string) in
 	let functions =
-		if isstruct = "class" then
+		if (String.compare isstruct "class") = 0 then
 			List.map (json_definition |> member "functions" |> to_list) to_string
 			(* No functions in a struct.  *)
 		else []
 	in
 	let typemap_members = symbols @ functions in
 	let typemap = load_typemap json_definition typemap_members in
-	if isstruct = "class" then
+	if (String.compare isstruct "class") = 0 then
         ClassMetadata({members=symbols; functions=functions; typemap=typemap})
 	else
         StructMetadata({members=symbols; typemap=typemap})

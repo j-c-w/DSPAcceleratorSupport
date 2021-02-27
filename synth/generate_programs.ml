@@ -42,7 +42,7 @@ let build_typemap_for (apispec: apispec) (iospec: iospec) gir =
 let rec member x ys =
 	match ys with
 	| [] -> false
-	| y :: ys -> (x = y) || (member x ys)
+	| y :: ys -> ((String.compare x y) = 0) || (member x ys)
 
 	(* Can't remmeber what this is actually called.
 	But I want all a in x with a not in y.  *)

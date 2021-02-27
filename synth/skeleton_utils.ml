@@ -24,6 +24,18 @@ let dimvar_equal m1 m2 =
 	match m1, m2 with
 	| DimvarOneDimension(map1), DimvarOneDimension(map2) -> one_dimension_mapping_equal map1 map2
 
+let dimvar_list_equal m1 m2 =
+    let zipped = List.zip m1 m2 in
+    match zipped with
+    | Ok(l) -> List.for_all l (fun (x, y) -> dimvar_equal x y)
+    | Unequal_lengths -> false
+
+let dimvar_list_list_equal m1 m2 =
+    let zipped = List.zip m1 m2 in
+    match zipped with
+    | Ok(l) -> List.for_all l (fun (x, y) -> dimvar_list_equal x y)
+    | Unequal_lengths -> false
+
 let skeleton_type_to_string stype =
 	match stype with
 	| SInt(name) -> "SInt(" ^ (name_reference_to_string name) ^ ")"
@@ -108,5 +120,7 @@ let typesets_to_string t =
 let types_to_string t =
 	String.concat ~sep:", " (List.map t skeleton_type_to_string)
 
-let single_variable_binding_equal s1 s2 =
-	s1 = s2
+let single_variable_binding_equal (s1: single_variable_binding_option_group) (s2: single_variable_binding_option_group) =
+    (name_reference_list_list_equal s1.fromvars_index_nesting s2.fromvars_index_nesting) &&
+    (name_reference_list_equal s1.tovar_index_nesting s2.tovar_index_nesting) &&
+    (dimvar_list_list_equal s1.valid_dimensions_set s2.valid_dimensions_set)

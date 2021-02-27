@@ -18,16 +18,43 @@ let name_reference_option_list_to_string nrefs =
 		| None -> "None"
 		| Some(n) -> name_reference_to_string n))
 
+let rec name_reference_equal n1 n2 =
+    match (n1, n2) with
+	| AnonymousName, AnonymousName -> true
+    | Name(x), Name(y) -> (String.compare x y) = 0
+    | StructName(xns), StructName(yns) -> (
+            match List.zip xns yns with
+            | Ok(nms) -> List.for_all nms (fun (a, b) -> name_reference_equal a b)
+            | Unequal_lengths -> false
+	)
+	(* Assume no funny-business with
+	oddly nested structnames *)
+	| _, _ -> false
+
 let rec dimension_type_to_string dim =
     match dim with
     | EmptyDimension -> "No dimensions set!"
     | Dimension(nrefs) ->
             (String.concat ~sep:", " (List.map nrefs name_reference_to_string))
 
+let empty_dimension dim = match dim with
+	| EmptyDimension -> true
+	| _ -> false
+
 let dimension_type_list_to_string dims =
 	String.concat ~sep:"DIM: " (
 		List.map dims dimension_type_to_string
 	)
+
+let dimension_type_equal d1 d2 = match d1, d2 with
+    | EmptyDimension, EmptyDimension -> true
+    | Dimension(nlist1), Dimension(nlist2) -> (
+            match List.zip nlist1 nlist2 with
+            | Ok(l) ->
+                    List.for_all l (fun (a, b) -> name_reference_equal a b)
+            | Unequal_lengths -> false
+	)
+	| _ -> false
 
 let rec synth_type_to_string t =
     match t with
@@ -42,6 +69,24 @@ let rec synth_type_to_string t =
     | Struct(name) -> name
     | Fun(from, fto) -> (synth_type_to_string from) ^ "->" ^ (synth_type_to_string fto)
 	| Unit -> "unit"
+
+let rec synth_type_equal s1 s2 =
+	match s1, s2 with
+	| Int16, Int16 -> true
+	| Int32, Int32 -> true
+	| Int64, Int64 -> true
+	| Float16, Float16 -> true
+	| Float32, Float32 -> true
+	| Float64, Float64 -> true
+	| Array(x, dms), Array(x2, dms2) ->
+			(synth_type_equal x x2) &&
+			(dimension_type_equal dms dms2)
+	| Struct(nm), Struct(nm2) ->
+			(String.compare nm nm2) = 0
+	| Unit, Unit -> true
+	| Fun(f, t), Fun(f2, t2) ->
+			(synth_type_equal f f2) &&
+			(synth_type_equal t t2)
 
 let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in
@@ -81,18 +126,17 @@ let is_class smeta =
 	| ClassMetadata(_) -> true
 	| StructMetadata(_) -> false
 
-let rec name_reference_equal n1 n2 =
-    match (n1, n2) with
-	| AnonymousName, AnonymousName -> true
-    | Name(x), Name(y) -> x = y
-    | StructName(xns), StructName(yns) -> (
-            match List.zip xns yns with
-            | Ok(nms) -> List.for_all nms (fun (a, b) -> name_reference_equal a b)
-            | Unequal_lengths -> false
-	)
-	(* Assume no funny-business with
-	oddly nested structnames *)
-	| _, _ -> false
+let name_reference_list_equal n1 n2 =
+	let zipped = List.zip n1 n2 in
+	match zipped with
+	| Ok(l) -> List.for_all l (fun (x, y) -> name_reference_equal x y)
+	| Unequal_lengths -> false
+
+let name_reference_list_list_equal n1 n2 = 
+	let zipped = List.zip n1 n2 in
+	match zipped with
+	| Ok(l) -> List.for_all l (fun (x, y) -> name_reference_list_equal x y)
+	| Unequal_lengths -> false
 
 let name_reference_is_struct nr =
 	match nr with
@@ -106,13 +150,3 @@ let name_reference_base_name nr =
 	| Name(_) -> nr
 	| StructName(x :: xs) -> x
 	| StructName([]) -> raise (SpecException "can't have empty strucname")
-
-let dimension_type_equal d1 d2 = match d1, d2 with
-    | EmptyDimension, EmptyDimension -> true
-    | Dimension(nlist1), Dimension(nlist2) -> (
-            match List.zip nlist1 nlist2 with
-            | Ok(l) ->
-                    List.for_all l (fun (a, b) -> name_reference_equal a b)
-            | Unequal_lengths -> false
-	)
-	| _ -> false
