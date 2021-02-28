@@ -51,7 +51,7 @@ type program = {
     out_variables: string list;
     typemap: (string, synth_type) Hashtbl.t;
 	returnvar: string option;
-	lenvar_bindings: (string, dimvar_mapping) Hashtbl.t
+	lenvar_bindings: (string, dimension_type) Hashtbl.t
 }
 
 type gir_pair = {
@@ -59,5 +59,5 @@ type gir_pair = {
 	post: gir;
 	(* Which lenvar assignments are being used by this
 	   for each array type? *)
-	lenvar_bindings: (string, dimvar_mapping) Hashtbl.t
+	lenvar_bindings: (string, dimension_type) Hashtbl.t
 }

@@ -191,9 +191,21 @@ let generate_unwrapped_gir_names_for nrefs =
     List.map nrefs generate_unwrapped_gir_name_for
 
 let rec get_bindings_by_name tvars dims =
-    match tvars, dims with
+	(* let () = Printf.printf "Getting bindings for %s under dims %s\n" (name_reference_list_to_string tvars) (dimvar_mapping_list_to_string dims) in *)
+	let result = match tvars, dims with
     | _, [] -> []
     | t :: tvars, d :: dims ->
+            (* We pick the 't' variable, because that should be live
+               coming into the function so should just be a bit less
+               complicated.  I think I used the 'f' variable before,
+               and that worked fine too.  May need to re-evaluate as
+               things change. *)
+            let sdim_domain_var = match d with
+            (*  Needs to only havea s inle entry -- keeping it like this
+            because I think we may want more complex types in the
+            future here.  *)
+            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension([t])
+            in
             let subdims = get_bindings_by_name tvars dims in
             (* Need to put the tvar name on the front of all
                those. *)
@@ -203,15 +215,29 @@ let rec get_bindings_by_name tvars dims =
                 | Name(_) -> (StructName([t; sname]), sdim)
                 | AnonymousName -> (t, sdim)
             ) in
-            (t, d) :: prepended_subsims
-    | [], _ :: _ -> raise (GenerateGIRException "Can't have fewer dims than var splits\n")
+            (t, sdim_domain_var) :: prepended_subsims
+    | [], _ :: _ -> raise (GenerateGIRException "Can't have fewer dims than var splits\n") in
+	(* let () = Printf.printf "Result is %s\n" (String.concat ~sep:", " (List.map result (fun (f, t) ->
+		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
+	))) in *)
+	result
 
 let merge_bindings_by_name binds1 binds2 =
-    remove_duplicates (fun (n1, dv1) -> fun (n2, dv2) ->
+	(* let () = Printf.printf "B1 is is %s\n" (String.concat ~sep:", " (List.map binds1 (fun (f, t) ->
+		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
+	))) in
+	let () = Printf.printf "B2 is is %s\n" (String.concat ~sep:", " (List.map binds2 (fun (f, t) ->
+		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
+	))) in *)
+	let result = remove_duplicates (fun (n1, dv1) -> fun (n2, dv2) ->
         let eq = name_reference_equal n1 n2 in
-        let () = if eq then assert (dimvar_equal dv1 dv2) else () in
+        let () = if eq then assert (dimension_type_equal dv1 dv2) else () in
         eq
-    ) (binds1 @ binds2)
+    ) (binds1 @ binds2) in
+	(* let () = Printf.printf "result is %s\n" (String.concat ~sep:", " (List.map result (fun (f, t) ->
+		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
+	))) in *)
+	result
 
 let binding_lists_to_string bs =
     List.map bs (fun (from, tom) ->
@@ -290,6 +316,9 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 	   from each sublist in sequence to form complete assignment
 	   tree.  *)
 	let () = if options.debug_generate_gir then
+		let () = Printf.printf "Len bindings are %s\n" (String.concat ~sep:", " (List.map len_bindings (fun (f, t) ->
+			(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
+		))) in
 		let () = Printf.printf "Have the following expression options before cross product: %s\n"
 			(gir_list_list_to_string expression_options) in
 		let () = Printf.printf "This amounts to %d lists\n" (List.length expression_options) in
@@ -391,6 +420,6 @@ let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) li
 	List.map result (fun (pre, post, bindings) ->
 		{
 			pre = pre;
-            post = pre;
+            post = post;
             lenvar_bindings = bindings
 		})

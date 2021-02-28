@@ -20,8 +20,11 @@ let main iospec_file classspec_file output_file =
     because I have no clear understanding why it needs both.  *)
     let iospec = load_iospec default_options iospec_file in
 	let classspec = load_classmap classspec_file in
+    (* TODO --- this needs to be filled with some placeholders
+    to indicate that we don't know.  *)
+    let emptytbl = Hashtbl.create (module String) in
 	(* Generate the JSON wrapper: *)
-	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec in
+	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec emptytbl in
 	Out_channel.write_all output_file ~data:code
 
 (* TODO -- use the flag processing also.  *)
