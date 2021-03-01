@@ -54,6 +54,7 @@ type iospec = {
 	type to implement this correctly, but that is a future
 	challenge.  *)
     returnvar: string option;
+    funargs: string list;
 	execcmd: string;
 	required_includes: string list;
 	typemap: (string, synth_type) Hashtbl.t

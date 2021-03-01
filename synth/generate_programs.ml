@@ -98,7 +98,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 	let () =
 		add_index_variables_to_typemap unified_typemap body in
     {
-        in_variables = iospec.livein;
+        in_variables = iospec.funargs;
         gir = final_body;
         out_variables = iospec.liveout;
         returnvar = iospec.returnvar;

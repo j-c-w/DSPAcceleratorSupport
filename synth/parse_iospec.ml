@@ -23,6 +23,7 @@ let load_iospec options filename: iospec =
 	let execcmd = json |> member "execcmd" |> to_string in
 	let typemap = extract_typemap (json |> member "typemap") (livein @ liveout) in
     let funname = json |> member "funname" |> to_string in
+	let funargs = List.map (json |> member "funargs" |> to_list) (fun j -> j |> to_string) in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
     let iospec: iospec = {
 		livein=livein;
@@ -30,6 +31,7 @@ let load_iospec options filename: iospec =
 		execcmd=execcmd;
 		typemap=typemap;
 		funname=funname;
+		funargs=funargs;
 		required_includes=required_includes;
 		returnvar=retvars;
 	} in

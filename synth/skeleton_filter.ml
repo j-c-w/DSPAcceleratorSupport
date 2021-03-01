@@ -8,16 +8,21 @@ open Utils;;
 let filter_dimvar_set dms = 
     (* We don't need to have the same dimension with
     the same source var for multiple targets.  *)
-    let lookup = Hashtbl.create (module String) in
+	(* Same thing with the to varaibles :) *)
+    let flookup = Hashtbl.create (module String) in
+	let tlookup = Hashtbl.create (module String) in
+	let tbllookup_set = fun (tbl, n) ->
+		let str = (name_reference_to_string n) in
+		let already_mapped = Hashtbl.find tbl str in
+		let () = Hashtbl.set tbl str true in
+		match already_mapped with
+			| Some(n) -> false
+			| None -> true
+	in
     List.filter dms (fun dm ->
         match dm with
         | DimvarOneDimension(ExactVarMatch(f, t)) -> (
-                let f_str = (name_reference_to_string f) in
-                let already_mapped = Hashtbl.find lookup f_str in
-                let () = Hashtbl.set lookup f_str true in
-                match already_mapped with
-                | Some(n) -> false
-                | None -> true
+			(tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t))
 		)
     )
 

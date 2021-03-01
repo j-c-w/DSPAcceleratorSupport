@@ -290,7 +290,7 @@ let cxx_main_function options classmap (iospec: iospec) lenvar_bindings =
 	let resdump =   "    char *outname = argv[2]; " in
 	let load_file = "    std::ifstream ifs(inpname); " in
 	let load_json = "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns classmap iospec.livein iospec.typemap json_var_name in
+	let parse_args, argnames = generate_input_assigns classmap iospec.funargs iospec.typemap json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let call_func = iospec.funname ^ "(" ^ argnames ^ ");" in
 	let json_out_name = "output_json" in

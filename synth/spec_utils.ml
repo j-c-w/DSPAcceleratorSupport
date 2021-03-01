@@ -87,6 +87,7 @@ let rec synth_type_equal s1 s2 =
 	| Fun(f, t), Fun(f2, t2) ->
 			(synth_type_equal f f2) &&
 			(synth_type_equal t t2)
+	| _ -> false
 
 let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in
