@@ -28,10 +28,20 @@ let rec get_dependencies_for classmap typ =
 	| Float64 -> []
 	| Array(tp, dims) ->
 			let this_deps = match dims with
-			| Dimension([x]) -> x
-			| _ -> raise (STopologyException "Not handled ")
+			| Dimension([x]) -> [x]
+			(* This is a stupid hack that is 100% going to cause
+			problems with unwanted cyclic dependencies in the future.
+			Really, before the typemap is used for this, it needs
+			to be cleaned so that it only represents the selected
+			dimension types.  Right now, it shows all the dimension
+			types.  Anywa, this isn't incorrect, I just
+			expect it to cause some bugs with this algorithm
+			not terminating when dimension variable assignments
+			become more complex.  *)
+			| Dimension(x :: xs) -> x :: xs
+			| _ -> raise (STopologyException "Unhandled")
 			in
-			this_deps :: (get_dependencies_for classmap tp)
+			this_deps @ (get_dependencies_for classmap tp)
 	| Struct(sname) ->
 			(* TODO -- we could do a topo sort of the individual
 			fields, but that would only help for very weird
