@@ -39,3 +39,7 @@ let rec truncate_zip l1 l2 =
 
 let prepend_all x xs =
     List.map xs (fun l -> x :: l)
+
+let max_of_int_list xs =
+	List.fold xs ~f:(fun x -> fun y -> if x > y then x else y) ~init:(-1000000000)
+	(* Crappy hack to regret: *)
