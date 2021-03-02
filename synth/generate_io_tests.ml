@@ -4,6 +4,7 @@ open Spec_utils;;
 open Options;;
 open Yojson;;
 open Synthtype_topology;;
+open Utils;;
 
 let _ = Random.init 0
 
@@ -30,26 +31,43 @@ let rec generate_inputs_for values_so_far t structure_metadata =
     (* TODO --- Probably need to 
        make a distinction between square and non
        square arrays.  *)
-    (* TODO --- Need to support array lengths somehow.  *)
-	(* TODO --- need to support array lengths consistently
-	   across different arrays with the same dimension. *)
     | Array(subtype, dimvar) ->
-            let dimvar_name = match dimvar with
-            | Dimension([n]) -> n
-            | _ -> raise (TypeException "Unexpected complicated dimension!")
+            let dimvar_names = match dimvar with
+            | Dimension(dms) -> dms
+			| EmptyDimension ->
+					raise (TypeException "Can't have empty dimensions!")
             in
             (* If this throws, there's an issue with the topo sorting below --- we
                expect that the dimvars will have been assigned.  *)
-            let arrlen_value_wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
-            let arrlen = match arrlen_value_wrapper with
-            | Int16V(v) -> v
-            | Int32V(v) -> v
-            | Int64V(v) -> v
-            | _ ->
-                    (* probably we could handle this --- just need to have a think
-                    about what it means. *)
-                    raise (TypeException "Unexpected list dimension type (non-int) ")
+            let arrlen_value_wrappers = List.map dimvar_names (
+				fun dimvar_name ->
+					let wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
+					let arrlen = match wrapper with
+					| Int16V(v) -> v
+					| Int32V(v) -> v
+					| Int64V(v) -> v
+					| _ ->
+							(* probably we could handle this --- just need to have a think
+							about what it means. *)
+							raise (TypeException "Unexpected list dimension type (non-int) ") in
+					arrlen
+				)
             in
+			(* In the greatest stupid hack of all time, we are
+			just going to set the array values to the max
+			ov the possible lengths.
+			This shouldn't matter for langauges like C unless
+			we are considering strings.
+			There may be some size issues however.
+
+			Anyway, there is a fix to support that, but it
+			will require a more complex io_test input
+			format.  Est a few days of work.
+
+			For langauges like python or Java, this should also
+			be OK, since there should only be one possible
+			array length variable. :) *)
+			let arrlen = max_of_int_list arrlen_value_wrappers in
             ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for values_so_far subtype structure_metadata))
     | Struct(name) ->
             let metadata = Hashtbl.find structure_metadata name in
