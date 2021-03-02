@@ -13,6 +13,15 @@ let load_target_api filename: apispec =
 	let typemap = load_typemap json (livein @ liveout) in
 	let funname = json |> member "functionname" |> to_string in
 	let funargs = List.map (json |> member "functionargs" |> to_list) to_string in
+    (* Compiler flags not required --- empty list of flags if so.
+    To be honest, this is a bit of a hack, we'd really like the entire
+    thing to be backend independent.  However, it is sane for the calling
+    compiler to tell us e.g. what we need to link in to build around
+    the API.  (e.g. I've used this to link with FFTW). 
+    Required_includes has the same problem FWIW.  *)
+	let compiler_flags = match json |> member "compiler_flags" with
+    | `Null -> []
+    | other -> List.map (other |> to_list) to_string in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
 	{
 		livein = livein;
@@ -22,4 +31,5 @@ let load_target_api filename: apispec =
 		funname = funname;
 		funargs = funargs;
 		required_includes = required_includes;
+        compiler_flags = compiler_flags;
 	};;

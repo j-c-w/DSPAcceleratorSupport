@@ -66,7 +66,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 		Printf.printf "Number of codes generated is %d%!\n" (List.length generated_code)
 	else () in
 	(* Build the code *)
-	let code_files = build_code opts generated_code in
+	let code_files = build_code opts api generated_code in
 	(* Generate some I/O tests.  *)
 	let io_tests = generate_io_tests opts classmap iospec in
 	let () = if opts.print_synthesizer_numbers then
@@ -80,4 +80,5 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     let () = print_working_code code_files working_codes in
     let () = Printf.printf "Done!\n" in
     ()
+	)
 ;;

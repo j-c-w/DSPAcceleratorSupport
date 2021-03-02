@@ -67,6 +67,7 @@ type apispec = {
 	funname: string;
 	funargs: string list;
 	required_includes: string list;
+    compiler_flags: string list;
     typemap: (string, synth_type) Hashtbl.t
 }
 
