@@ -5,7 +5,10 @@ open Yojson.Basic.Util;;
 open Spec_definition;;
 open Spec_utils;;
 open Parse_type;;
+open Parse_range;;
 open Options;;
+
+exception IOSpecError of string
 
 let extract_typemap typemap vars =
 	let tbl: (string, synth_type) Hashtbl.t = (Hashtbl.create (module String)) in
@@ -15,7 +18,7 @@ let extract_typemap typemap vars =
 	ignore(List.map typepairs (fun (var, t)  -> Hashtbl.add tbl var t));
 	tbl;;
 
-let load_iospec options filename: iospec =
+let load_iospec options classmap filename: iospec =
 	let json = Yojson.Basic.from_file filename in
 	let livein = List.map (json |> member "livein" |> to_list) (fun j -> j |> to_string) in
 	let liveout = List.map (json |> member "liveout" |> to_list) (fun j -> j |> to_string) in
@@ -25,7 +28,8 @@ let load_iospec options filename: iospec =
     let funname = json |> member "funname" |> to_string in
 	let funargs = List.map (json |> member "funargs" |> to_list) (fun j -> j |> to_string) in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
-    let iospec: iospec = {
+	let range_tbl = load_rangetable classmap typemap json in
+	let iospec: iospec = {
 		livein=livein;
 		liveout=liveout;
 		execcmd=execcmd;
@@ -33,6 +37,7 @@ let load_iospec options filename: iospec =
 		funname=funname;
 		funargs=funargs;
 		required_includes=required_includes;
+		rangemap = range_tbl;
 		returnvar=retvars;
 	} in
 	let () =

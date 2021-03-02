@@ -13,7 +13,7 @@ let main options classspec_file iospec_file api_file  =
 	let () = Printf.printf "Loading specifications...\n" in
 	let classspec = load_classmap classspec_file in
     let iospec = load_iospec options classspec iospec_file in
-    let api = load_target_api api_file in
+    let api = load_target_api classspec api_file in
 	let () = Printf.printf "Synthesizing...\n" in
     let synth_results = run_synthesis options classspec iospec api in
 	Printf.printf "json live in is ";

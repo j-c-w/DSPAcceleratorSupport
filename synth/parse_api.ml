@@ -4,8 +4,9 @@ open Yojson.Basic.Util;;
 open Spec_definition;;
 open Parse_type;;
 open Parse_typemap;;
+open Parse_range;;
 
-let load_target_api filename: apispec =
+let load_target_api classmap filename: apispec =
 	let json = Yojson.Basic.from_file filename in
 	let livein = List.map (json |> member "livein" |> to_list) to_string in
 	let execcmd = json |> member "execcmd" |> to_string in
@@ -13,6 +14,7 @@ let load_target_api filename: apispec =
 	let typemap = load_typemap json (livein @ liveout) in
 	let funname = json |> member "functionname" |> to_string in
 	let funargs = List.map (json |> member "functionargs" |> to_list) to_string in
+	let range_tbl = load_rangetable classmap typemap json in
     (* Compiler flags not required --- empty list of flags if so.
     To be honest, this is a bit of a hack, we'd really like the entire
     thing to be backend independent.  However, it is sane for the calling
@@ -32,4 +34,5 @@ let load_target_api filename: apispec =
 		funargs = funargs;
 		required_includes = required_includes;
         compiler_flags = compiler_flags;
+		rangemap = range_tbl;
 	};;

@@ -151,3 +151,37 @@ let name_reference_base_name nr =
 	| Name(_) -> nr
 	| StructName(x :: xs) -> x
 	| StructName([]) -> raise (SpecException "can't have empty strucname")
+
+let is_float_type typ =
+	match typ with
+	| Float16 -> true
+	| Float32 -> true
+	| Float64 -> true
+	| _ -> false
+
+let is_integer_type typ =
+	match typ with
+	| Int16 -> true
+	| Int32 -> true
+	| Int64 -> true
+	| _ -> false
+
+(* Given a typename of the format x.y.z, determine the type
+   of z.  Note taht this is a type specification string,
+   not a reference string, so above, it's perfectly
+   fine for y to be an array.  *)
+let type_of typmap classmap k =
+    let rec typeloop currtypmap tps = match tps with
+    (* Think this isn't possible anyway.  *)
+    | [] -> raise (SpecException "Cant have empty type")
+    | x :: y :: ys ->
+            (* Get the next typmap *)
+            let current_typ = Hashtbl.find_exn currtypmap x in
+            let class_name = (synth_type_to_string current_typ) in
+            let this_classmap = get_class_typemap (Hashtbl.find_exn classmap class_name) in
+            typeloop this_classmap (y :: ys)
+    | x :: xs -> 
+            (* Just the type of x. *)
+            Hashtbl.find_exn currtypmap x
+    in
+    typeloop typmap (String.split_on_chars k ['.'])
