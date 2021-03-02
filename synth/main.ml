@@ -12,7 +12,7 @@ let () = Printexc.record_backtrace true;;
 let main options classspec_file iospec_file api_file  =
 	let () = Printf.printf "Loading specifications...\n" in
 	let classspec = load_classmap classspec_file in
-    let iospec = load_iospec options iospec_file in
+    let iospec = load_iospec options classspec iospec_file in
     let api = load_target_api api_file in
 	let () = Printf.printf "Synthesizing...\n" in
     let synth_results = run_synthesis options classspec iospec api in
@@ -28,7 +28,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		compiler_cmd debug_build_code debug_gir_topology_sort
         debug_generate_code number_of_tests debug_generate_io_tests
         debug_synth_topology debug_iospec_manipulator
-		test_only dump_test_results debug_test debug_skeleton_flatten =
+		skip_build dump_test_results debug_test debug_skeleton_flatten
+		stop_before_build =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -41,7 +42,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 
         number_of_tests = number_of_tests;
 
-		test_only = test_only;
+		skip_build = skip_build;
+		stop_before_build = stop_before_build;
 
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
@@ -107,9 +109,12 @@ let print_synth_option_numbers =
 	Arg.(value & flag & info ["print-synthesizer-numbers"] ~docv:"PrintSkeletonNumbers" ~doc)
 
 (* Debug flags to be used with care. *)
-let test_only =
+let skip_build =
 	let doc = "Only run testing and not generation. Debug only. " in
-	Arg.(value & flag & info ["test-only"] ~docv:"TestOnly" ~doc)
+	Arg.(value & flag & info ["skip-build"] ~docv:"TestOnly" ~doc)
+let stop_before_build =
+	let doc = "Stop before building any candidate programs.  " in
+	Arg.(value & flag & info ["stop-before-build"] ~docv:"StopBeforeBuild" ~doc)
 
 (* Print IR flags *)
 let dump_skeletons =
@@ -187,6 +192,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
-    debug_synth_topology $ debug_iospec_manipulator $ test_only $ dump_test_results $ debug_test $
-	debug_skeleton_flatten)
+    debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
+	debug_skeleton_flatten $ stop_before_build)
 let () = Term.exit @@ Term.eval (args_t, info)

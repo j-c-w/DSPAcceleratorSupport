@@ -23,7 +23,8 @@ type options = {
 	number_of_tests: int;
 
 	(* Speedup configs to enable partial runs during debugging. *)
-	test_only: bool;
+	skip_build: bool;
+	stop_before_build: bool;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
@@ -69,7 +70,8 @@ let default_options = {
 	number_of_tests = 100;
 
 	(* Speedup configs to enable partial runs during debugging. *)
-	test_only = false;
+	skip_build = false;
+	stop_before_build = false;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions = false;
