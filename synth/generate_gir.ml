@@ -204,7 +204,7 @@ let rec get_bindings_by_name tvars dims =
             (*  Needs to only havea s inle entry -- keeping it like this
             because I think we may want more complex types in the
             future here.  *)
-            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension([t])
+            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension([f])
             in
             let subdims = get_bindings_by_name tvars dims in
             (* Need to put the tvar name on the front of all
