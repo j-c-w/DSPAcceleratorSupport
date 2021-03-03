@@ -1,6 +1,7 @@
-FLAGS = -pkg core_kernel -pkg yojson -pkg cmdliner -pkg parmap -pkg str -cflag -g -lflag -g
+FLAGS = -pkg core_kernel -pkg yojson -pkg cmdliner -pkg parmap -pkg str -cflag -g -lflag -g -r
+INCLUDES = -I utilities/
 
-all: main json_gen
+all: main utilities
 
 plugin:
 	ocamlbuild -just-plugin
@@ -8,8 +9,9 @@ plugin:
 main: plugin
 	ocamlbuild main.byte $(FLAGS)
 
-json_gen: plugin
-	ocamlbuild json_gen.native $(FLAGS)
+utilities: plugin
+	ocamlbuild utilities/json_gen.native $(FLAGS)
+	ocamlbuild utilities/json_compare.native $(FLAGS)
 
 clean:
 	rm -rf _build

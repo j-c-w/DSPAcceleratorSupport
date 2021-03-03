@@ -4,7 +4,6 @@ open Parse_iospec
 open Parse_classmap
 open Parse_api
 open Synthesize
-open Api
 open Options
 
 let () = Printexc.record_backtrace true;;

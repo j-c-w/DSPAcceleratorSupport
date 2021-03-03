@@ -63,7 +63,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
     a ramdisk would help? *)
 	let tests_and_results = List.zip_exn generated_io_tests correct_answer_files in
 	let () = if options.debug_test then
-		let () = Printf.printf "Post filtered number of tests is %d\n" (List.length generated_executables) in
+		let () = Printf.printf "Number of tests is %d\n" (List.length generated_executables) in
 		() else () in
 	List.map generated_executables (fun execname ->
 		(* We could do something like 'for_all', but we don't
