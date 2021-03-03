@@ -15,6 +15,6 @@ rule read =
         | "(" {LPAREN}
         | ")" {RPAREN}
         | "," {COMMA}
-        | real as r { REAL (float_of_string (Lexing.lexeme lexbuf)) }
-        | integer as i { INTEGER (int_of_string (Lexing.lexeme lexbuf)) }
+        | real as r { REAL (float_of_string r) }
+        | integer as i { INTEGER (int_of_string i) }
         | eof { EOF }

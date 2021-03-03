@@ -7,4 +7,8 @@ type range_item =
 type range_range =
 	| RangeRange of range_item * range_item
 	| RangeItem of range_item
-type range_set = RangeSet of range_range list
+type range_set = RangeSet of range_range Array.t
+
+type range_value =
+	| RInt of int
+	| RFloat of float

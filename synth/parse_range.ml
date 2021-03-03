@@ -21,7 +21,7 @@ let typecheck_range_range typ r =
 let typecheck t ast =
 	match ast with
 	| RangeSet(itms) ->
-			List.for_all (List.map itms (typecheck_range_range t)) (fun x -> x)
+			Array.for_all (Array.map itms (typecheck_range_range t)) (fun x -> x)
 
 (* We'd really like to handle more complex things, like
 functions, e.g. every odd number in this.  *)
