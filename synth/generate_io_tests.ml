@@ -5,6 +5,7 @@ open Options;;
 open Yojson;;
 open Synthtype_topology;;
 open Utils;;
+open Range;;
 
 let _ = Random.init 0
 
@@ -16,19 +17,38 @@ let rec generate_file_numbers upto =
 	else
 		(string_of_int upto) :: (generate_file_numbers (upto - 1))
 
+let generate_int_within_range rangemap namestring =
+    match Hashtbl.find rangemap namestring with
+    | None -> (* It's normal to have no rangemap matches if there
+                were no rangevars specified.  *)
+            Random.int (1000)
+    | Some(range) ->
+            match random_value_in_range range with
+            | RInt(v) -> v
+            | _ -> raise (TypeException "Unexpected non-int result to int query")
+
+let generate_float_within_range rangemap namestring =
+    match Hashtbl.find rangemap namestring with
+    | None -> (* Ditto above *)
+            Random.float 100.0
+    | Some(range) ->
+            match random_value_in_range range with
+            | RFloat(v) -> v
+            | _ -> raise (TypeException "Unexepced non-float result to float query")
+
 (* TODO --- Could do with making this a bit more deterministic. *)
-let rec generate_inputs_for values_so_far t structure_metadata =
+let rec generate_inputs_for rangemap values_so_far name_string t structure_metadata =
     match t with
     (* TODO -- Support negative values.  *)
-    | Int16 -> Int16V(Random.int (1000))
-    | Int32 -> Int32V(Random.int (1000))
-    | Int64 -> Int64V(Random.int (1000))
-    | Float16 -> Float16V(Random.float (100.0))
-    | Float32 -> Float32V(Random.float (100.0))
-    | Float64 -> Float64V(Random.float (100.0))
+    | Int16 -> Int16V(generate_int_within_range rangemap name_string)
+    | Int32 -> Int32V(generate_int_within_range rangemap name_string)
+    | Int64 -> Int64V(generate_int_within_range rangemap name_string)
+    | Float16 -> Float16V(generate_float_within_range rangemap name_string)
+    | Float32 -> Float32V(generate_float_within_range rangemap name_string)
+    | Float64 -> Float64V(generate_float_within_range rangemap name_string)
     | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
     | Unit -> UnitV
-    (* TODO --- Probably need to 
+    (* TODO --- Probably need to
        make a distinction between square and non
        square arrays.  *)
     | Array(subtype, dimvar) ->
@@ -68,7 +88,7 @@ let rec generate_inputs_for values_so_far t structure_metadata =
 			be OK, since there should only be one possible
 			array length variable. :) *)
 			let arrlen = max_of_int_list arrlen_value_wrappers in
-            ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for values_so_far subtype structure_metadata))
+            ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for rangemap values_so_far name_string subtype structure_metadata))
     | Struct(name) ->
             let metadata = Hashtbl.find structure_metadata name in
             (* Get the strcuture metadata *)
@@ -81,28 +101,29 @@ let rec generate_inputs_for values_so_far t structure_metadata =
               metadata.  *)
             let valuetbl = Hashtbl.create (module String) in
             (* TODO -- maybe need to do something to the values so far in here? *)
-            let member_datas = List.map members (fun member -> (generate_inputs_for values_so_far (Hashtbl.find_exn tmap member) structure_metadata, member)) in
+            let member_datas = List.map members (fun member -> (generate_inputs_for rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap member) structure_metadata, member)) in
             (* Now, put those generated values in a map.  *)
             ignore(List.map member_datas (fun (data, m) -> Hashtbl.add valuetbl m data));
             StructV(name, valuetbl)
 
-let rec generate_io_values_worker generated_vs vs typmap classmap =
+let rec generate_io_values_worker rangemap generated_vs vs typmap classmap =
 	match vs with
 	| [] -> ()
 	| x :: xs ->
-			let typx = Hashtbl.find_exn typmap (name_reference_to_string x) in
-			let inps = generate_inputs_for generated_vs typx classmap in
+			let name_string = name_reference_to_string x in
+			let typx = Hashtbl.find_exn typmap name_string in
+			let inps = generate_inputs_for rangemap generated_vs name_string typx classmap in
 			let res = Hashtbl.add generated_vs (name_reference_to_string x) inps in
             let () = assert (match res with | `Ok -> true | _ -> false) in
-			(generate_io_values_worker generated_vs xs typmap classmap)
+			(generate_io_values_worker rangemap generated_vs xs typmap classmap)
 
-let rec generate_io_values num_tests livein typemap classmap =
+let rec generate_io_values num_tests rangemap livein typemap classmap =
 	match num_tests with
 	| 0 -> []
 	| n ->
 		let mapping = Hashtbl.create (module String) in
-		let () = (generate_io_values_worker mapping livein typemap classmap) in
-		mapping :: (generate_io_values (num_tests - 1) livein typemap classmap)
+		let () = (generate_io_values_worker rangemap mapping livein typemap classmap) in
+		mapping :: (generate_io_values (num_tests - 1) rangemap livein typemap classmap)
 
 let rec value_to_string value =
     let str_value = match value with
@@ -152,7 +173,7 @@ let wrap_nrefs nms =
         Name(nm)
     )
 
-let generate_io_tests options classmap (iospec: iospec) = 
+let generate_io_tests options classmap (iospec: iospec) =
 	let () =
 		if options.debug_generate_io_tests then
 			Printf.printf "Starting to generate IO tests"
@@ -165,7 +186,7 @@ let generate_io_tests options classmap (iospec: iospec) =
 		if options.debug_generate_io_tests then
 			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)
 		else () in
-	let values = generate_io_values num_tests toposorted_values iospec.typemap classmap in
+	let values = generate_io_values num_tests iospec.rangemap toposorted_values iospec.typemap classmap in
 	(* Now, convert those to YoJSON values to be written out.  *)
 	let json_files = write_io_tests options iospec.livein values in
 	json_files
