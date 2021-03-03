@@ -15,7 +15,7 @@ let main options classspec_file iospec_file api_file  =
     let iospec = load_iospec options classspec iospec_file in
     let api = load_target_api classspec api_file in
 	let () = Printf.printf "Synthesizing...\n" in
-    let synth_results = run_synthesis options classspec iospec api in
+    let _ = run_synthesis options classspec iospec api in
 	Printf.printf "json live in is ";
 	Printf.printf "%s\n" iospec_file;
 	Printf.printf "Done!\n";;
@@ -29,7 +29,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_generate_code number_of_tests debug_generate_io_tests
         debug_synth_topology debug_iospec_manipulator
 		skip_build dump_test_results debug_test debug_skeleton_flatten
-		stop_before_build =
+		stop_before_build only_test  =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -44,6 +44,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 
 		skip_build = skip_build;
 		stop_before_build = stop_before_build;
+		
+		only_test = only_test;
 
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
@@ -102,6 +104,10 @@ let compiler_cmd =
 let number_of_tests =
     let doc = "Max number of tests to generate.  " in
     Arg.(value & opt int 10 & info ["number-of-tests"] ~docv:"NumberOfTests" ~doc)
+let only_test =
+	let doc = "Only test the testcase with the name specified here
+	(usually to see the output of that test)" in
+	Arg.(value & opt (some string) None & info ["only-test"] ~docv:"OnlyTest" ~doc)
 
 (* Generic debug flags *)
 let print_synth_option_numbers =
@@ -193,5 +199,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
     debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
-	debug_skeleton_flatten $ stop_before_build)
+	debug_skeleton_flatten $ stop_before_build $ only_test)
 let () = Term.exit @@ Term.eval (args_t, info)

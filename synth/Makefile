@@ -1,4 +1,4 @@
-FLAGS = -pkg core_kernel -pkg yojson -pkg cmdliner -pkg parmap -cflag -g -lflag -g
+FLAGS = -pkg core_kernel -pkg yojson -pkg cmdliner -pkg parmap -pkg str -cflag -g -lflag -g
 
 all: main json_gen
 

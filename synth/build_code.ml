@@ -19,7 +19,7 @@ let build_code (opts: options) (apispec: apispec) (code: string list) =
 	let target_file = opts.execution_folder in
 	let file_numbers = generate_file_numbers (List.length code) in
 	let extension = get_extension opts in
-    if opts.skip_build then
+	let exec_names = if opts.skip_build then
         List.map file_numbers (fun f -> target_file ^ "/" ^ f ^ "_exec")
     else
         (* Make sure the target folder exists *)
@@ -49,4 +49,14 @@ let build_code (opts: options) (apispec: apispec) (code: string list) =
                 assert (r = 0)
             )
         ) in
-        exec_names
+        exec_names in
+	(* If we are only testing one of these files, only pass that through.  *)
+    let filtered_exec_names = match opts.only_test with
+        | None -> exec_names
+        | Some(filter) ->
+                let regexp = Str.regexp (".*" ^ filter ^ ".*") in
+                List.filter exec_names (fun genex ->
+                    Str.string_match regexp genex 0
+                )
+    in
+	filtered_exec_names

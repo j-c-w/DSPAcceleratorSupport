@@ -21,6 +21,8 @@ type options = {
 
 	(* Testing configuration *)
 	number_of_tests: int;
+	(* Allow testing of a single generated test only.  *)
+	only_test: string option;
 
 	(* Speedup configs to enable partial runs during debugging. *)
 	skip_build: bool;
@@ -68,6 +70,8 @@ let default_options = {
 
 	(* Testing configuration *)
 	number_of_tests = 100;
+	(* Allow testing of a single test only.  *)
+	only_test = None;
 
 	(* Speedup configs to enable partial runs during debugging. *)
 	skip_build = false;
