@@ -3,6 +3,7 @@ open Spec_definition;;
 open Spec_utils;;
 open Gir_utils;;
 open Options;;
+open Utils;;
 open Gir;;
 
 exception CXXGenerationException of string
@@ -151,6 +152,16 @@ and cxx_generate_from_vlist vlist =
     | VariableList(nrefs) ->
         String.concat ~sep:", " (List.map nrefs cxx_generate_from_variable_reference)
 
+(* Some variables are 'dead in', i.e. they don't need to be assigned
+to, just allocated.  This does just the allocation part :) *)
+let rec generate_empty_assign_to assname typ =
+    match typ with
+    (* May have to have a special case for some things here?  not sure,
+    C is actually pretty good with defines-in-place. *)
+    | _ ->
+			let type_sig = cxx_type_signature_synth_type_to_string typ in
+            type_sig ^ " " ^ assname ^ ";"
+
 let rec generate_assign_to classmap assname fieldname typ json_ref =
 	let json_ref =
 		match fieldname with
@@ -207,15 +218,26 @@ let rec generate_assign_to classmap assname fieldname typ json_ref =
 those IO values from a JSON file and puts them into values.
 Returns boht the code, and a list of function args to apply.
 *)
-let rec generate_input_assigns classmap inps typemap json_ref =
-	let asses = List.map inps (fun inp ->
+let rec generate_input_assigns classmap lenvar_bindings inps livein typemap json_ref =
+	let asses = List.map livein (fun inp ->
 		(* THis hsould be easy -- if it's not an array, then
 			just load the value -- if it is an array, then
 			do the complicated ararys stuff and recurse. *)
 		let typ = Hashtbl.find_exn typemap inp in
 		generate_assign_to classmap inp (Some(inp)) typ json_ref
 	) in
-	((String.concat ~sep:"\n" asses), String.concat ~sep:", " inps)
+	(* There are some variables that are 'dead' in, i.e. the
+	need to be allocated (e.g. output arrays), but they don't
+	need to be filled.  Call those 'deadin' values. *)
+	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) inps livein in
+    let deadin_defs = List.map deadin (fun inp ->
+        let typ = Hashtbl.find_exn typemap inp in
+		cxx_definition_synth_type_to_string lenvar_bindings typ inp
+    ) in
+	(* Hope and pray we don't end up needing to topo sort
+	this shit. *)
+	let all_asses = asses @ deadin_defs in
+	((String.concat ~sep:"\n" all_asses), String.concat ~sep:", " inps)
 
 (* Given a list of the liveout vars, produce an asssignment
 that produces the output JSON.*)
@@ -290,7 +312,7 @@ let cxx_main_function options classmap (iospec: iospec) lenvar_bindings =
 	let resdump =   "    char *outname = argv[2]; " in
 	let load_file = "    std::ifstream ifs(inpname); " in
 	let load_json = "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns classmap iospec.funargs iospec.typemap json_var_name in
+	let parse_args, argnames = generate_input_assigns classmap lenvar_bindings iospec.funargs iospec.livein iospec.typemap json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let call_func = iospec.funname ^ "(" ^ argnames ^ ");" in
 	let json_out_name = "output_json" in
