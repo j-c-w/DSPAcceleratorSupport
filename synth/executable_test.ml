@@ -8,43 +8,48 @@ open Options;;
 this will sometimes crash and sometimes spuriously go true
 if they do not.  *)
 let rec compare_jsons j1 j2 =
+	(* let () = Printf.printf "JSON j1 is %s \n" (Yojson.Basic.pretty_to_string j1) in
+	let () = Printf.printf "JSON j2 is %s \n" (Yojson.Basic.pretty_to_string j2) in *)
     let j1_members = keys j1 in
     List.for_all j1_members (fun mem ->
-        match (j1 |> member mem, j2 |> member mem) with
-          | `Assoc(njson_pairs1), `Assoc(njson_pairs2) ->
-                  let sorted_p1 = List.sort njson_pairs1 (fun (s1, j1) -> fun (s2, j2) ->
-                      String.compare s1 s2
-                  ) in
-                  let sorted_p2 = List.sort njson_pairs2 (fun (s1, j1) -> fun (s2, j2) ->
-                      String.compare s1 s2
-                  ) in (
-                  match List.zip sorted_p1 sorted_p2 with
-                  | Ok(ls) ->
-						  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
-                              ((String.compare name1 name2) = 0) && (compare_jsons json1 json2)
-                          ) in
-						  r
-                  | Unequal_lengths -> false
-                  )
-          | `Bool(b1), `Bool(b2) ->
-                  (Bool.compare b1 b2) = 0
-          | `Float(f1), `Float(f2) ->
-                  (* TODO --- fix *)
-                  ((Float.compare f1 (f2 +. 0.001)) = -1) &&
-				  ((Float.compare f1 (f2 -. 0.001) = 1))
-          | `Int(i1), `Int(i2) ->
-                  i1 = i2
-          | `List(l1), `List(l2) ->
-                  ((List.length l1) = (List.length l2)) &&
-                  List.for_all (List.zip_exn l1 l2) (fun (i1, i2) ->
-                      compare_jsons i1 i2
-                  )
-          | `Null, `Null -> true
-          | `String(s1), `String(s2) ->
-				  (String.compare s1 s2) = 0
-          | _ -> false
+		compare_json_elts (j1 |> member mem) (j2 |> member mem)
+	)
 
-    )
+and compare_json_elts e1 e2 =
+	match (e1, e2) with
+	  | `Assoc(njson_pairs1), `Assoc(njson_pairs2) ->
+			  let sorted_p1 = List.sort njson_pairs1 (fun (s1, j1) -> fun (s2, j2) ->
+				  String.compare s1 s2
+			  ) in
+			  let sorted_p2 = List.sort njson_pairs2 (fun (s1, j1) -> fun (s2, j2) ->
+				  String.compare s1 s2
+			  ) in (
+			  match List.zip sorted_p1 sorted_p2 with
+			  | Ok(ls) ->
+					  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
+						  ((String.compare name1 name2) = 0) && (compare_jsons json1 json2)
+					  ) in
+					  r
+			  | Unequal_lengths -> false
+			  )
+	  | `Bool(b1), `Bool(b2) ->
+			  (Bool.compare b1 b2) = 0
+	  | `Float(f1), `Float(f2) ->
+			  (* TODO --- fix *)
+			  ((Float.compare f1 (f2 +. 0.001)) = -1) &&
+			  ((Float.compare f1 (f2 -. 0.001) = 1))
+	  | `Int(i1), `Int(i2) ->
+			  i1 = i2
+	  | `List(l1), `List(l2) ->
+			  ((List.length l1) = (List.length l2)) &&
+			  (* TODO --- fix --- no except on unequal lengths, just false I think? *)
+			  List.for_all (List.zip_exn l1 l2) (fun (i1, i2) ->
+				  compare_json_elts i1 i2
+			  )
+	  | `Null, `Null -> true
+	  | `String(s1), `String(s2) ->
+			  (String.compare s1 s2) = 0
+	  | _ -> false
 
 let compare_outputs f1 f2 =
     (* Open both in Yojson and parse. *)
@@ -57,6 +62,9 @@ let find_working_code (options:options) generated_executables generated_io_tests
     (* This might also end up being limited by disk performance.  Perhaps using
     a ramdisk would help? *)
 	let tests_and_results = List.zip_exn generated_io_tests correct_answer_files in
+	let () = if options.debug_test then
+		let () = Printf.printf "Post filtered number of tests is %d\n" (List.length generated_executables) in
+		() else () in
 	List.map generated_executables (fun execname ->
 		(* We could do something like 'for_all', but we don't
 		really want to run every test for every executable ---
@@ -71,7 +79,11 @@ let find_working_code (options:options) generated_executables generated_io_tests
 			(* TODO --- maybe we should time this out?  Less
 			clear whether we need that here than we did with
 			the user code (where we also don't timeout) *)
-			let result = Sys.command (execname ^ " " ^ testin ^ " " ^ experiment_outname) in
+			let cmd = execname ^ " " ^ testin ^ " " ^ experiment_outname in
+			let () = if options.debug_test then
+				Printf.printf "Running test command %s\n" cmd
+			else () in
+			let result = Sys.command cmd in
 			let same_res = match testout with
 			| RunFailure -> 
 				(* We could be a bit smarter than this.  Anyway,
@@ -79,10 +91,16 @@ let find_working_code (options:options) generated_executables generated_io_tests
 				they're more of an edge case(? famous last words). *)
 				result <> 0
 			| RunSuccess(outf) ->
-				compare_outputs experiment_outname outf
+					if result = 0 then
+						compare_outputs experiment_outname outf
+					else
+						(* Run of accelerator failed --- this probably
+						shouldn't have happened.  *)
+						let () = Printf.printf "Warning: Accelerator failed on input: accelerator bounds should be specified for better performance. \n" in
+						false
 			in
 			(* Delete the temp output file from this experiment *)
-			let delresult = if not options.dump_test_results then
+			let delresult = if (result = 0) && (not options.dump_test_results) then
                 (* only delete if we dont' want to keep the test results.  *)
                 Sys.command ("rm " ^ experiment_outname)
             else 0 in
