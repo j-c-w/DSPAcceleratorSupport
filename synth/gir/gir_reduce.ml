@@ -1,6 +1,7 @@
 open Core_kernel;;
 open Options;;
 open Gir;;
+open Gir_utils;;
 
 (* GIR reduce is a simple GIR pass that removes trivial artefacts
 from other passes, e.g. nested sequences, deletes EmptyGIR etc. *)
@@ -14,19 +15,31 @@ let rec reduce_rvalue (options: options) (rval: rvalue): rvalue =
     | Expression(expr) ->
             Expression(reduce_expression options expr)
 and reduce_expression (options: options) expr: expression =
-    match expr with
+    let () = if options.debug_gir_reduce then
+        Printf.printf "Before reduce expression: %s\n" (expression_to_string expr)
+    else () in
+    let result = match expr with
     | VariableReference(_) -> expr
 	(* Remove calls to the identity function.  *)
     | FunctionCall(FunctionRef(Name("identity")), VariableList([v])) ->
                     VariableReference(v)
     | FunctionCall(_, _) -> expr
     | GIRMap(_, _) -> expr
+    in
+    let () = if options.debug_gir_reduce then
+        Printf.printf "after reduce expression: %s\n" (expression_to_string result)
+    else () in
+    result
 
 let rec reduce_gir (options: options) gir: gir =
-	match gir with
+    let () = if options.debug_gir_reduce then
+        Printf.printf "Before reduce: %s\n" (gir_to_string gir)
+    else () in
+    let result = match gir with
 	| Sequence(subitems) ->
 			let flattened = List.concat (List.map subitems (fun subitem ->
-				match subitem with
+                let reduced_subitem = reduce_gir options subitem in
+				match reduced_subitem with
 				| Sequence(subseqs) ->
 						let sub_exed = List.map subseqs (reduce_gir options) in
 						(* Now, remove the subseqs. *)
@@ -60,8 +73,16 @@ let rec reduce_gir (options: options) gir: gir =
             Expression(reduce_expression options expr)
     | Assignment(ton, fromn) ->
             Assignment(ton, reduce_rvalue options fromn)
-	| x -> x
+    | Definition(_) -> gir
+    | Return(_) -> gir
+    | EmptyGIR -> EmptyGIR
+    in
+    let () = if options.debug_gir_reduce then
+        Printf.printf "After reduce: %s\n" (gir_to_string result)
+    else () in
+    result
 
+(* Check for nested Sequence nodes. *)
 let rec reduce_gir_check gir =
 	match gir with
 	| Sequence(subseq) ->

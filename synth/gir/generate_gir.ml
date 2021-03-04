@@ -133,8 +133,9 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 					are no indexes then it is just
 					a list, otherwise we need to do 
 					a fold. *)
+                    let conversion_ref = FunctionRef(conversion_function_name) in
 					let lvars = LVariable(create_reference_from tvar_index_nesting index_vars) in
-					let rvars: rvalue = Expression(VariableReference(create_reference_from fvar_ind_nest index_vars)) in
+                    let rvars: rvalue = Expression(FunctionCall(conversion_ref, VariableList([create_reference_from fvar_ind_nest index_vars]))) in
 					Assignment(lvars, rvars)
 			)
 		)
