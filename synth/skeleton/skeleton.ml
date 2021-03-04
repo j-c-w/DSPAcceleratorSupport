@@ -7,6 +7,7 @@ open Skeleton_verify;;
 open Skeleton_definition;;
 open Skeleton_utils;;
 open Skeleton_filter;;
+open Skeleton_ranger;;
 open Utils;;
 
 (* This module deals with generating synthesis skeletons.
@@ -547,16 +548,19 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
+	(* Do range-checks and input any value map functions.  *)
+	let range_checked_pre_skeletons = rangecheck_skeletons options flattened_pre_skeletons iospec.rangemap apispec.rangemap in
+	let range_checked_post_skeletons = rangecheck_skeletons options flattened_post_skeletons apispec.rangemap iospec.rangemap in
     (* Do skeleton pairing *)
-    let all_skeleton_paris = List.cartesian_product flattened_pre_skeletons flattened_post_skeletons in
+    let all_skeleton_paris = List.cartesian_product range_checked_pre_skeletons range_checked_post_skeletons in
     (* Do joint filtering *)
     let sensible_skeleton_pairs = List.filter all_skeleton_paris skeleton_pair_check in
 	let () = if options.print_synthesizer_numbers || options.debug_generate_skeletons then
         (Printf.printf "Number of types (livein IO=%d, livein API=%d, liveout API=%d, liveout IO=%d)\n"
             (List.length livein_types) (List.length livein_api_types)
             (List.length liveout_api_types) (List.length liveout_types);
-        Printf.printf "Number of pre-bindings generated is %d\n" (List.length flattened_pre_skeletons);
-        Printf.printf "Number of post-bindings generated is %d\n" (List.length flattened_post_skeletons);
+        Printf.printf "Number of pre-bindings generated is %d\n" (List.length range_checked_pre_skeletons);
+        Printf.printf "Number of post-bindings generated is %d\n" (List.length range_checked_post_skeletons);
         Printf.printf "Number of skeletons generated is %d\n" (List.length all_skeleton_paris);
         Printf.printf "Number of skeletons post-filtering is %d\n" (List.length sensible_skeleton_pairs);
         )

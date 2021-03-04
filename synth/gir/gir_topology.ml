@@ -104,6 +104,11 @@ let rec compute_use_def_assign_for_expr expr: use_def_info_expr =
                     uses = List.concat (List.map vref_use_defs (fun ud -> ud.uses @ ud.maybe_assigns));
 				}
 	)
+    | GIRMap(indexer, values) ->
+			let indexer_uses = compute_use_def_assign_for_vref indexer in
+            {
+                uses = indexer_uses.uses @ indexer_uses.maybe_assigns
+            }
 
 and compute_use_def_assign_for_vref vref: use_def_info_variable_reference =
 	(* In this case, what is a use and what is a def
@@ -229,6 +234,22 @@ let rec compute_use_def_assign_for_node typemap gir =
 			assigns = [];
 			gir = gir;
 		}
+	| Return(v) ->
+		{
+			uses = [UDName(v)];
+			defs = [];
+			assigns = [];
+			gir = gir;
+		}
+	| FunctionDef(gir_name, argslist, gir, typmap) ->
+		(* Do not support closures or any of that shit. *)
+		(* This just defines itself and nothing else. *)
+		{
+			uses = [];
+			defs = [UDName(gir_name)];
+			assigns = [UDName(gir_name)];
+			gir = gir;
+		}
 	| EmptyGIR ->
 		{
 			uses = [];
@@ -304,8 +325,8 @@ let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info
             dependent.  *)
             let dependent_girs =
                 List.filter girs (fun gir ->
-                    (not (List.for_all gir.uses (fun u -> member u assigned))) ||
-                    (not (List.for_all gir.assigns (fun u -> member u defed)))
+                    (not (List.for_all gir.uses (fun u -> member u (gir.assigns @ assigned)))) ||
+                    (not (List.for_all gir.assigns (fun u -> member u (gir.defs @ defed))))
                 ) in
 			let () = if options.debug_gir_topology_sort then
 			let () = Printf.printf "Adding %d shcdulable girs!\n" (List.length schedulable_girs) in

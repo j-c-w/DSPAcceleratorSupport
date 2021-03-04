@@ -43,3 +43,15 @@ let prepend_all x xs =
 let max_of_int_list xs =
 	List.fold xs ~f:(fun x -> fun y -> if x > y then x else y) ~init:(-1000000000)
 	(* Crappy hack to regret: *)
+
+let int_range low high =
+    let rec int_range_internal low high =
+        if low = high then
+            []
+        else
+            low :: (int_range_internal (low + 1) high)
+    in
+    if low > high then
+        []
+    else
+        int_range_internal low high

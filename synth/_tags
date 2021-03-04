@@ -1,5 +1,6 @@
 <skeleton>: include
 <backend>: include
+<builtin>: include
 <dimensions>:include
 <frontend>: include
 <gir>: include

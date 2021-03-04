@@ -3,6 +3,7 @@ open Spec_definition;;
 open Spec_utils;;
 open Gir;;
 open Gir_utils;;
+open Gir_clean;;
 open Options;;
 open Gir_topology;;
 
@@ -27,6 +28,10 @@ let rec add_index_variables_to_typemap typemap gir =
             (* Also not currently possible to have an index
             variable in an expression *)
 	| EmptyGIR -> ()
+    (* These have their own typemap. Could do this here
+    I suppose, currently no reason to though.   *)
+    | FunctionDef(_, _, _, _) -> ()
+    | Return(_) -> ()
 
 let add_all_types_to frommap tomap =
     ignore(Hashtbl.iter_keys frommap (fun (apitypekey: string) ->
@@ -97,13 +102,17 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 	(* Need to add the index variables to the typemap.  *)
 	let () =
 		add_index_variables_to_typemap unified_typemap body in
+	(* Clean out unrequired fundefs *)
+	let required_fundefs =
+		remove_unused_fundefs final_body girpair.fundefs in
     {
         in_variables = iospec.funargs;
         gir = final_body;
         out_variables = iospec.liveout;
         returnvar = iospec.returnvar;
         typemap = unified_typemap;
-        lenvar_bindings = girpair.lenvar_bindings
+		lenvar_bindings = girpair.lenvar_bindings;
+		fundefs = required_fundefs;
     }
 
 (* Given a set of pre/post pairs, fill thsee out into whole programs

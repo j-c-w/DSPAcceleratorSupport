@@ -2,6 +2,7 @@ open Skeleton_definition;;
 open Spec_definition;;
 open Spec_utils;;
 open Core_kernel;;
+open Builtin_conversion_functions;;
 
 let one_dim_var_mapping_to_string map =
 	match map with
@@ -57,7 +58,9 @@ let flat_single_variable_binding_to_string (binding: flat_single_variable_bindin
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
 		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]" ^
        "\nUnder dimensions [" ^ (String.concat ~sep:", "
-            (List.map binding.valid_dimensions dimvar_mapping_to_string)) ^ "]"
+            (List.map binding.valid_dimensions dimvar_mapping_to_string)) ^ "]" ^
+       "\nWith conversion function " ^ (conversion_function_to_string binding.conversion_function)
+
 
 let flat_single_variable_binding_list_to_string skels =
     String.concat ~sep:"\n" (
@@ -119,6 +122,9 @@ let typesets_to_string t =
 
 let types_to_string t =
 	String.concat ~sep:", " (List.map t skeleton_type_to_string)
+
+let index_nesting_to_string nest =
+    name_reference_list_to_string nest
 
 let single_variable_binding_equal (s1: single_variable_binding_option_group) (s2: single_variable_binding_option_group) =
     (name_reference_list_list_equal s1.fromvars_index_nesting s2.fromvars_index_nesting) &&

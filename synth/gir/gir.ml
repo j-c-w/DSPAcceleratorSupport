@@ -17,6 +17,8 @@ type function_ref = FunctionRef of gir_name
 type expression =
 	| VariableReference of variable_reference
 	| FunctionCall of function_ref * varlist
+    (* Lookup variable_reference in the list of pairs of synthvalues.  *)
+    | GIRMap of variable_reference * (synth_value * synth_value) list
 and variable_reference =
 	| Variable of gir_name
 	| MemberReference of variable_reference * gir_name
@@ -40,6 +42,9 @@ and gir =
 	(* Body, induction variable name, loop max value *)
     | LoopOver of gir * gir_name * variable_reference
 	| Expression of expression
+    (* Function definition, has a name, a list of args, and a body.  *)
+    | FunctionDef of gir_name * varlist * gir * ((string, synth_type) Hashtbl.t)
+    | Return of gir_name
 	| EmptyGIR
 	(* (why?) Todo --- add a lambda here *)
 
@@ -51,7 +56,8 @@ type program = {
     out_variables: string list;
     typemap: (string, synth_type) Hashtbl.t;
 	returnvar: string option;
-	lenvar_bindings: (string, dimension_type) Hashtbl.t
+	lenvar_bindings: (string, dimension_type) Hashtbl.t;
+	fundefs: gir list
 }
 
 type gir_pair = {
@@ -59,5 +65,7 @@ type gir_pair = {
 	post: gir;
 	(* Which lenvar assignments are being used by this
 	   for each array type? *)
-	lenvar_bindings: (string, dimension_type) Hashtbl.t
+	lenvar_bindings: (string, dimension_type) Hashtbl.t;
+	(* What helper functions are required? *)
+	fundefs: gir list;
 }

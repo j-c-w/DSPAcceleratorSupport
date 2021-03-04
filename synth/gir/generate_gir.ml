@@ -10,6 +10,7 @@ open Gir_clean;;
 open Gir_utils;;
 open Gir_topology;;
 open Utils;;
+open Builtin_conversion_functions;;
 
 exception GenerateGIRException of string
 
@@ -17,6 +18,16 @@ let induction_variable_count = ref 0
 let new_induction_variable () =
     let () = induction_variable_count := !induction_variable_count + 1 in
     Name("i" ^ (string_of_int !induction_variable_count))
+
+let variable_count = ref 0
+let new_variable () =
+    let () = variable_count := !variable_count + 1 in
+    Name("v_" ^ (string_of_int !variable_count))
+
+let conversion_function_count = ref 0
+let new_conversion_function () =
+    let () = conversion_function_count := !conversion_function_count + 1 in
+    Name("conversion" ^ (string_of_int !conversion_function_count))
 
 let rec generate_variable_reference_to namerefs =
     match namerefs with
@@ -103,7 +114,7 @@ let create_reference_from post_indexes indvarnames =
 (* This generates a set of functions that take
 a list representing the variables that are used to index
 this.  *)
-let generate_assign_functions fvar_index_nestings tvar_index_nesting =
+let generate_assign_functions conversion_function_name fvar_index_nestings tvar_index_nesting =
 	if (List.length fvar_index_nestings) = 0 then
 		[]
 	else
@@ -244,11 +255,49 @@ let binding_lists_to_string bs =
         (name_reference_to_string from, tom)
     )
 
+let generate_conversion_function conv = match conv with
+    | IdentityConversion ->
+            (* We don't need to do anything here --- this
+            should be eliminated by further passes.
+            *)
+            EmptyGIR, Name("identity")
+    | Map(ftype, ttype, to_from_list) ->
+			let to_from_list_synths = List.map to_from_list (fun (tov, fromv) ->
+				(synth_value_from_range_value tov, 
+				 synth_value_from_range_value fromv)
+			) in
+            let fname = new_conversion_function () in
+            let argname = new_variable () in
+            let returnvar = new_variable () in
+            (* Create the typelookup.  *)
+            let typelookup = Hashtbl.create (module String) in
+            (* And add the functions to it.  *)
+            let _ = Hashtbl.add typelookup (gir_name_to_string argname) ftype in
+            let _ = Hashtbl.add typelookup (gir_name_to_string returnvar) ttype in
+            let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun(ftype, ttype)) in
+            FunctionDef(fname,
+                VariableList([
+                    Variable(argname);
+                ]
+                ),
+                Sequence(
+                [Assignment(
+                    LVariable(Variable(returnvar)),
+                    Expression(GIRMap(Variable(argname), to_from_list_synths))
+                );
+                Return(returnvar)
+                ]
+                ),
+                typelookup
+            ), fname
+
 let generate_gir_for_binding define_before_assign (options: options) (skeleton: flat_skeleton_binding) =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
-	   x = cos(y) or x = sin(y) or x = y.  *)
-	let expression_options = List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
+	   x = cos(y) or x = sin(y) or x = y. 
+	   Note that I think this should no longer happen
+	   here, but I'm going to leave that comment anyway. *)
+	let expression_options, required_fun_defs = List.unzip (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
 		(* There may be more than one valid dimension value.
 		   generate assignments based on all the dimension values. *)
         (* TODO --- fix this shit -- I'm pretty sure
@@ -258,14 +307,15 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 			let () = Printf.printf "%s\n" (flat_single_variable_binding_to_string single_variable_binding) in
             ()
 		else () in
-		let loop_wrappers = List.map single_variable_binding.valid_dimensions 
+		let loop_wrappers = List.map single_variable_binding.valid_dimensions
 			generate_loop_wrappers_from_dimensions in
+		let conversion_function, conversion_function_name = generate_conversion_function single_variable_binding.conversion_function in
         let fvars_indexes = List.map single_variable_binding.fromvars_index_nesting generate_gir_names_for in
         let tovar_indexes = generate_gir_names_for single_variable_binding.tovar_index_nesting in
         (* Convert the variable references mentioned
             in the bindings into real variable refs.  *)
 		(* Generate the possible assignments *)
-		let assign_funcs = generate_assign_functions fvars_indexes tovar_indexes in
+		let assign_funcs = generate_assign_functions conversion_function_name fvars_indexes tovar_indexes in
 		(* Get the define if required.  *)
 		let define = if define_before_assign then
 			let () = if options.debug_generate_gir then
@@ -306,8 +356,11 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 					[define]
 			else
 				assignment_statements in
-		assigns_with_defines
-	) in
+		(* Also return the conversion functions needed for this
+			assign. *)
+		assigns_with_defines, conversion_function
+	)
+	)in
     (* Get the length variable bindings *)
     let len_bindings = List.concat (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
         get_bindings_by_name single_variable_binding.tovar_index_nesting single_variable_binding.valid_dimensions
@@ -332,7 +385,7 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 	(* Do a quick cleanup --- e.g. making sure that there are no double
 	defines, which this approach is prone to generating.  *)
 	let cleaned_code_options = List.map code_options gir_double_define_clean in
-	cleaned_code_options, len_bindings
+	cleaned_code_options, len_bindings, required_fun_defs
 
 let rec all_dimvars_from dimtype =
 	match dimtype with
@@ -393,11 +446,12 @@ let generate_gir_for options (api: apispec) ((pre_skeleton: flat_skeleton_bindin
 	else () in
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
-	let pre_gir, pre_lenbinds = generate_gir_for_binding true options pre_skeleton in
-	let post_gir, post_lenbinds = generate_gir_for_binding false options post_skeleton in
+	let pre_gir, pre_lenbinds, pre_required_fun_defs = generate_gir_for_binding true options pre_skeleton in
+	let post_gir, post_lenbinds, post_required_fun_defs = generate_gir_for_binding false options post_skeleton in
     (* Keep track of the variable length assignments that have been made. *)
     let merged_lenbinds = binding_lists_to_string (merge_bindings_by_name pre_lenbinds post_lenbinds) in
     let table_lenbinds = hash_table_from_list (module String) merged_lenbinds in
+	let all_fundefs = pre_required_fun_defs @ post_required_fun_defs in
 	let res = List.cartesian_product pre_gir post_gir in
 	let () = if options.debug_generate_gir then
 		let () = Printf.printf "Finished generation of candidata pre programs.  Program are:\n%s\n"
@@ -406,7 +460,7 @@ let generate_gir_for options (api: apispec) ((pre_skeleton: flat_skeleton_bindin
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    List.map res (fun (pre, post) -> (pre, post, table_lenbinds))
+    List.map res (fun (pre, post) -> (pre, post, table_lenbinds, all_fundefs))
 
 
 let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) list) =
@@ -414,12 +468,13 @@ let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) li
 		generate_gir_for options api skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
-		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds) ->
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds, funs) ->
 			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
 	else () in
-	List.map result (fun (pre, post, bindings) ->
+	List.map result (fun (pre, post, bindings, fundefs) ->
 		{
 			pre = pre;
             post = post;
-            lenvar_bindings = bindings
+			lenvar_bindings = bindings;
+			fundefs = fundefs;
 		})

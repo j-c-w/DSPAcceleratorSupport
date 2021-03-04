@@ -1,5 +1,6 @@
 open Core_kernel;;
 open Spec_definition;;
+open Builtin_conversion_functions;;
 
 (* Keep track of dimvar mappings required for
    certain loops.  We envision that this will
@@ -57,7 +58,8 @@ type skeleton_type_binding = {
 type flat_single_variable_binding = {
     fromvars_index_nesting: name_reference list list;
     tovar_index_nesting: name_reference list;
-	valid_dimensions: dimvar_mapping list
+    valid_dimensions: dimvar_mapping list;
+    conversion_function: conversion_functions
 }
 
 type flat_skeleton_binding = {

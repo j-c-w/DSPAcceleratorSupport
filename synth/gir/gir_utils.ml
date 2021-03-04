@@ -22,6 +22,12 @@ let rec gir_to_string gir =
 			"{\n" ^ (gir_to_string body) ^ "}"
 	| Expression(expr) ->
 			(expression_to_string expr)
+	| Return(v) ->
+			"return " ^ (gir_name_to_string v)
+	| FunctionDef(n, args, body, typmap) ->
+			"def " ^
+			(gir_name_to_string n) ^ "(" ^ (varlist_to_string args)
+			^ ") {\n"  ^ (gir_to_string body) ^ "\n}\n"
 	| EmptyGIR -> ""
 and lvalue_to_string lval =
 	match lval with
@@ -34,6 +40,13 @@ and expression_to_string expr =
 	| VariableReference(nam) -> (variable_reference_to_string nam)
 	| FunctionCall(fref, varlist) ->
 			(function_ref_to_string fref) ^ "(" ^ (varlist_to_string varlist) ^ ")"
+    | GIRMap(var, values) ->
+            (variable_reference_to_string var) ^ " match " ^
+            (String.concat (List.map values (fun(f, t) ->
+                "| " ^ (synth_value_to_string f) ^ " -> " ^ (synth_value_to_string t) ^ "\n"
+            )
+            )
+            )
 and variable_reference_to_string vref =
     match vref with
 	| IndexReference(nam, expr) -> (variable_reference_to_string nam) ^

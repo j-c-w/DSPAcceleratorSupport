@@ -6,6 +6,7 @@ open Skeleton_utils;;
 open Skeleton_filter;;
 open Options;;
 open Utils;;
+open Builtin_conversion_functions;;
 
 let flatten_binding (svar_binding: single_variable_binding_option_group) =
 	if List.length svar_binding.valid_dimensions_set > 0 then
@@ -16,7 +17,8 @@ let flatten_binding (svar_binding: single_variable_binding_option_group) =
 		{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
 			tovar_index_nesting = svar_binding.tovar_index_nesting;
-			valid_dimensions = dim
+			valid_dimensions = dim;
+			conversion_function = IdentityConversion
 		}
 		)
 	else
@@ -25,7 +27,8 @@ let flatten_binding (svar_binding: single_variable_binding_option_group) =
 		[{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
 			tovar_index_nesting = svar_binding.tovar_index_nesting;
-			valid_dimensions = []
+			valid_dimensions = [];
+			conversion_function = IdentityConversion
 		}]
 
 (* The skeleton pass generates more than one 'possible binding' per list

@@ -1,5 +1,6 @@
 open Core_kernel;;
 open Spec_definition;;
+open Range_definition;;
 
 exception SpecException of string
 
@@ -88,6 +89,27 @@ let rec synth_type_equal s1 s2 =
 			(synth_type_equal f f2) &&
 			(synth_type_equal t t2)
 	| _ -> false
+
+let rec synth_value_to_string value =
+    match value with
+    | Int16V(v) -> string_of_int v
+    | Int32V(v) -> string_of_int v
+    | Int64V(v) -> string_of_int v
+    | Float16V(v) -> string_of_float v
+    | Float32V(v) -> string_of_float v
+    | Float64V(v) -> string_of_float v
+    | UnitV -> "Unit"
+    | ArrayV(vs) ->
+            "[" ^ (String.concat ~sep:", " (List.map vs synth_value_to_string)) ^ "]"
+    | StructV(name, _) ->
+            name
+    | FunV(name) ->
+            name
+
+let synth_value_from_range_value rvalue =
+    match rvalue with
+    | RInt(v) -> Int32V(v)
+    | RFloat(v) -> Float32V(v)
 
 let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in
