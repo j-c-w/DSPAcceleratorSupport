@@ -26,7 +26,9 @@ let forwardMap tfrom vset1 tto vset2 =
 	Map(tfrom, tto, List.zip_exn (range_value_set_sort vset1) (range_value_set_sort vset2))
 
 let backwardMap tfrom vset1 tto vset2 =
-	Map(tfrom, tto, List.zip_exn (List.rev (range_value_set_sort vset1)) (List.rev (range_value_set_sort vset2)))
+	(* Reverse one of the lists, but not the other to
+	get a backwards map. *)
+	Map(tfrom, tto, List.zip_exn (range_value_set_sort vset1) (List.rev (range_value_set_sort vset2)))
 
 (* If the synthesizer asks for the identity
    conversion, give it this.  *)
