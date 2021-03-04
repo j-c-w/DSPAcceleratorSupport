@@ -23,6 +23,9 @@ let generate_out_tmp () =
 let generate_ivar_tmp () =
     let () = output_variable_count := !output_variable_count + 1 in
     "i" ^ (string_of_int !output_variable_count)
+let generate_generic_tmp () =
+	let () = output_variable_count := !output_variable_count + 1 in
+	"temp_" ^ (string_of_int !output_variable_count)
 
 
 (* Type signatures use pointer formatting.  *)
@@ -89,6 +92,13 @@ let rec cxx_definition_synth_type_to_string_prefix_postfix dimmap_lookup typ nam
             (* If it's another type, then use the simple type generator *)
             (cxx_type_signature_synth_type_to_string othertyp, "")
 
+(* The aim of this is to avoid loads of empty newlines--- they
+build up, partiuclarly in the precode generation.  Delete them,
+but don't get ride of important newlines at the end of things :) *)
+let trim x =
+	match String.strip x with
+	| "" -> ""
+	| x -> x ^ "\n"
 
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
@@ -110,47 +120,110 @@ let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) (binds: 
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap binds))
     | Assignment(fromv, tov) ->
-			(cxx_generate_from_lvalue fromv) ^ " = " ^ (cxx_generate_from_rvalue tov) ^ ";"
+			let pre_from_code, fromv_name = cxx_generate_from_lvalue typemap fromv in
+			let pre_to_code, tov_name = cxx_generate_from_rvalue typemap tov in
+			(trim pre_from_code) ^ (trim pre_to_code) ^
+			fromv_name ^ " = " ^ tov_name ^ ";"
     | LoopOver(gir, indvariable, loopmax) ->
             let indvar_name = (cxx_gir_name_to_string indvariable) in
-            let loopmax_name = (cxx_generate_from_variable_reference loopmax) in
+            let pre_loopmax_code, loopmax_name = (cxx_generate_from_variable_reference typemap loopmax) in
+			(trim pre_loopmax_code) ^
             "for (int " ^ indvar_name ^ " = 0; " ^ indvar_name ^ " < " ^ loopmax_name ^ "; " ^ indvar_name ^ "++) {\n\t\t" ^
             (cxx_generate_from_gir typemap binds gir) ^
             "\n\t}"
     | Expression(expression) ->
-            (cxx_generate_from_expression expression)
+			let pre_code, expr_code = (cxx_generate_from_expression typemap expression) in
+			String.concat [(trim pre_code); expr_code]
+	| Return(v) ->
+			"return " ^ (cxx_gir_name_to_string v) ^ ";"
+	| FunctionDef(name, args, body, fun_typtable) ->
+			(* Not doing definitions as lambdas,
+			   so it wont make much sense if this is
+			   part of a sequence.  *)
+			let funtyp = match Hashtbl.find_exn fun_typtable (gir_name_to_string name) with
+			| Fun(f, t) -> t
+			| _ -> raise (CXXGenerationException "Unexpected non-function type function type!") in
+			let funtyp_name = cxx_type_signature_synth_type_to_string funtyp in
+			let args_strings = List.map args gir_name_to_string in
+			let args_def = String.concat ~sep:", " (cxx_names_to_type_definition fun_typtable args_strings) in
+			(* Suppose we probably shouldn't just pass the old lenvar bindings
+				into this one.. *)
+			let body_code = cxx_generate_from_gir fun_typtable binds body in
+			String.concat [
+				funtyp_name; " "; (cxx_gir_name_to_string name);
+				" ("; args_def; ") {\n"; body_code;
+				"\n}\n"
+			]
     | EmptyGIR -> ";"
 
-and cxx_generate_from_lvalue lvalue =
+(* BEcahse C++ is an imperative language, this stuff
+	sometimes needs linearlization --- so these return
+	'pre' code and then the expression, where
+	pre code is stuff that should be run before, e.g.
+	to assign to the right variables.  *)
+and cxx_generate_from_lvalue typemap lvalue =
     match lvalue with
-    | LVariable(nref) -> (cxx_generate_from_variable_reference nref)
+    | LVariable(nref) -> (cxx_generate_from_variable_reference typemap nref)
 
-and cxx_generate_from_variable_reference vref =
+and cxx_generate_from_variable_reference typemap vref =
 	match vref with
 	| Variable(nm) ->
-			cxx_gir_name_to_string nm
+			"", cxx_gir_name_to_string nm
 	| MemberReference(structref, member) ->
 			(* TODO -- need to support pointer-ref
 			   generation.  *)
-			(cxx_generate_from_variable_reference structref) ^ "." ^ (cxx_gir_name_to_string member)
+			let struct_pre_code, struct_reference = cxx_generate_from_variable_reference typemap structref in
+			struct_pre_code, struct_reference ^ "." ^ (cxx_gir_name_to_string member)
 	| IndexReference(arr, ind) ->
-			(cxx_generate_from_variable_reference arr) ^ "[" ^ (cxx_generate_from_expression ind) ^ "]"
+			let pre_code, ind_reference = cxx_generate_from_expression typemap ind in
+			let arr_pre_code, arr_reference = cxx_generate_from_variable_reference typemap arr in
+			arr_pre_code ^ "\n" ^ pre_code, arr_reference ^ "[" ^ ind_reference ^ "]"
 
-and cxx_generate_from_rvalue rvalue =
+and cxx_generate_from_rvalue typemap rvalue =
     match rvalue with
-    | Expression(expr) -> (cxx_generate_from_expression expr)
-and cxx_generate_from_expression expr =
+    | Expression(expr) -> (cxx_generate_from_expression typemap expr)
+and cxx_generate_from_expression typemap expr =
     match expr with
-    | VariableReference(nref) -> (cxx_generate_from_variable_reference nref)
+    | VariableReference(nref) -> cxx_generate_from_variable_reference typemap nref
     | FunctionCall(fref, vlist) ->
-            (cxx_generate_from_function_ref fref) ^ "(" ^ (cxx_generate_from_vlist vlist) ^ ");"
+			let pre_args_code, args_list = (cxx_generate_from_vlist typemap vlist) in
+            pre_args_code, (cxx_generate_from_function_ref fref) ^ "(" ^ args_list ^ ");"
+	| GIRMap(vfrom, value_pairs_list) ->
+			(* I can't remember what types are supported in
+			   the switch statement, but other things, e.g.
+			   array lookups may be faster depending on the
+			   type. *)
+			let temp_name = generate_generic_tmp () in
+			let vfrom_reference = gir_name_to_string vfrom in
+			(* We need a default value for this thing, so just pick
+			the first one from the map.  *)
+			let first_source, default_value = List.hd_exn value_pairs_list in
+			let deftyp = cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap (gir_name_to_string vfrom)) in
+			(* TODO --- Should we crash when a value outside the rnage
+			is presented?  Clearly that doesn't make sense from an impl
+			perspective (or does it?) but it certianly makes sense from
+			a debugging perspective.  *)
+			(* Pre-assign code *)
+			deftyp ^ " " ^ temp_name ^ " = " ^ (synth_value_to_string default_value) ^ "; \n" ^
+			"switch (" ^ vfrom_reference  ^ ") {\n" ^
+			(
+				String.concat (
+					List.map value_pairs_list (fun (vfrom, vto) ->
+						"case " ^ (synth_value_to_string vfrom) ^ ": \n" ^
+						temp_name ^ " = " ^ (synth_value_to_string vto) ^ "; break;\n"
+					)
+				)
+			) ^ "\n}\n",
+			(* Assign code is just a ref to the temp_name *)
+			temp_name
 and cxx_generate_from_function_ref fref =
     match fref with
     | FunctionRef(nref) -> (cxx_gir_name_to_string nref)
-and cxx_generate_from_vlist vlist =
+and cxx_generate_from_vlist typemap vlist =
     match vlist with
     | VariableList(nrefs) ->
-        String.concat ~sep:", " (List.map nrefs cxx_generate_from_variable_reference)
+		let pre_code, refs = List.unzip (List.map nrefs (cxx_generate_from_variable_reference typemap)) in
+        (String.concat ~sep:"\n" pre_code, String.concat ~sep:", " refs)
 
 (* Some variables are 'dead in', i.e. they don't need to be assigned
 to, just allocated.  This does just the allocation part :) *)
@@ -335,6 +408,13 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
         | None -> "void", ""
         | Some(x) -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap x), x
     in
+	(* Generate the required helper functions.  *)
+	let helper_funcs = String.concat ~sep:"\n" (
+		(* Note that the typemap and lenvar bindings aren't
+		(/shouldn't be) used in this call anyway, they're replaced
+		by the ones in the program unit. *)
+		List.map program.fundefs (cxx_generate_from_gir program.typemap program.lenvar_bindings)
+	) in
     (* Generate the function header *)
     let function_header =
         function_type ^ " " ^ iospec.funname ^ "(" ^
@@ -350,7 +430,7 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
         "return " ^ outv ^ "; }" in
 	let main_func = cxx_main_function options classmap iospec program.lenvar_bindings in
     (* Generate the whole program.  *)
-	String.concat ~sep:"\n" [ioimports; apiimports; otherimports; function_header; program_string; function_return; main_func]
+	String.concat ~sep:"\n" [ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_return; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)
