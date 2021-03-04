@@ -7,6 +7,9 @@ let gir_name_to_string gname =
     match gname with
     | Name(n) -> n
 
+let gir_name_list_to_string gnames =
+	String.concat ~sep:", " (List.map gnames gir_name_to_string)
+
 let gir_name_equal n1 n2 =
     match (n1, n2) with
     | Name(n1), Name(n2) -> (String.compare n1 n2) = 0
@@ -26,7 +29,7 @@ let rec gir_to_string gir =
 			"return " ^ (gir_name_to_string v)
 	| FunctionDef(n, args, body, typmap) ->
 			"def " ^
-			(gir_name_to_string n) ^ "(" ^ (varlist_to_string args)
+			(gir_name_to_string n) ^ "(" ^ (gir_name_list_to_string args)
 			^ ") {\n"  ^ (gir_to_string body) ^ "\n}\n"
 	| EmptyGIR -> ""
 and lvalue_to_string lval =
@@ -41,7 +44,7 @@ and expression_to_string expr =
 	| FunctionCall(fref, varlist) ->
 			(function_ref_to_string fref) ^ "(" ^ (varlist_to_string varlist) ^ ")"
     | GIRMap(var, values) ->
-            (variable_reference_to_string var) ^ " match " ^
+            (gir_name_to_string var) ^ " match " ^
             (String.concat (List.map values (fun(f, t) ->
                 "| " ^ (synth_value_to_string f) ^ " -> " ^ (synth_value_to_string t) ^ "\n"
             )
@@ -82,9 +85,6 @@ let variable_reference_option_list_to_string nms =
 		match n with
 		| None -> "None"
 		| Some(n) -> variable_reference_to_string n))
-
-let gir_name_list_to_string gnames =
-	String.concat ~sep:", " (List.map gnames gir_name_to_string)
 
 let program_list_to_string (programs: program list) =
     String.concat ~sep:"\n\n" (List.map programs program_to_string)

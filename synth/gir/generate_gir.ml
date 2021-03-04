@@ -276,17 +276,14 @@ let generate_conversion_function conv = match conv with
             let _ = Hashtbl.add typelookup (gir_name_to_string argname) ftype in
             let _ = Hashtbl.add typelookup (gir_name_to_string returnvar) ttype in
             let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun(ftype, ttype)) in
-            FunctionDef(fname,
-                VariableList([
-                    Variable(argname);
-                ]
-                ),
-                Sequence(
-                [Assignment(
-                    LVariable(Variable(returnvar)),
-                    Expression(GIRMap(Variable(argname), to_from_list_synths))
-                );
-                Return(returnvar)
+            FunctionDef(fname, [argname],
+                Sequence([
+					Definition(returnvar);
+					Assignment(
+						LVariable(Variable(returnvar)),
+						Expression(GIRMap(argname, to_from_list_synths))
+					);
+					Return(returnvar)
                 ]
                 ),
                 typelookup

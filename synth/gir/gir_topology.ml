@@ -105,9 +105,8 @@ let rec compute_use_def_assign_for_expr expr: use_def_info_expr =
 				}
 	)
     | GIRMap(indexer, values) ->
-			let indexer_uses = compute_use_def_assign_for_vref indexer in
             {
-                uses = indexer_uses.uses @ indexer_uses.maybe_assigns
+                uses = [UDName(indexer)]
             }
 
 and compute_use_def_assign_for_vref vref: use_def_info_variable_reference =

@@ -86,8 +86,8 @@ and check_function_calls_expr tbl expr =
     | FunctionCall(fref, vlist) ->
             let () = check_function_calls_fref tbl fref in
             check_function_calls_vlist tbl vlist
-    | GIRMap(vref, _) ->
-            check_function_calls_vref tbl vref
+    | GIRMap(_, _) ->
+            ()
 and check_function_calls_vlist tbl vlist =
     match vlist with
     | VariableList(vlist) ->

@@ -18,7 +18,7 @@ type expression =
 	| VariableReference of variable_reference
 	| FunctionCall of function_ref * varlist
     (* Lookup variable_reference in the list of pairs of synthvalues.  *)
-    | GIRMap of variable_reference * (synth_value * synth_value) list
+    | GIRMap of gir_name * (synth_value * synth_value) list
 and variable_reference =
 	| Variable of gir_name
 	| MemberReference of variable_reference * gir_name
@@ -43,7 +43,7 @@ and gir =
     | LoopOver of gir * gir_name * variable_reference
 	| Expression of expression
     (* Function definition, has a name, a list of args, and a body.  *)
-    | FunctionDef of gir_name * varlist * gir * ((string, synth_type) Hashtbl.t)
+    | FunctionDef of gir_name * (gir_name list) * gir * ((string, synth_type) Hashtbl.t)
     | Return of gir_name
 	| EmptyGIR
 	(* (why?) Todo --- add a lambda here *)
