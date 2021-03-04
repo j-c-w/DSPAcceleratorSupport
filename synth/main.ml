@@ -28,7 +28,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_generate_code number_of_tests debug_generate_io_tests
         debug_synth_topology debug_iospec_manipulator
 		skip_build dump_test_results debug_test debug_skeleton_flatten
-		stop_before_build only_test  =
+		stop_before_build only_test debug_gir_reduce =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -64,6 +64,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_test = debug_test;
 
 		debug_gir_topology_sort = debug_gir_topology_sort;
+		debug_gir_reduce = debug_gir_reduce;
 
         debug_synth_topology = debug_synth_topology;
 		
@@ -142,6 +143,9 @@ let dump_test_results =
 let debug_gir_topology_sort =
 	let doc = "Debug GIR topology passes" in
 	Arg.(value & flag & info ["debug-gir-topology"] ~docv:"DebugGIRTopo" ~doc)
+let debug_gir_reduce =
+	let doc = "Debug the GIR reduction pass" in
+	Arg.(value & flag & info ["debug-gir-reduce"] ~docv:"DebugGIRReduce" ~doc)
 
 (* debug stype passes.  *)
 let debug_synth_topology =
@@ -198,5 +202,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
     debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
-	debug_skeleton_flatten $ stop_before_build $ only_test)
+	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce)
 let () = Term.exit @@ Term.eval (args_t, info)
