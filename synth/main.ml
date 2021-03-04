@@ -28,7 +28,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_generate_code number_of_tests debug_generate_io_tests
         debug_synth_topology debug_iospec_manipulator
 		skip_build dump_test_results debug_test debug_skeleton_flatten
-		stop_before_build only_test debug_gir_reduce =
+		stop_before_build only_test debug_gir_reduce debug_comparison =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -62,6 +62,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_generate_io_tests = debug_generate_io_tests;
 		debug_iospec_manipulator = debug_iospec_manipulator;
 		debug_test = debug_test;
+		debug_comparison = debug_comparison;
 
 		debug_gir_topology_sort = debug_gir_topology_sort;
 		debug_gir_reduce = debug_gir_reduce;
@@ -188,6 +189,9 @@ let debug_iospec_manipulator =
 let debug_test =
 	let doc = "Debug the testing phase.  " in
 	Arg.(value & flag & info ["debug-test"] ~docv:"DebugTest" ~doc)
+let debug_comparison =
+	let doc = "Debug comparison between true answer JSON files and accelerator produced JSON files." in
+	Arg.(value & flag & info ["debug-comparison"] ~docv:"DebugComparison" ~doc)
 
 (* Debug flags *)
 let info =
@@ -202,5 +206,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
     debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
-	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce)
+	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison)
 let () = Term.exit @@ Term.eval (args_t, info)

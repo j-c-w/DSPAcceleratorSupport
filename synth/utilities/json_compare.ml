@@ -1,8 +1,10 @@
 open Executable_test;;
 open Cmdliner;;
+open Options;;
 
 let main f1 f2 =
-    let result = compare_outputs f1 f2 in
+    let opts = {default_options with debug_comparison = true; } in
+    let result = compare_outputs opts f1 f2 in
     Printf.printf "Result of comparison is %b\n" (result)
 
 let f1 =

@@ -46,6 +46,7 @@ type options = {
 	debug_generate_io_tests: bool;
     debug_iospec_manipulator: bool;
 	debug_test: bool;
+	debug_comparison: bool;
 
 	(* GIR passes debug.  *)
 	debug_gir_topology_sort: bool;
@@ -96,6 +97,7 @@ let default_options = {
 	debug_generate_io_tests = false;
     debug_iospec_manipulator = false;
 	debug_test = false;
+	debug_comparison = false;
 
 	(* GIR passes debug.  *)
 	debug_gir_topology_sort = false;

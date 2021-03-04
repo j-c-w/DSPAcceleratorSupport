@@ -7,16 +7,16 @@ open Options;;
 (* Largely, we assume taht j1 and j2 have the same members
 this will sometimes crash and sometimes spuriously go true
 if they do not.  *)
-let rec compare_jsons j1 j2 =
+let rec compare_jsons options j1 j2 =
 	(* let () = Printf.printf "JSON j1 is %s \n" (Yojson.Basic.pretty_to_string j1) in
 	let () = Printf.printf "JSON j2 is %s \n" (Yojson.Basic.pretty_to_string j2) in *)
     let j1_members = keys j1 in
     List.for_all j1_members (fun mem ->
-		compare_json_elts (j1 |> member mem) (j2 |> member mem)
+		compare_json_elts options (j1 |> member mem) (j2 |> member mem)
 	)
 
-and compare_json_elts e1 e2 =
-	match (e1, e2) with
+and compare_json_elts options e1 e2 =
+	let result = match (e1, e2) with
 	  | `Assoc(njson_pairs1), `Assoc(njson_pairs2) ->
 			  let sorted_p1 = List.sort njson_pairs1 (fun (s1, j1) -> fun (s2, j2) ->
 				  String.compare s1 s2
@@ -27,7 +27,7 @@ and compare_json_elts e1 e2 =
 			  match List.zip sorted_p1 sorted_p2 with
 			  | Ok(ls) ->
 					  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
-						  ((String.compare name1 name2) = 0) && (compare_jsons json1 json2)
+						  ((String.compare name1 name2) = 0) && (compare_jsons options json1 json2)
 					  ) in
 					  r
 			  | Unequal_lengths -> false
@@ -35,27 +35,39 @@ and compare_json_elts e1 e2 =
 	  | `Bool(b1), `Bool(b2) ->
 			  (Bool.compare b1 b2) = 0
 	  | `Float(f1), `Float(f2) ->
-			  (* TODO --- fix *)
-			  ((Float.compare f1 (f2 +. 0.001)) = -1) &&
-			  ((Float.compare f1 (f2 -. 0.001) = 1))
+			  (* Aim for error no bigger than a 10th of f2, should
+			  	100% make this configurable.  *)
+			  let thresh = (Float.abs (f2)) /. 10.0 in
+			  ((Float.compare f1 (f2 +. thresh)) = -1) &&
+			  ((Float.compare f1 (f2 -. thresh) = 1))
 	  | `Int(i1), `Int(i2) ->
 			  i1 = i2
 	  | `List(l1), `List(l2) ->
 			  ((List.length l1) = (List.length l2)) &&
 			  (* TODO --- fix --- no except on unequal lengths, just false I think? *)
 			  List.for_all (List.zip_exn l1 l2) (fun (i1, i2) ->
-				  compare_json_elts i1 i2
+				  compare_json_elts options i1 i2
 			  )
 	  | `Null, `Null -> true
 	  | `String(s1), `String(s2) ->
 			  (String.compare s1 s2) = 0
 	  | _ -> false
+	in
+	if result then
+		result
+	else
+		let () = if options.debug_comparison then
+			Printf.printf "Comparison between %s and %s returned false!"
+                (Yojson.Basic.pretty_to_string e1)
+                (Yojson.Basic.pretty_to_string e1)
+		else () in
+		result
 
-let compare_outputs f1 f2 =
+let compare_outputs options f1 f2 =
     (* Open both in Yojson and parse. *)
     let f1_json = Yojson.Basic.from_file f1 in
     let f2_json = Yojson.Basic.from_file f2 in
-    compare_jsons f1_json f2_json
+    compare_jsons options f1_json f2_json
 
 let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =
 	(* TODO --- perhaps a parmap here?  Need to make sure the output files don't overlap if so. *)
@@ -92,7 +104,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
 				result <> 0
 			| RunSuccess(outf) ->
 					if result = 0 then
-						compare_outputs experiment_outname outf
+						compare_outputs options experiment_outname outf
 					else
 						(* Run of accelerator failed --- this probably
 						shouldn't have happened.  *)
