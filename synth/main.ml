@@ -28,7 +28,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_generate_code number_of_tests debug_generate_io_tests
         debug_synth_topology debug_iospec_manipulator
 		skip_build dump_test_results debug_test debug_skeleton_flatten
-		stop_before_build only_test debug_gir_reduce debug_comparison =
+		stop_before_build only_test debug_gir_reduce debug_comparison
+		all_tests =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -40,6 +41,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         );
 
         number_of_tests = number_of_tests;
+		all_tests = all_tests;
 
 		skip_build = skip_build;
 		stop_before_build = stop_before_build;
@@ -109,6 +111,9 @@ let only_test =
 	let doc = "Only test the testcase with the name specified here
 	(usually to see the output of that test)" in
 	Arg.(value & opt (some string) None & info ["only-test"] ~docv:"OnlyTest" ~doc)
+let all_tests =
+	let doc = "Run all tests, don't stop after failure" in
+	Arg.(value & flag & info ["run-all-tests"] ~docv:"TestAll" ~doc)
 
 (* Generic debug flags *)
 let print_synth_option_numbers =
@@ -206,5 +211,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
     debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
-	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison)
+	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison $
+	all_tests)
 let () = Term.exit @@ Term.eval (args_t, info)

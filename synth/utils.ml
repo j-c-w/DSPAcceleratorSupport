@@ -1,5 +1,7 @@
 open Core_kernel;;
 
+let id x = x
+
 let rec cross_product ls =
 	match ls with
 	| [] -> []
@@ -55,3 +57,15 @@ let int_range low high =
         []
     else
         int_range_internal low high
+
+(* Map through f while f does not return None.  *)
+let rec map_while ls f =
+	match ls with
+	| [] -> []
+	| l :: ls ->
+			match f(l) with
+			| item, true -> item :: (map_while ls f)
+			| item, false -> item :: []
+
+let string_equal x y =
+	(String.compare x y) = 0

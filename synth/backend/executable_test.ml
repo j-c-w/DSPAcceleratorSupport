@@ -84,7 +84,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
         let ()  = if options.debug_test then
             Printf.printf "Starting tests for executable %s\n" execname
         else () in
-		let res = List.take_while tests_and_results (fun (testin, testout) ->
+		let res = Utils.map_while tests_and_results (fun (testin, testout) ->
 			(* Get an output name for this test.  *)
 			let experiment_outname = testin ^ "_outtmp.json" in
 			(* Run the program on this test input.  *)
@@ -101,15 +101,21 @@ let find_working_code (options:options) generated_executables generated_io_tests
 				(* We could be a bit smarter than this.  Anyway,
 				I'm hoping not to deal with too many failures,
 				they're more of an edge case(? famous last words). *)
-				result <> 0
+                if result = 0 then
+                    Some((testin, testout))
+                else
+                    None
 			| RunSuccess(outf) ->
 					if result = 0 then
-						compare_outputs options experiment_outname outf
+                        if compare_outputs options experiment_outname outf then
+                            Some((testin, testout))
+                        else
+                            None
 					else
 						(* Run of accelerator failed --- this probably
 						shouldn't have happened.  *)
 						let () = Printf.printf "Warning: Accelerator failed on input: accelerator bounds should be specified for better performance. \n" in
-						false
+                        None
 			in
 			(* Delete the temp output file from this experiment *)
 			let delresult = if (result = 0) && (not options.dump_test_results) then
@@ -117,8 +123,14 @@ let find_working_code (options:options) generated_executables generated_io_tests
                 Sys.command ("rm " ^ experiment_outname)
             else 0 in
 			let () = assert (delresult = 0) in
-            same_res
+            let should_continue = match same_res with
+                  | Some(x) -> true
+                (* Still continue if we are testing everything.  *)
+                  | None -> if options.all_tests then true else false
+            in
+            same_res, should_continue
 		) in
+        let res = List.filter_map res Utils.id in
         let () = Printf.printf "Passed up to %d tests out of %d\n"
             (List.length res) (List.length tests_and_results) in
 		(* If we took everyting, then we're golden :) *)

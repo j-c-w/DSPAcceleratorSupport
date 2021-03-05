@@ -21,6 +21,7 @@ type options = {
 
 	(* Testing configuration *)
 	number_of_tests: int;
+	all_tests: bool; (* Keep running tests after failue.  *)
 	(* Allow testing of a single generated test only.  *)
 	only_test: string option;
 
@@ -72,6 +73,7 @@ let default_options = {
 
 	(* Testing configuration *)
 	number_of_tests = 100;
+	all_tests = false;
 	(* Allow testing of a single test only.  *)
 	only_test = None;
 
