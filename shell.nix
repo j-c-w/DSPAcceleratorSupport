@@ -14,6 +14,8 @@ mkShell {
 		parallel
 		# Deps for tests
 		fftw
+		# Deps for helper scripts
+		python37 python37Packages.numpy
 	];
 	# Enable ocaml stack traces.
 	OCAMLRUNPARAM = "b";
