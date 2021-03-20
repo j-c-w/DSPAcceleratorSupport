@@ -13,6 +13,11 @@ main: plugin
 utilities: plugin
 	ocamlbuild -j $(PARALLELISM) utilities/json_gen.native $(FLAGS)
 	ocamlbuild -j $(PARALLELISM) utilities/json_compare.native $(FLAGS)
+	ocamlbuild -j $(PARALLELISM) utilities/behavioural_synthesizer.ml $(FLAGS)
+
+test: plugin
+	ocamlbuild -j $(PARALLELISM) tests/main_test.byte $(FLAGS) -pkg alcotest
+	./main_test.byte
 
 clean:
 	rm -rf _build
