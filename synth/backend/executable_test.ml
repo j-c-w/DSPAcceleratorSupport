@@ -3,6 +3,7 @@ open Yojson;;
 open Yojson.Basic.Util;;
 open Run_definition;;
 open Options;;
+open Utils;;
 
 (* Largely, we assume taht j1 and j2 have the same members
 this will sometimes crash and sometimes spuriously go true
@@ -35,11 +36,7 @@ and compare_json_elts options e1 e2 =
 	  | `Bool(b1), `Bool(b2) ->
 			  (Bool.compare b1 b2) = 0
 	  | `Float(f1), `Float(f2) ->
-			  (* Aim for error no bigger than a 10th of f2, should
-			  	100% make this configurable.  *)
-			  let thresh = (Float.abs (f2)) /. 10.0 in
-			  ((Float.compare f1 (f2 +. thresh)) = -1) &&
-			  ((Float.compare f1 (f2 -. thresh) = 1))
+              float_equal f1 f2
 	  | `Int(i1), `Int(i2) ->
 			  i1 = i2
 	  | `List(l1), `List(l2) ->
@@ -77,6 +74,9 @@ let find_working_code (options:options) generated_executables generated_io_tests
 	let () = if options.debug_test then
 		let () = Printf.printf "Number of tests is %d\n" (List.length generated_executables) in
 		() else () in
+	 (* Need to keep the output files distict for
+	further analysis.  *)
+	let executable_number = ref 0 in
 	List.map generated_executables (fun execname ->
 		(* We could do something like 'for_all', but we don't
 		really want to run every test for every executable ---
@@ -84,9 +84,11 @@ let find_working_code (options:options) generated_executables generated_io_tests
         let ()  = if options.debug_test then
             Printf.printf "Starting tests for executable %s\n" execname
         else () in
-		let res = Utils.map_while tests_and_results (fun (testin, testout) ->
+		let test_no = !executable_number in
+		let () = executable_number := !executable_number + 1 in
+		let res = List.map tests_and_results (fun (testin, testout) ->
 			(* Get an output name for this test.  *)
-			let experiment_outname = testin ^ "_outtmp.json" in
+			let experiment_outname = testin ^ "_outtmp_" ^ (string_of_int test_no) ^ ".json" in
 			(* Run the program on this test input.  *)
 			(* TODO --- maybe we should time this out?  Less
 			clear whether we need that here than we did with
@@ -101,21 +103,41 @@ let find_working_code (options:options) generated_executables generated_io_tests
 				(* We could be a bit smarter than this.  Anyway,
 				I'm hoping not to deal with too many failures,
 				they're more of an edge case(? famous last words). *)
-                if result = 0 then
-                    Some((testin, testout))
+                if result <> 0 then
+					(* both are failures.  *)
+					{
+						input=testin;
+						true_output=None;
+						measured_output=None;
+						passed=true;
+					}
                 else
-                    None
+					(* New run isn't a failure.  *)
+					{
+						input=testin;
+						true_output=None;
+						measured_output=Some(experiment_outname);
+						passed=false
+					}
 			| RunSuccess(outf) ->
 					if result = 0 then
-                        if compare_outputs options experiment_outname outf then
-                            Some((testin, testout))
-                        else
-                            None
+						{
+							input=testin;
+							true_output=Some(outf);
+							measured_output=Some(experiment_outname);
+							passed=(compare_outputs options experiment_outname outf)
+						}
 					else
 						(* Run of accelerator failed --- this probably
 						shouldn't have happened.  *)
 						let () = Printf.printf "Warning: Accelerator failed on input: accelerator bounds should be specified for better performance. \n" in
-                        None
+						(* Say this was a non-match.  *)
+						{
+							input=testin;
+							true_output=Some(outf);
+							measured_output=None;
+							passed=false
+						}
 			in
 			(* Delete the temp output file from this experiment *)
 			let delresult = if (result = 0) && (not options.dump_test_results) then
@@ -123,18 +145,14 @@ let find_working_code (options:options) generated_executables generated_io_tests
                 Sys.command ("rm " ^ experiment_outname)
             else 0 in
 			let () = assert (delresult = 0) in
-            let should_continue = match same_res with
-                  | Some(x) -> true
-                (* Still continue if we are testing everything.  *)
-                  | None -> if options.all_tests then true else false
-            in
-            same_res, should_continue
+            same_res
 		) in
-        let res = List.filter_map res Utils.id in
-        let () = Printf.printf "Passed up to %d tests out of %d\n"
-            (List.length res) (List.length tests_and_results) in
-		(* If we took everyting, then we're golden :) *)
-		(List.length res) = (List.length tests_and_results)
+		(* Glue together the results.  *)
+		let total_count = List.length res in
+		let passed_count = List.count res (fun (result) -> result.passed) in
+		let passed = (total_count = passed_count) in
+		let () = Printf.printf "Passed cound is %d of %d tests\n" (passed_count) (total_count) in
+		res, passed
 	)
 
 let print_working_code files working_list =
@@ -148,4 +166,3 @@ let print_working_code files working_list =
 	(String.concat ~sep:"," working_filenames) in
 	let () = Printf.printf "There were %d in total" (List.length working_filenames) in
 	()
-	
