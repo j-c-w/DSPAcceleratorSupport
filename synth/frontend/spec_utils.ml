@@ -19,6 +19,16 @@ let name_reference_option_list_to_string nrefs =
 		| None -> "None"
 		| Some(n) -> name_reference_to_string n))
 
+let name_reference_concat n1 n2 =
+	match (n1, n2) with
+	| Name(x), Name(y) -> StructName([n1; n2])
+	| StructName(xs), Name(y) -> StructName(xs @ [n2])
+	| Name(x), StructName(ys) -> StructName(n1 :: ys)
+	| StructName(xs), StructName(ys) ->
+			StructName(xs @ ys)
+	| _, AnonymousName -> n1
+	| AnonymousName, _ -> n2
+
 let rec name_reference_equal n1 n2 =
     match (n1, n2) with
 	| AnonymousName, AnonymousName -> true
@@ -207,3 +217,23 @@ let type_of typmap classmap k =
             Hashtbl.find_exn currtypmap x
     in
     typeloop typmap (String.split_on_chars k ['.'])
+
+(*  Functions to make handling synth values a bit more scalable. *)
+let float_from_value v =
+	match v with
+	| Float16V(v) -> Some(v)
+	| Float32V(v) -> Some(v)
+	| Float64V(v) -> Some(v)
+	| _ -> None
+
+let int_from_value v =
+	match v with
+	| Int16V(v) -> Some(v)
+	| Int32V(v) -> Some(v)
+	| Int64V(v) -> Some(v)
+	| _ -> None
+
+let array_from_value v =
+    match v with
+    | ArrayV(vs) -> Some(vs)
+    | _ -> None
