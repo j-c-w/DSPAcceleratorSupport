@@ -19,6 +19,20 @@ let maxarraylength = 100;;
 let floatmax = 100.0;;
 let intmax = 1000;;
 
+(* This is a debug flag to make it easier to peer into
+   what the post-synthesis passes are doing without
+   being overloaded.  Also to make repeat synthesis
+   from the same inputs much faster.  *)
+let reduce_programs (opts:options) programs =
+    let filtered_programs = match opts.only_test with
+        | None -> programs
+        | Some(filter) ->
+                match List.nth programs filter with
+				| None -> raise (OptionsException ("No program with number " ^ (string_of_int filter) ^ " found"))
+				| Some(prog) -> [prog]
+    in
+    filtered_programs
+
 let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (api: apispec) =
 	(* Assign possible dimension equalities between vector types.  *)
 	(* This updates the type ref tables in place, so no reassigns needed.  *)
@@ -58,10 +72,12 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     let () = if opts.print_synthesizer_numbers then
         Printf.printf "Number of programs from these pairs is %d%!\n" (List.length programs)
     else () in
+    let reduced_programs = reduce_programs opts programs in
 	(* Do some opts? *)
     (* Do some filtering pre-generation? *)
 	(* Generate some code.  *)
-	let generated_code = generate_code opts classmap api iospec programs in
+	(* START ROUND 1 Of Tests *)
+	let generated_code = generate_code opts classmap api iospec reduced_programs in
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Number of codes generated is %d%!\n" (List.length generated_code)
 	else () in

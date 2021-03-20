@@ -50,13 +50,4 @@ let build_code (opts: options) (apispec: apispec) (code: string list) =
             )
         ) in
         exec_names in
-	(* If we are only testing one of these files, only pass that through.  *)
-    let filtered_exec_names = match opts.only_test with
-        | None -> exec_names
-        | Some(filter) ->
-                let regexp = Str.regexp (".*" ^ filter ^ ".*") in
-                List.filter exec_names (fun genex ->
-                    Str.string_match regexp genex 0
-                )
-    in
-	filtered_exec_names
+    exec_names

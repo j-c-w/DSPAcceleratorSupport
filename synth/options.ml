@@ -23,7 +23,7 @@ type options = {
 	number_of_tests: int;
 	all_tests: bool; (* Keep running tests after failue.  *)
 	(* Allow testing of a single generated test only.  *)
-	only_test: string option;
+	only_test: int option;
 
 	(* Speedup configs to enable partial runs during debugging. *)
 	skip_build: bool;
