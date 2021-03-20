@@ -4,7 +4,11 @@
 <dimensions>:include
 <frontend>: include
 <gir>: include
+<behavioural_synthesizers>: include
+<behavioural_synthesizers/**/*>: include
+<json>: include
 <parsers/**/*>: include
 <range>: include
 <skeleton>: include
 <utilities>: include
+<tests/**/*>: include
