@@ -10,6 +10,7 @@ open Skeleton;;
 open Skeleton_utils;;
 open Iospec_manipulator;;
 open Executable_test;;
+open Post_synthesis;;
 open Options;;
 
 exception TypeException of string
@@ -98,8 +99,14 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	let real_response_files = generate_results_for opts iospec io_tests in
 	(* Try the code until we find one that works.  *)
 	let working_codes = find_working_code opts code_files io_tests real_response_files in
+	(* END Round 1 of Tests *)
+
+    (* Run post-synthesis *)
+    let post_synthesis_program = run_post_synthesis opts classmap iospec api reduced_programs working_codes in
+    (* TODO --- regenerate the code and output the working ones
+        in an output file!. *)
 	(* Do some opts? *)
-    let () = print_working_code code_files working_codes in
+    (* let () = print_working_code code_files working_codes in *)
     let () = Printf.printf "Done!\n" in
     ()
 	)
