@@ -47,25 +47,3 @@ and gir =
     | Return of gir_name
 	| EmptyGIR
 	(* (why?) Todo --- add a lambda here *)
-
-(* This should be a list of live-in variables, the function
-	and then the live out varaibles. *)
-type program = {
-    in_variables: string list;
-    gir: gir;
-    out_variables: string list;
-    typemap: (string, synth_type) Hashtbl.t;
-	returnvar: string option;
-	lenvar_bindings: (string, dimension_type) Hashtbl.t;
-	fundefs: gir list
-}
-
-type gir_pair = {
-	pre: gir;
-	post: gir;
-	(* Which lenvar assignments are being used by this
-	   for each array type? *)
-	lenvar_bindings: (string, dimension_type) Hashtbl.t;
-	(* What helper functions are required? *)
-	fundefs: gir list;
-}

@@ -6,6 +6,7 @@ open Gir_utils;;
 open Gir_clean;;
 open Options;;
 open Gir_topology;;
+open Program;;
 
 exception GenerateProgramException of string
 
@@ -109,6 +110,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
         in_variables = iospec.funargs;
         gir = final_body;
         out_variables = iospec.liveout;
+        post_behavioural = None;
         returnvar = iospec.returnvar;
         typemap = unified_typemap;
 		lenvar_bindings = girpair.lenvar_bindings;

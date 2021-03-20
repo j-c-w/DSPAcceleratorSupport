@@ -5,6 +5,7 @@ open Gir_utils;;
 open Options;;
 open Utils;;
 open Gir;;
+open Program;;
 
 exception CXXGenerationException of string
 

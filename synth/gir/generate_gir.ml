@@ -11,6 +11,7 @@ open Gir_utils;;
 open Gir_topology;;
 open Utils;;
 open Builtin_conversion_functions;;
+open Program;;
 
 exception GenerateGIRException of string
 

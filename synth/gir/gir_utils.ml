@@ -2,6 +2,7 @@ open Core_kernel;;
 open Spec_definition;;
 open Spec_utils;;
 open Gir;;
+open Program;;
 
 let gir_name_to_string gname =
     match gname with
@@ -72,9 +73,16 @@ let gir_list_to_string girl =
 let gir_list_list_to_string girll =
 	String.concat ~sep:"\n=====\n" (List.map girll gir_list_to_string)
 
+let post_behavioural_to_string pbp =
+    match pbp with
+    | None -> "None"
+    | Some(prog) -> prog.program
+
 let program_to_string (program: program) =
     "Function(" ^ (String.concat ~sep:"," program.in_variables) ^ ") {\n" ^
-    (gir_to_string program.gir) ^ "\n EndFunction (outvars: " ^
+    (gir_to_string program.gir) ^ "\nPostBehavioural: " ^
+    (post_behavioural_to_string program.post_behavioural) ^
+    "\n EndFunction (outvars: " ^
     (String.concat ~sep:"," program.out_variables) ^ ")\n"
 
 let variable_reference_list_to_string nms =
