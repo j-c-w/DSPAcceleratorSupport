@@ -29,7 +29,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_synth_topology debug_iospec_manipulator
 		skip_build dump_test_results debug_test debug_skeleton_flatten
 		stop_before_build only_test debug_gir_reduce debug_comparison
-		all_tests =
+		all_tests post_synthesis_tool debug_post_synthesis
+        dump_behavioural_synth debug_fft_synthesizer =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -39,6 +40,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		| Some(cmd) -> cmd
 		| None -> get_compiler_cmd target_type
         );
+        post_synthesizer = get_behavioural_syn post_synthesis_tool;
 
         number_of_tests = number_of_tests;
 		all_tests = all_tests;
@@ -53,6 +55,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		dump_generate_gir = dump_generate_gir;
 		dump_generate_program = dump_generate_program;
 		dump_test_results = dump_test_results;
+        dump_behavioural_synth = dump_behavioural_synth;
 
 		debug_load = debug_load;
 		debug_generate_skeletons = debug_generate_skeletons;
@@ -73,9 +76,18 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		
 		debug_skeleton_flatten = debug_skeleton_flatten;
 
+		debug_post_synthesis = debug_post_synthesis;
+        debug_fft_synthesizer = debug_fft_synthesizer;
+
 		print_synthesizer_numbers = print_synth_program_nums;
     }
     in
+	let () =
+		if Option.is_some options.only_test && options.skip_build then
+			let () = Printf.printf "WARNING: Set --only-test and --skip-build may lead to inconsistent results\n" in
+			Printf.printf "(--only-test renumbers executables)\n"
+		else ()
+	in
     main options classspec_file iospec_file api_file
 
 (* Deal with the commandline arguments. *)
@@ -102,15 +114,18 @@ let execution_folder =
 let compiler_cmd =
 	let doc = "Build compiler command for internal IO analysis (default g++)" in
 	Arg.(value & opt (some string) None & info ["compiler-command"] ~docv:"CompilerCommand" ~doc)
+let post_synthesis_tool =
+	let doc = "Which synthesizer to use for post-synthesis (options are FFT or None now" in
+    Arg.(value & opt string "FFT" & info ["post-synthesizer"] ~docv:"PostSynthesizer" ~doc)
 
 (* Testing configuration flags.  *)
 let number_of_tests =
     let doc = "Max number of tests to generate.  " in
     Arg.(value & opt int 10 & info ["number-of-tests"] ~docv:"NumberOfTests" ~doc)
 let only_test =
-	let doc = "Only test the testcase with the name specified here
+	let doc = "Only test the testcase with the number specified here
 	(usually to see the output of that test)" in
-	Arg.(value & opt (some string) None & info ["only-test"] ~docv:"OnlyTest" ~doc)
+	Arg.(value & opt (some int) None & info ["only-test"] ~docv:"OnlyTest" ~doc)
 let all_tests =
 	let doc = "Run all tests, don't stop after failure" in
 	Arg.(value & flag & info ["run-all-tests"] ~docv:"TestAll" ~doc)
@@ -144,6 +159,9 @@ let dump_generate_program =
 let dump_test_results =
 	let doc = "Dump the results of testing " in
 	Arg.(value & flag & info ["dump-test-results"] ~docv:"DumpTestResults" ~doc)
+let dump_behavioural_synth =
+    let doc = "Dump behavioural synthesizer" in
+    Arg.(value & flag & info ["dump-behavioural-synth"] ~docv:"DumpBehaviouralSynth" ~doc)
 
 (* Debug GIR manipulation passes.  *)
 let debug_gir_topology_sort =
@@ -162,6 +180,14 @@ let debug_synth_topology =
 let debug_skeleton_flatten =
 	let doc = "Debug skeleton flatten pass" in
 	Arg.(value & flag & info ["debug-skeleton-flatten"] ~docv:"DebugSkeletonFlatten" ~doc)
+
+(* Debug post synthesis *)
+let debug_post_synthesis =
+	let doc = "Debug post synthesis" in
+	Arg.(value & flag & info ["debug-post-synthesis"] ~docv:"DebugPostSynthesis" ~doc)
+let debug_fft_synthesizer =
+    let doc = "Debug the behavioural synthesizer for FFTs" in
+    Arg.(value & flag & info ["debug-fft-synth"] ~docv:"DebugFFTSynth" ~doc)
 
 (* Debug pass internal flags *)
 let debug_generate_gir =
@@ -212,5 +238,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_gir_topology_sort $ debug_generate_code $ number_of_tests $ debug_generate_io_tests $
     debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
 	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison $
-	all_tests)
+	all_tests $ post_synthesis_tool $ debug_post_synthesis
+    $ dump_behavioural_synth $ debug_fft_synthesizer)
 let () = Term.exit @@ Term.eval (args_t, info)

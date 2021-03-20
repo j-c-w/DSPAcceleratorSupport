@@ -13,11 +13,22 @@ let get_compiler_cmd target =
     match target with
     | CXX -> "g++"
 
+type behavioural_synthesizer =
+	| FFTSynth
+	| NoSynthesizer
+
+let get_behavioural_syn name =
+	match name with
+	| "FFT" -> FFTSynth
+	| "None" -> NoSynthesizer
+	| _ -> raise (OptionsException ("Unexpect behavioural synth " ^ name))
+
 type options = {
 	(* Generic configuration *)
 	target: backend_target; (* Language target *)
 	execution_folder: string; (* Where to keep the executables for testing *)
     compiler_cmd: string;
+	post_synthesizer: behavioural_synthesizer;
 
 	(* Testing configuration *)
 	number_of_tests: int;
@@ -35,6 +46,7 @@ type options = {
 	dump_generate_gir: bool;
 	dump_generate_program: bool;
 	dump_test_results: bool;
+    dump_behavioural_synth: bool;
 
 	(* Pass debug *)
 	debug_load: bool;
@@ -59,6 +71,10 @@ type options = {
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten: bool;
 
+	(* Post Synthesis type debug.  *)
+	debug_post_synthesis: bool;
+    debug_fft_synthesizer: bool;
+
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
 }
@@ -70,6 +86,7 @@ let default_options = {
 	target = CXX;
 	execution_folder = "synth_temps";
 	compiler_cmd = "g++";
+	post_synthesizer = FFTSynth; (* Really don't want to keep it this way long term.  But while FFT is target, it makes sense.  *)
 
 	(* Testing configuration *)
 	number_of_tests = 100;
@@ -87,6 +104,7 @@ let default_options = {
 	dump_generate_gir = false;
 	dump_generate_program = false;
 	dump_test_results = false;
+    dump_behavioural_synth = false;
 
 	(* Pass debug *)
 	debug_load = false;
@@ -110,6 +128,10 @@ let default_options = {
 
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten = false;
+
+    (* Post synthesis passes debug.  *)
+    debug_post_synthesis = false;
+    debug_fft_synthesizer = false;
 
 	(* Generic debug *)
 	print_synthesizer_numbers = false;
