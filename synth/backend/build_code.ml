@@ -27,6 +27,7 @@ let build_code (opts: options) (apispec: apispec) (code: string list) =
         let () = (assert (res = 0)) in
         let compiler_cmd = opts.compiler_cmd in
 		let compiler_flags = String.concat ~sep:" " apispec.compiler_flags in
+		let additional_flags = String.concat ~sep:" " opts.compiler_flags in
         (* Don't use too many cores --- just thrashing the system with GCC
             instances seems like the wrong approach.  *)
         let () = Printf.printf "Starting!\n" in
@@ -34,7 +35,7 @@ let build_code (opts: options) (apispec: apispec) (code: string list) =
             (* Write the thing to a file *)
             let filename = target_file ^ "/" ^ program_filename ^ extension in
             let outname = target_file ^ "/" ^ program_filename ^ "_exec" in
-            let cmd = compiler_cmd ^ " " ^ compiler_flags ^ " " ^ filename ^ " -o " ^ outname in
+            let cmd = compiler_cmd ^ " " ^ additional_flags ^ " " ^ compiler_flags ^ " " ^ filename ^ " -o " ^ outname in
             let () = if opts.debug_build_code then
                 let () = Printf.printf "Writing to filename %s\n" filename in
                 Printf.printf "Compilng with cmd %s\n" cmd

@@ -372,6 +372,7 @@ and generate_output_assign options classmap lenvar_assigns typ out out_prefix =
 let otherimports = String.concat ~sep:"\n" [
     "#include<vector>"; "#include<nlohmann/json.hpp>";
     "#include<fstream>"; "#include<iomanip>";
+	"#include<libs/clib/synthesizer.h";
     "using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
 ]
 

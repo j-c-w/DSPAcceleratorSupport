@@ -30,7 +30,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		skip_build dump_test_results debug_test debug_skeleton_flatten
 		stop_before_build only_test debug_gir_reduce debug_comparison
 		all_tests post_synthesis_tool debug_post_synthesis
-        dump_behavioural_synth debug_fft_synthesizer =
+        dump_behavioural_synth debug_fft_synthesizer compiler_flags =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -40,6 +40,10 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		| Some(cmd) -> cmd
 		| None -> get_compiler_cmd target_type
         );
+		compiler_flags = (match compiler_flags with
+        | Some(flags) -> String.split_on_char ';' flags
+		| None -> get_compiler_flags target_type
+		);
         post_synthesizer = get_behavioural_syn post_synthesis_tool;
 
         number_of_tests = number_of_tests;
@@ -114,6 +118,10 @@ let execution_folder =
 let compiler_cmd =
 	let doc = "Build compiler command for internal IO analysis (default g++)" in
 	Arg.(value & opt (some string) None & info ["compiler-command"] ~docv:"CompilerCommand" ~doc)
+let compiler_flags =
+    let doc = "Any flags to pass onwards to the compiler, semi-colon separated (';')
+(warning: requires defaults --- see options.ml for the defaults)" in
+    Arg.(value & opt (some string) None & info ["compiler-flags"] ~docv:"CompilerFlags" ~doc)
 let post_synthesis_tool =
 	let doc = "Which synthesizer to use for post-synthesis (options are FFT or None now" in
     Arg.(value & opt string "FFT" & info ["post-synthesizer"] ~docv:"PostSynthesizer" ~doc)
@@ -239,5 +247,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
     debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
 	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison $
 	all_tests $ post_synthesis_tool $ debug_post_synthesis
-    $ dump_behavioural_synth $ debug_fft_synthesizer)
+    $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags)
 let () = Term.exit @@ Term.eval (args_t, info)

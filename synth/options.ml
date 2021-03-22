@@ -13,6 +13,13 @@ let get_compiler_cmd target =
     match target with
     | CXX -> "g++"
 
+let get_compiler_flags target =
+	match target with
+	| CXX -> [
+		(* Include the clibs.  *)
+		"-Ilibs/clibs"
+	]
+
 type behavioural_synthesizer =
 	| FFTSynth
 	| NoSynthesizer
@@ -28,6 +35,7 @@ type options = {
 	target: backend_target; (* Language target *)
 	execution_folder: string; (* Where to keep the executables for testing *)
     compiler_cmd: string;
+	compiler_flags: string list;
 	post_synthesizer: behavioural_synthesizer;
 
 	(* Testing configuration *)
@@ -86,6 +94,7 @@ let default_options = {
 	target = CXX;
 	execution_folder = "synth_temps";
 	compiler_cmd = "g++";
+	compiler_flags = get_compiler_flags CXX;
 	post_synthesizer = FFTSynth; (* Really don't want to keep it this way long term.  But while FFT is target, it makes sense.  *)
 
 	(* Testing configuration *)
