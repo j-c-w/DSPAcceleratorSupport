@@ -38,7 +38,7 @@ let build_code (opts: options) (apispec: apispec) (code: string list) =
             let cmd = compiler_cmd ^ " " ^ additional_flags ^ " " ^ compiler_flags ^ " " ^ filename ^ " -o " ^ outname in
             let () = if opts.debug_build_code then
                 let () = Printf.printf "Writing to filename %s\n" filename in
-                Printf.printf "Compilng with cmd %s\n" cmd
+                Printf.printf "Compilng with cmd %s%!\n" cmd
             else () in
             let () = Out_channel.write_all filename ~data:program_code in
             (* then build the file *)

@@ -14,7 +14,7 @@ simpler.  Those are defined in these include files.
 build time on the command line).  *)
 let fft_synth_includes options = match options.target with
 	| CXX ->  [
-		"clib/fft_synth/lib.h"
+		"#include <clib/fft_synth/lib.h>"
 	]
 
 (* This is a behavioural synthesizer designed to help 'fit' FFT

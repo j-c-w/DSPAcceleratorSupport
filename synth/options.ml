@@ -17,7 +17,7 @@ let get_compiler_flags target =
 	match target with
 	| CXX -> [
 		(* Include the clibs.  *)
-		"-Ilibs/clibs"
+		"-Ilibs"
 	]
 
 type behavioural_synthesizer =

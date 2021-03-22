@@ -102,11 +102,13 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	(* END Round 1 of Tests *)
 
     (* Run post-synthesis *)
-    let post_synthesis_program = run_post_synthesis opts classmap iospec api reduced_programs working_codes in
+    let post_synthesis_programs = run_post_synthesis opts classmap iospec api reduced_programs working_codes in
     (* TODO --- regenerate the code and output the working ones
         in an output file!. *)
+    let working_programs = List.filter_map post_synthesis_programs (fun (p, passing) -> if passing then Some(p) else None) in
 	(* Do some opts? *)
-    (* let () = print_working_code code_files working_codes in *)
+	let working_programs_code = generate_code opts classmap api iospec working_programs in
+    let () = print_working_code opts api working_programs_code in
     let () = Printf.printf "Done!\n" in
     ()
 	)

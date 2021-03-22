@@ -4,6 +4,7 @@ open Yojson.Basic.Util;;
 open Run_definition;;
 open Options;;
 open Utils;;
+open Spec_definition;;
 
 (* Largely, we assume taht j1 and j2 have the same members
 this will sometimes crash and sometimes spuriously go true
@@ -155,14 +156,20 @@ let find_working_code (options:options) generated_executables generated_io_tests
 		res, passed
 	)
 
-let print_working_code files working_list =
-	let working_filenames = List.filter_map (List.zip_exn files working_list) (fun (f, w) ->
-		if w then
-			Some(f)
-		else
-			None
-	) in
+let print_working_code options (apispec: apispec) working_list =
+    let output_dir = options.execution_folder ^ "/output" in
+	let extension = Build_code.get_extension options in
+    let result = Sys.command ("mkdir -p " ^ output_dir) in
+    let () = assert (result = 0) in
+    let numbers = Build_code.generate_file_numbers (List.length working_list) in
+    let fnames = List.map (List.zip_exn working_list numbers) (fun (code, number) ->
+        let filename = output_dir ^ "/option_" ^ number ^ extension in
+        let () = Out_channel.write_all filename ~data:code in
+        filename
+    ) in
 	let () = Printf.printf "Working tests are in the source files for executables %s\n"
-	(String.concat ~sep:"," working_filenames) in
-	let () = Printf.printf "There were %d in total" (List.length working_filenames) in
+	(String.concat ~sep:"," fnames) in
+	let () = Printf.printf "There were %d working in total\n" (List.length fnames) in
+	let all_flags = options.compiler_flags @ apispec.compiler_flags in
+	let () = Printf.printf "Required compiler flags to build are: %s\n" (String.concat ~sep:" " all_flags) in
 	()

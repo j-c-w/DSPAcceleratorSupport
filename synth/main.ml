@@ -15,9 +15,7 @@ let main options classspec_file iospec_file api_file  =
     let api = load_target_api classspec api_file in
 	let () = Printf.printf "Synthesizing...\n" in
     let _ = run_synthesis options classspec iospec api in
-	Printf.printf "json live in is ";
-	Printf.printf "%s\n" iospec_file;
-	Printf.printf "Done!\n";;
+	()
 
 let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions

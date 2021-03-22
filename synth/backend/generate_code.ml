@@ -424,7 +424,7 @@ and generate_output_assign options classmap lenvar_assigns typ out out_prefix =
 let otherimports = String.concat ~sep:"\n" [
     "#include<vector>"; "#include<nlohmann/json.hpp>";
     "#include<fstream>"; "#include<iomanip>";
-	"#include<libs/clib/synthesizer.h";
+	"#include<clib/synthesizer.h>";
     "using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
 ]
 
@@ -478,7 +478,9 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
     (* Generate the actual program --- need to include e.g. any range programs
 	   or behavioural programs.  *)
 	let program_gir = generate_single_gir_body_from options program in
-    let program_string = cxx_generate_from_gir program.typemap program.lenvar_bindings program.gir in
+	(* TODO -- probabloy need to augment the typemap and lenvar bindings with
+	those from the post-behaviour/range checker.  *)
+    let program_string = cxx_generate_from_gir program.typemap program.lenvar_bindings program_gir in
 	let program_includes =
 		String.concat ~sep:"\n" (generate_includes_list_from program) in
 	let ioimports = cxx_generate_imports iospec.required_includes in
