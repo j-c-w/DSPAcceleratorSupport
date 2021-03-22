@@ -2,6 +2,7 @@ open Core_kernel;;
 open Synthesizer_interface;;
 open Program;;
 open Options;;
+open Gir_utils;;
 
 (* Expect one set of IO pairs for each program to consider.  *)
 let run_post_synthesis options classmap iospec apispec programs io_files =
@@ -21,7 +22,7 @@ let run_post_synthesis options classmap iospec apispec programs io_files =
             let () = if options.dump_behavioural_synth then
                 Printf.printf "Behavioural synth used is %s\n" (
                     match post_program with
-                    | Some(x) -> x.program
+                    | Some(x) -> gir_to_string x.program
                     | None -> "None (failed)"
                 )
             else () in

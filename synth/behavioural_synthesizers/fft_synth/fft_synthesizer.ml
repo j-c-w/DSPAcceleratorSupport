@@ -8,6 +8,15 @@ open Options;;
 
 exception FFTSynth of string
 
+(* This uses a few macros etc. to make code generation
+simpler.  Those are defined in these include files.
+(relative to the libs folder, which is included at
+build time on the command line).  *)
+let fft_synth_includes options = match options.target with
+	| CXX ->  [
+		"clib/fft_synth/lib.h"
+	]
+
 (* This is a behavioural synthesizer designed to help 'fit' FFT
 functions to user code.  It's designed to do common things that
 FFT functions forget/choose different behaviour for, like synthesizing
@@ -389,5 +398,6 @@ let fft_synth options classmap typemap variables (gir_program: program) iopairs:
 	| [] -> None
 	| x :: xs ->
 			Some({
-				program = (generate_program_string options gir_program.lenvar_bindings x)
+				includes = (fft_synth_includes options);
+				program = (generate_gir_program options gir_program.lenvar_bindings x)
 			})

@@ -3,6 +3,8 @@ open Fft_synthesizer_definition;;
 open Spec_utils;;
 open Spec_definition;;
 open Options;;
+open Gir;;
+open Gir_utils;;
 
 exception CXXHoleError of string
 
@@ -11,23 +13,22 @@ let generate_ind_name () =
 	ind_name_count := !ind_name_count + 1;
 	"bi_" ^ (string_of_int !ind_name_count)
 
-let fft_generate_cxx_from_dimension (x: dimension_type) =
+let fft_generate_gir_from_dimension (x: dimension_type) =
     match x with
     | EmptyDimension -> raise (CXXHoleError "Dimension too empty")
-    | Dimension([x]) -> (name_reference_to_string x)
+    | Dimension([x]) -> Variable(Name(name_reference_to_string x))
     | Dimension(_) -> raise (CXXHoleError "Dimension too full")
 
-let rec generate_cxx_program lenvar_bindings fft_behaviour =
+let rec generate_gir_program options lenvar_bindings fft_behaviour =
 	match fft_behaviour with
 	| FSConditional(body, cond) ->
-			let condstr = generate_cxx_condition cond in
-			let body_str = generate_cxx_program lenvar_bindings body in
-			"if (" ^ condstr ^ ") {\n" ^
-			body_str ^ "\n}"
+			let cond = generate_gir_condition cond in
+			let body = generate_gir_program options lenvar_bindings body in
+			IfCond(cond, body, EmptyGIR)
 	| FSArrayOp(operator, onvar) ->
-			let vname = generate_cxx_variable onvar in
-			let loop_length = Hashtbl.find_exn lenvar_bindings vname in
-			let length_name = fft_generate_cxx_from_dimension loop_length in
+			let vname = generate_gir_variable onvar in
+			let loop_length = Hashtbl.find_exn lenvar_bindings (variable_reference_to_string vname) in
+			let length_name = fft_generate_gir_from_dimension loop_length in
 			let funname =
 				match operator with
                 (* These are macros defined in the C std lib.  *)
@@ -39,41 +40,40 @@ let rec generate_cxx_program lenvar_bindings fft_behaviour =
 							"ARRAY_DENORM"
 					| FSArrayOpHole -> raise (CXXHoleError "Hole")
 			in
-			let loop_body =
-				funname ^ "(" ^ vname ^ ", " ^ length_name ^ ")" in
-			loop_body
+			let fref = FunctionRef(Name(funname)) in
+			(* These are technically macros, but should
+			end up being the smae.   *)
+			Expression(FunctionCall(
+				fref,
+				VariableList([vname; length_name])
+			))
     | FSSeq(elems) ->
-            String.concat ~sep:";\n" (
-                List.map elems (generate_cxx_program lenvar_bindings)
-            )
+			Sequence(
+				List.map elems (generate_gir_program options lenvar_bindings)
+			)
 	| FSStructureHole -> raise (CXXHoleError "Has a hole")
 
-and generate_cxx_condition cond =
+and generate_gir_condition cond =
 	match cond with
 	| FSGreaterThan(v1, v2) ->
-			let v1_str = generate_cxx_variable v1 in
-			let v2_str = generate_cxx_variable v2 in
-			v1_str ^ " > " ^ v2_str
+			let v1_str = generate_gir_variable v1 in
+			let v2_str = generate_gir_variable v2 in
+			Compare(v1_str, v2_str, GreaterThan)
 	| FSLessThan(v1, v2) ->
-			let v1_string = generate_cxx_variable v1 in
-			let v2_string = generate_cxx_variable v2 in
-			v1_string ^ " < " ^ v2_string
+			let v1_string = generate_gir_variable v1 in
+			let v2_string = generate_gir_variable v2 in
+			Compare(v1_string, v2_string, LessThan)
 	| FSPowerOfTwo(v) ->
-			let v_string = generate_cxx_variable v in
-			(* From https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2 *)
-			"(" ^ v_string ^ " & (" ^ v_string ^ " - 1 )) == 0"
+			let v_string = generate_gir_variable v in
+			Check(v_string, PowerOfTwo)
+
 	| FSConditionalHole ->
 			raise (CXXHoleError "Had a hole")
 
-and generate_cxx_variable v =
+and generate_gir_variable v =
 	match v with
-	| FSVariable(n) -> (name_reference_to_string n)
+	| FSVariable(n) -> Variable(Name(name_reference_to_string n))
 	(* Will have trouble with more complex consts, although
 	   we don't actually need those right now.  *)
-	| FSConstant(v) -> (synth_value_to_string v)
+	| FSConstant(v) -> Constant(v)
 	| _ -> raise (CXXHoleError "Had a hole")
-
-let generate_program_string (options: options) lenvar_bindings synth_prog =
-	match options.target with
-	| CXX ->
-			generate_cxx_program lenvar_bindings synth_prog
