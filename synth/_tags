@@ -12,3 +12,4 @@
 <skeleton>: include
 <utilities>: include
 <tests/**/*>: include
+<program>: include
