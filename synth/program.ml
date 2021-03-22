@@ -3,7 +3,9 @@ open Spec_definition;;
 open Gir;;
 
 type post_behavioural_program = {
-	program: string
+	(* Any includes required for the generated program.  *)
+	includes: string list;
+	program: gir
 }
 
 (* This should be a list of live-in variables, the function
