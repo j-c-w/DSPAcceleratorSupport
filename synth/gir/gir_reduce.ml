@@ -74,6 +74,10 @@ let rec reduce_gir (options: options) gir: gir =
     | Assignment(ton, fromn) ->
             Assignment(ton, reduce_rvalue options fromn)
     | Definition(_) -> gir
+	| IfCond(c, iftrue, iffalse) ->
+			(* Could/should reduce the cond here --- don't think
+			   we generate loads of redundant stuff though. *)
+			IfCond(c, reduce_gir options iftrue, reduce_gir options iffalse)
     | Return(_) -> gir
     | EmptyGIR -> EmptyGIR
     in

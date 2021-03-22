@@ -6,6 +6,7 @@ open Options;;
 open Utils;;
 open Gir;;
 open Program;;
+open Program_utils;;
 
 exception CXXGenerationException of string
 
@@ -135,6 +136,14 @@ let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) (binds: 
     | Expression(expression) ->
 			let pre_code, expr_code = (cxx_generate_from_expression typemap expression) in
 			String.concat [(trim pre_code); expr_code]
+	| IfCond(cond, iftrue, iffalse) ->
+			let pre_cond_code, cond_code = cxx_generate_from_conditional typemap binds cond in
+			let true_code = cxx_generate_from_gir typemap binds iftrue in
+			let false_code = cxx_generate_from_gir typemap binds iffalse in
+			pre_cond_code ^ "\n" ^
+			"if (" ^ cond_code ^ ") {\n" ^
+			true_code ^ "\n} else {\n" ^
+			false_code ^ "\n}"
 	| Return(v) ->
 			"return " ^ (cxx_gir_name_to_string v) ^ ";"
 	| FunctionDef(name, args, body, fun_typtable) ->
@@ -179,6 +188,10 @@ and cxx_generate_from_variable_reference typemap vref =
 			let pre_code, ind_reference = cxx_generate_from_expression typemap ind in
 			let arr_pre_code, arr_reference = cxx_generate_from_variable_reference typemap arr in
 			arr_pre_code ^ "\n" ^ pre_code, arr_reference ^ "[" ^ ind_reference ^ "]"
+	| Constant(synth_value) ->
+			(* TODO --- properly support more complex synth values, e.g. arrays or structs.  *)
+			(* Has empty pre code *)
+			"", (synth_value_to_string synth_value)
 
 and cxx_generate_from_rvalue typemap rvalue =
     match rvalue with
@@ -225,6 +238,45 @@ and cxx_generate_from_vlist typemap vlist =
     | VariableList(nrefs) ->
 		let pre_code, refs = List.unzip (List.map nrefs (cxx_generate_from_variable_reference typemap)) in
         (String.concat ~sep:"\n" pre_code, String.concat ~sep:", " refs)
+and cxx_generate_from_conditional typemap binds cond =
+	match cond with
+	| Check(vref, comparator) ->
+			(* Unary comparators are represented
+			as functions, e.g. REPR(var) *)
+			let vref_pre_code, vref_ref = cxx_generate_from_variable_reference typemap vref in
+			vref_pre_code, (cxx_generate_from_unary_comparator comparator) ^ "(" ^
+			vref_ref ^ ")"
+	| Compare(vref1, vref2, oper) ->
+			(* Again, use a function-like structure, relying
+			on #defines in the clib to provide the appropriate
+			definitions.  *)
+			let vref1_pre_code, vref1_ref = cxx_generate_from_variable_reference typemap vref1 in
+			let vref2_pre_code, vref2_ref = cxx_generate_from_variable_reference typemap vref2 in
+			vref1_pre_code ^ "\n" ^ vref2_pre_code ^ "\n",
+			(cxx_generate_from_binary_comparator oper) ^ "(" ^
+			vref1_ref ^
+			", " ^ vref2_ref ^ ")"
+	| CondOr(c1, c2) ->
+			let c1_pre, c1_code = cxx_generate_from_conditional typemap binds c1 in
+			let c2_pre, c2_code = cxx_generate_from_conditional typemap binds c2 in
+			c1_pre ^ "\n" ^ c2_pre, "(" ^ c1_code ^ ") || (" ^
+			c2_code ^ ")"
+	| CondAnd(c1, c2) ->
+			let c1_pre, c1_code = cxx_generate_from_conditional typemap binds c1 in
+			let c2_pre, c2_code = cxx_generate_from_conditional typemap binds c2 in
+			c1_pre ^ "\n" ^ c2_pre,
+			"(" ^ c1_code ^
+			") && (" ^ c2_code ^ ")"
+and cxx_generate_from_unary_comparator comparator =
+	match comparator with
+	(* Defed in synthesizer.h *)
+	| PowerOfTwo -> "POWER_OF_TWO"
+and cxx_generate_from_binary_comparator comparator =
+	match comparator with
+	| GreaterThan -> "GREATER_THAN"
+	| LessThan -> "LESS_THAN"
+	(* TODO --- perhaps a def of this depends on the type? *)
+	| Equal -> "EQUAL"
 
 (* Some variables are 'dead in', i.e. they don't need to be assigned
 to, just allocated.  This does just the allocation part :) *)
@@ -423,8 +475,12 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
         (String.concat ~sep:"," (cxx_names_to_type_definition program.typemap program.in_variables)) ^
         ") {" 
     in
-    (* Generate the actual program.  *)
+    (* Generate the actual program --- need to include e.g. any range programs
+	   or behavioural programs.  *)
+	let program_gir = generate_single_gir_body_from options program in
     let program_string = cxx_generate_from_gir program.typemap program.lenvar_bindings program.gir in
+	let program_includes =
+		String.concat ~sep:"\n" (generate_includes_list_from program) in
 	let ioimports = cxx_generate_imports iospec.required_includes in
     let apiimports = cxx_generate_imports apispec.required_includes in
     (* And generate the return statement *)
@@ -432,7 +488,7 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
         "return " ^ outv ^ "; }" in
 	let main_func = cxx_main_function options classmap iospec program.lenvar_bindings in
     (* Generate the whole program.  *)
-	String.concat ~sep:"\n" [ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_return; main_func]
+	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_return; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)

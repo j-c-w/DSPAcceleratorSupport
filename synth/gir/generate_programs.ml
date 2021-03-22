@@ -32,6 +32,10 @@ let rec add_index_variables_to_typemap typemap gir =
     (* These have their own typemap. Could do this here
     I suppose, currently no reason to though.   *)
     | FunctionDef(_, _, _, _) -> ()
+	| IfCond(_, iftrue, iffalse) ->
+			let () = add_index_variables_to_typemap typemap iftrue in
+			let () = add_index_variables_to_typemap typemap iffalse in
+			()
     | Return(_) -> ()
 
 let add_all_types_to frommap tomap =

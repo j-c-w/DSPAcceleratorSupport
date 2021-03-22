@@ -142,6 +142,11 @@ and compute_use_def_assign_for_vref vref: use_def_info_variable_reference =
 				uses = index_ud.uses @ refs_ud.uses;
 				maybe_assigns = refs_ud.maybe_assigns
 			}
+	| Constant(v) ->
+			{
+				uses = [];
+				maybe_assigns = []
+			}
 
 let compute_use_def_assign_for_rvalue (rval: rvalue): use_def_info_rval =
 	match rval with
@@ -240,6 +245,16 @@ let rec compute_use_def_assign_for_node typemap gir =
 			assigns = [];
 			gir = gir;
 		}
+	| IfCond(cond, iftrue, iffalse) ->
+			(* Hmm. Think I'm only getting away with
+			 this because it's not being used.  Confusing
+			 what this should be if it's e.g.
+			 half assigned to because I think that the
+			 use of this assumes certain assignment and
+			 half assumes uncertain assignment.  *)
+			(* Need to think hard if we start wanting
+			to schedule this.  *)
+			raise (TopologicalSortException "Can't sort If/Else statements using existing topo sort.  ")
 	| FunctionDef(gir_name, argslist, gir, typmap) ->
 		(* Do not support closures or any of that shit. *)
 		(* This just defines itself and nothing else. *)

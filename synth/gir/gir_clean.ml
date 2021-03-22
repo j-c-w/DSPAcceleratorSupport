@@ -4,6 +4,13 @@ open Gir_utils;;
 
 exception UncleanException of string
 
+let copy_table oldtbl =
+	let newtbl = Hashtbl.create (module String) in
+    let () = ignore(List.map (Hashtbl.keys oldtbl) (fun k ->
+		Hashtbl.add newtbl k (Hashtbl.find_exn oldtbl k)
+	)) in
+    newtbl
+
 let rec gir_double_define_clean_internal deftbl gir =
 	match gir with
 	| Definition(n) ->
@@ -18,6 +25,12 @@ let rec gir_double_define_clean_internal deftbl gir =
 				| Some(otherdef) -> EmptyGIR
 				| None -> gir
 			)
+	| IfCond(cond, iftrue, iffalse) ->
+			(* Need to use copied tables, because definitions
+			in a branch of the if statement won't escape.  *)
+			let newiftrue = gir_double_define_clean_internal (copy_table deftbl) iftrue in
+			let newiffalse = gir_double_define_clean_internal (copy_table deftbl) iffalse in
+			IfCond(cond, newiftrue, newiffalse)
 	| Sequence(girs) ->
 			Sequence(List.map girs (gir_double_define_clean_internal deftbl))
 	| Assignment(_, _) ->
@@ -54,6 +67,11 @@ let rec check_function_calls tbl gir =
     match gir with
     | Definition(_) -> ()
     | Sequence(girs) -> ignore(List.map girs (check_function_calls tbl))
+	| IfCond(cond, iftrue, iffalse) ->
+			let () = check_function_calls_cond tbl cond in
+			let () = check_function_calls tbl iftrue in
+			let () = check_function_calls tbl iffalse in
+			()
     | Assignment(lval, rval) ->
             check_function_calls_rval tbl rval
     | LoopOver(body, _, maxval) ->
@@ -68,6 +86,22 @@ let rec check_function_calls tbl gir =
             ()
     | Return(_) -> ()
     | EmptyGIR -> ()
+and check_function_calls_cond tbl (cond: conditional) =
+	match cond with
+	| Compare(v1, v2, op) ->
+			let () = check_function_calls_vref tbl v1 in
+			let () = check_function_calls_vref tbl v2 in
+			()
+	| Check(v1, op) ->
+			check_function_calls_vref tbl v1
+	| CondOr(e1, e2) ->
+			let () = check_function_calls_cond tbl e1 in
+			let () = check_function_calls_cond tbl e2 in
+			()
+	| CondAnd(e1, e2) ->
+			let () = check_function_calls_cond tbl e1 in
+			let () = check_function_calls_cond tbl e1 in
+			()
 and check_function_calls_rval tbl (rval: rvalue) =
     match rval with
         | Expression(expr) ->
@@ -80,6 +114,7 @@ and check_function_calls_vref tbl v =
     | IndexReference(vref, expr) ->
             let () = check_function_calls_vref tbl vref in
             check_function_calls_expr tbl expr
+	| Constant(_) -> ()
 and check_function_calls_expr tbl expr =
     match expr with
     | VariableReference(vref) -> check_function_calls_vref tbl vref

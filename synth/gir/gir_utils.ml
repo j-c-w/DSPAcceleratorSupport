@@ -18,6 +18,10 @@ let gir_name_equal n1 n2 =
 let rec gir_to_string gir =
 	match gir with
     | Definition(nref) -> "Define " ^ (gir_name_to_string nref)
+	| IfCond(cond, iftrue, iffalse) ->
+			"If(" ^ (conditional_to_string cond) ^ ") {\n" ^
+			(gir_to_string iftrue) ^ "\n} else {\n" ^
+			(gir_to_string iffalse) ^ "\n}"
 	| Sequence(sublist) -> String.concat ~sep:";\n" (List.map sublist gir_to_string)
 	| Assignment(lval, rval) -> (lvalue_to_string lval) ^ " = " ^ (rvalue_to_string rval)
 	| LoopOver(body, ind, limit) ->
@@ -58,6 +62,8 @@ and variable_reference_to_string vref =
     | Variable(nam) -> gir_name_to_string nam
     | MemberReference(mems, girnam) ->
             (variable_reference_to_string mems) ^ "." ^ (gir_name_to_string girnam)
+	| Constant(v) ->
+			synth_value_to_string v
 and varlist_to_string vlist =
 	match vlist with
 	| VariableList(nams) ->
@@ -66,6 +72,29 @@ and function_ref_to_string fref =
 	match fref with
 	| FunctionRef(nam) ->
 			gir_name_to_string nam
+and conditional_to_string cond =
+	match cond with
+	| Compare(v1, v2, comp) ->
+			(variable_reference_to_string v1) ^ " " ^
+			(binary_comparitor_to_string comp) ^ " " ^
+			(variable_reference_to_string v2)
+	| Check(v1, comp) ->
+			(unary_comparator_to_string comp) ^ " " ^
+			(variable_reference_to_string v1)
+	| CondOr(e1, e2) ->
+			"(" ^ (conditional_to_string e1) ^ ") or (" ^
+			(conditional_to_string e2) ^ ")"
+	| CondAnd(e1, e2) ->
+			"(" ^ (conditional_to_string e1) ^ ") and (" ^
+			(conditional_to_string e2) ^ ")"
+and binary_comparitor_to_string comp =
+	match comp with
+	| GreaterThan -> ">"
+	| LessThan -> "<"
+	| Equal -> "="
+and unary_comparator_to_string comp =
+	match comp with
+	| PowerOfTwo -> "PowerOfTwo"
 
 let gir_list_to_string girl =
 	String.concat ~sep:"\nGIR:" (List.map girl gir_to_string)
@@ -76,7 +105,7 @@ let gir_list_list_to_string girll =
 let post_behavioural_to_string pbp =
     match pbp with
     | None -> "None"
-    | Some(prog) -> prog.program
+    | Some(prog) -> gir_to_string prog.program
 
 let program_to_string (program: program) =
     "Function(" ^ (String.concat ~sep:"," program.in_variables) ^ ") {\n" ^
@@ -123,3 +152,5 @@ let rec build_reference_chain parent child =
     | IndexReference(mem, ind) ->
             let subcls = build_reference_chain parent mem in
             IndexReference(subcls, ind)
+	| Constant(c) ->
+			Constant(c)

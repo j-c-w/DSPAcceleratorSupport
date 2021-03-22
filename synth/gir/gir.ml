@@ -24,6 +24,7 @@ and variable_reference =
 	| MemberReference of variable_reference * gir_name
 	(* Variable * index variable *)
 	| IndexReference of variable_reference * expression
+	| Constant of synth_value
 and rvalue =
 	| Expression of expression
 
@@ -32,9 +33,21 @@ and lvalue =
 
 and varlist =
     | VariableList of variable_reference list
+and conditional =
+	| Compare of variable_reference * variable_reference * binary_comparitor
+	| Check of variable_reference * unary_comparator
+	| CondOr of conditional * conditional
+	| CondAnd of conditional * conditional
+and binary_comparitor =
+	| GreaterThan
+	| LessThan
+	| Equal
+and unary_comparator =
+	| PowerOfTwo
 
 and gir =
 	| Definition of gir_name
+	| IfCond of conditional * gir * gir
 	| Sequence of gir list
 	(* This can eitehr assign lists to lists, of variables to
 	   variables.  *)
