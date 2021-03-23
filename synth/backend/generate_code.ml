@@ -274,9 +274,12 @@ and cxx_generate_from_unary_comparator comparator =
 and cxx_generate_from_binary_comparator comparator =
 	match comparator with
 	| GreaterThan -> "GREATER_THAN"
+    | GreaterThanOrEqual -> "GREATER_THAN_OR_EQUAL"
 	| LessThan -> "LESS_THAN"
+    | LessThanOrEqual -> "LESS_THAN_OR_EQUAL"
 	(* TODO --- perhaps a def of this depends on the type? *)
 	| Equal -> "EQUAL"
+    | FloatEqual -> "FLOAT_EQUAL"
 
 (* Some variables are 'dead in', i.e. they don't need to be assigned
 to, just allocated.  This does just the allocation part :) *)

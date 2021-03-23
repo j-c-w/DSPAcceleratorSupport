@@ -40,8 +40,11 @@ and conditional =
 	| CondAnd of conditional * conditional
 and binary_comparitor =
 	| GreaterThan
+    | GreaterThanOrEqual
 	| LessThan
+    | LessThanOrEqual
 	| Equal
+    | FloatEqual
 and unary_comparator =
 	| PowerOfTwo
 
