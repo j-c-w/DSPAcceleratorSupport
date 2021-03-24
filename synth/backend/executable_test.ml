@@ -140,12 +140,6 @@ let find_working_code (options:options) generated_executables generated_io_tests
 							passed=false
 						}
 			in
-			(* Delete the temp output file from this experiment *)
-			let delresult = if (result = 0) && (not options.dump_test_results) then
-                (* only delete if we dont' want to keep the test results.  *)
-                Sys.command ("rm " ^ experiment_outname)
-            else 0 in
-			let () = assert (delresult = 0) in
             same_res
 		) in
 		(* Glue together the results.  *)
