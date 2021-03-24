@@ -5,6 +5,8 @@ open Parse_iospec;;
 open Parse_api;;
 open Parse_classmap;;
 open Options;;
+open Gir;;
+open Program;;
 
 let () = Printexc.record_backtrace true;;
 
@@ -23,8 +25,24 @@ let main iospec_file classspec_file output_file =
     (* TODO --- this needs to be filled with some placeholders
     to indicate that we don't know.  *)
     let emptytbl = Hashtbl.create (module String) in
+    (* Most of these values aren't used since we don't gen
+    the whole program, just the main.  *)
+    let base_program = {
+        in_variables = iospec.livein;
+        gir = EmptyGIR;
+        out_variables = iospec.liveout;
+        range_checker = None;
+        post_behavioural = None;
+        typemap = iospec.typemap;
+        returnvar = None;
+        user_funname = "TODO";
+        generated_funname = "TODO";
+        api_funname = "TODO";
+        lenvar_bindings = emptytbl;
+        fundefs = []
+    } in
 	(* Generate the JSON wrapper: *)
-	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec emptytbl in
+	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec base_program in
 	Out_channel.write_all output_file ~data:code
 
 (* TODO -- use the flag processing also.  *)
