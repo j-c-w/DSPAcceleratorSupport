@@ -59,7 +59,8 @@ type iospec = {
 	execcmd: string;
 	required_includes: string list;
 	typemap: (string, synth_type) Hashtbl.t;
-	rangemap: (string, range_set) Hashtbl.t
+	rangemap: (string, range_set) Hashtbl.t;
+	validmap: (string, range_set) Hashtbl.t
 }
 
 type apispec = {
@@ -71,7 +72,7 @@ type apispec = {
 	required_includes: string list;
     compiler_flags: string list;
 	typemap: (string, synth_type) Hashtbl.t;
-	rangemap: (string, range_set) Hashtbl.t
+	validmap: (string, range_set) Hashtbl.t
 }
 
 type classtype = {

@@ -28,7 +28,8 @@ let load_iospec options classmap filename: iospec =
     let funname = json |> member "funname" |> to_string in
 	let funargs = List.map (json |> member "funargs" |> to_list) (fun j -> j |> to_string) in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
-	let range_tbl = load_rangetable classmap typemap json in
+	let range_tbl = load_rangetable classmap typemap (json |> member "range") in
+	let valid_tbl = load_rangetable classmap typemap (json |> member "valid") in
 	let iospec: iospec = {
 		livein=livein;
 		liveout=liveout;
@@ -38,6 +39,7 @@ let load_iospec options classmap filename: iospec =
 		funargs=funargs;
 		required_includes=required_includes;
 		rangemap = range_tbl;
+		validmap = valid_tbl;
 		returnvar=retvars;
 	} in
 	let () =

@@ -35,16 +35,15 @@ let parse_range typ range_string =
         raise (TypeCheckException "Range for variable doesn't typecheck")
 
 
-let load_rangetable classmap typemap json =
-	let ranged_vars = json |> member "range" in
+let load_rangetable classmap typemap range_field =
     let range_tbl = Hashtbl.create (module String) in
-    let () = match ranged_vars with
+    let () = match range_field with
     | `Null -> ()
     | range_json ->
             let ranged_vars = keys range_json in
             let _ = List.map ranged_vars (fun k ->
             let typof = type_of typemap classmap k in
-            let r = Hashtbl.add range_tbl k (parse_range typof (json |> member "range" |> member k |> to_string)) in
+            let r = Hashtbl.add range_tbl k (parse_range typof (range_field |> member k |> to_string)) in
             let () = match r with
             | `Ok -> ()
             | `Duplicate -> raise (TypeCheckException "Duplicate range def!")

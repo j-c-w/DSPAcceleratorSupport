@@ -14,7 +14,7 @@ let load_target_api classmap filename: apispec =
 	let typemap = load_typemap json (livein @ liveout) in
 	let funname = json |> member "functionname" |> to_string in
 	let funargs = List.map (json |> member "functionargs" |> to_list) to_string in
-	let range_tbl = load_rangetable classmap typemap json in
+	let valid_tbl = load_rangetable classmap typemap (json |> member "valid") in
     (* Compiler flags not required --- empty list of flags if so.
     To be honest, this is a bit of a hack, we'd really like the entire
     thing to be backend independent.  However, it is sane for the calling
@@ -34,5 +34,5 @@ let load_target_api classmap filename: apispec =
 		funargs = funargs;
 		required_includes = required_includes;
         compiler_flags = compiler_flags;
-		rangemap = range_tbl;
+		validmap = valid_tbl;
 	};;
