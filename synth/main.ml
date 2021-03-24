@@ -28,7 +28,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		skip_build dump_test_results debug_test debug_skeleton_flatten
 		stop_before_build only_test debug_gir_reduce debug_comparison
 		all_tests post_synthesis_tool debug_post_synthesis
-        dump_behavioural_synth debug_fft_synthesizer compiler_flags =
+        dump_behavioural_synth debug_fft_synthesizer compiler_flags
+		debug_range_check dump_range_check =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -54,6 +55,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
+        dump_range_check = dump_range_check;
 		dump_generate_gir = dump_generate_gir;
 		dump_generate_program = dump_generate_program;
 		dump_test_results = dump_test_results;
@@ -77,6 +79,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_synth_topology = debug_synth_topology;
 		
 		debug_skeleton_flatten = debug_skeleton_flatten;
+
+		debug_range_check = debug_range_check;
 
 		debug_post_synthesis = debug_post_synthesis;
         debug_fft_synthesizer = debug_fft_synthesizer;
@@ -153,6 +157,9 @@ let stop_before_build =
 let dump_skeletons =
     let doc = "Dump skeletons" in
     Arg.(value & flag & info ["dump-skeletons"] ~docv:"DumpSkeletons" ~doc)
+let dump_range_check =
+	let doc = "Dump Range checks" in
+	Arg.(value & flag & info ["dump-range-check"] ~docv:"DumpRangeCheck" ~doc)
 let dump_assigned_dimensions =
 	let doc = "Dump assigned dimension variables" in
 	Arg.(value & flag & info ["dump-dimensions"] ~docv:"DumpDimensions" ~doc)
@@ -186,6 +193,11 @@ let debug_synth_topology =
 let debug_skeleton_flatten =
 	let doc = "Debug skeleton flatten pass" in
 	Arg.(value & flag & info ["debug-skeleton-flatten"] ~docv:"DebugSkeletonFlatten" ~doc)
+
+(* Debug range passes *)
+let debug_range_check =
+	let doc = "Debug range check generaiton pass" in
+	Arg.(value & flag & info ["debug-range-check"] ~docv:"DebugRangeCheck" ~doc)
 
 (* Debug post synthesis *)
 let debug_post_synthesis =
@@ -245,5 +257,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
     debug_synth_topology $ debug_iospec_manipulator $ skip_build $ dump_test_results $ debug_test $
 	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison $
 	all_tests $ post_synthesis_tool $ debug_post_synthesis
-    $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags)
+    $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags
+	$ debug_range_check $ dump_range_check)
 let () = Term.exit @@ Term.eval (args_t, info)

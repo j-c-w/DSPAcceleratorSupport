@@ -51,6 +51,7 @@ type options = {
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
     dump_skeletons: bool;
+	dump_range_check: bool;
 	dump_generate_gir: bool;
 	dump_generate_program: bool;
 	dump_test_results: bool;
@@ -83,6 +84,9 @@ type options = {
 	debug_post_synthesis: bool;
     debug_fft_synthesizer: bool;
 
+	(* Range check debug *)
+	debug_range_check: bool;
+
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
 }
@@ -110,6 +114,7 @@ let default_options = {
 	(* IR Dumps *)
 	dump_assigned_dimensions = false;
 	dump_skeletons = false;
+	dump_range_check = false;
 	dump_generate_gir = false;
 	dump_generate_program = false;
 	dump_test_results = false;
@@ -141,6 +146,8 @@ let default_options = {
     (* Post synthesis passes debug.  *)
     debug_post_synthesis = false;
     debug_fft_synthesizer = false;
+
+	debug_range_check = false;
 
 	(* Generic debug *)
 	print_synthesizer_numbers = false;
