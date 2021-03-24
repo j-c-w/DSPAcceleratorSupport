@@ -131,7 +131,7 @@ let post_synthesis_tool =
 (* Testing configuration flags.  *)
 let number_of_tests =
     let doc = "Max number of tests to generate.  " in
-    Arg.(value & opt int 10 & info ["number-of-tests"] ~docv:"NumberOfTests" ~doc)
+    Arg.(value & opt int 30 & info ["number-of-tests"] ~docv:"NumberOfTests" ~doc)
 let only_test =
 	let doc = "Only test the testcase with the number specified here
 	(usually to see the output of that test)" in
