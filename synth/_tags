@@ -9,6 +9,7 @@
 <json>: include
 <parsers/**/*>: include
 <range>: include
+<range_checker>: include
 <skeleton>: include
 <utilities>: include
 <tests/**/*>: include
