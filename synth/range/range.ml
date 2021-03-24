@@ -1,6 +1,7 @@
 open Core_kernel;;
 open Range_definition;;
 open Random;;
+open Spec_definition;;
 open Utils;;
 
 exception RangeError of string
@@ -68,6 +69,10 @@ let range_value_from_item i = match i with
 	| RangeInteger(fint) -> RInt(fint)
     | RangeFloat(ffloat) -> RFloat(ffloat)
 
+let range_value_to_item i = match i with
+    | RInt(fint) -> RangeInteger(fint)
+    | RFloat(ffloat) -> RangeFloat(ffloat)
+
 let range_values_range_range rr =
     match rr with
     | RangeItem(i) -> [range_value_from_item i]
@@ -120,3 +125,53 @@ let range_value_set_sort vset =
         | RFloat(a), RFloat(b) -> Float.compare a b
         | _ -> raise (RangeError "Type error")
     )
+
+let range_value_eq v1 v2 =
+	match v1, v2 with
+	| RangeInteger(i), RangeInteger(j) -> i = j
+	| RangeFloat(i), RangeFloat(j) -> Utils.float_equal i j
+	| RangeInteger(_), _ -> false
+	| RangeFloat(_), _ -> false
+
+let range_value_in r v =
+	match r with
+	| RangeItem(i) -> range_value_eq i v
+	| RangeRange(f, t) ->
+			match f, t, v with
+			| RangeInteger(l), RangeInteger(h), RangeInteger(i) ->
+					(i >= l) && (i <= h)
+			| RangeFloat(l), RangeFloat(h), RangeFloat(i) ->
+					((Float.compare l i) <= 0) && ((Float.compare h i) >= 0)
+			| _, _, _ -> raise (RangeError "Type error")
+
+let range_compare v1 v2 =
+	match v1, v2 with
+	| RangeInteger(i1), RangeInteger(i2) ->
+			Int.compare i1 i2
+	| RangeFloat(f1), RangeFloat(f2) ->
+			Float.compare f1 f2
+	| _, _ -> raise (RangeError "Type error")
+
+let range_overlap (lower, higher) (lower2, higher2) =
+	let new_low = if (range_compare lower lower2) = -1 then
+		(* Lower < lower2, so lower2 is the new base *)
+		lower2
+	else lower
+	in
+	let new_high = if (range_compare higher higher2) = 1 then
+		(* higher > higher2, so higher 2 is the new high *)
+		higher2
+	else
+		higher
+	in
+	if (range_compare new_low new_high) = 1 then
+		(* New_low > new_high, so new range is empty.  *)
+		None
+	else
+		Some(RangeRange(new_low, new_high))
+
+let range_value_to_synth_value rvalue =
+	match rvalue with
+	(* TODO --- do we need to do something more sane with widths? *)
+	| RangeInteger(i) -> Int64V(i)
+	| RangeFloat(f) -> Float64V(f)
