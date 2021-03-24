@@ -5,8 +5,8 @@ open Options;;
 exception BuildingException of string
 
 let rec generate_file_numbers upto =
-	if upto = 1 then
-		["1"]
+	if upto = 0 then
+		[]
 	else
 		(string_of_int upto) :: (generate_file_numbers (upto - 1))
 
