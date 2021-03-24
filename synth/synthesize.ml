@@ -52,7 +52,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     (* Generate the possible skeletons to consider *)
     let skeleton_pairs = generate_skeleton_pairs opts classmap iospec api in
 	let () = if opts.dump_skeletons then
-		Printf.printf "%s%s\n" "Skeletons are%! " (flat_skeleton_pairs_to_string skeleton_pairs)
+		Printf.printf "%s%s\n" "Skeletons are%! " (flat_skeleton_pairs_and_ranges_to_string skeleton_pairs)
 	else
 		() in
     let () = if opts.print_synthesizer_numbers then
