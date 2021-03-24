@@ -19,6 +19,7 @@ let run_post_synthesis options classmap iospec apispec programs io_files =
 			}, false
         else
             let post_program = synthesize_post options classmap iospec apispec prog iopairs in
+            let passed = Option.is_some post_program in
             let () = if options.dump_behavioural_synth then
                 Printf.printf "Behavioural synth used is %s\n" (
                     match post_program with
@@ -29,5 +30,5 @@ let run_post_synthesis options classmap iospec apispec programs io_files =
 			{
                 prog with
 				post_behavioural = post_program
-            }, true
+            }, passed
         )
