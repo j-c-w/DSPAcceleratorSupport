@@ -114,11 +114,15 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
         in_variables = iospec.funargs;
         gir = final_body;
         out_variables = iospec.liveout;
+		range_checker = girpair.range_checker;
         post_behavioural = None;
         returnvar = iospec.returnvar;
         typemap = unified_typemap;
 		lenvar_bindings = girpair.lenvar_bindings;
 		fundefs = required_fundefs;
+		user_funname = iospec.funname;
+		api_funname = apispec.funname;
+		generated_funname = iospec.funname ^ "_accel";
     }
 
 (* Given a set of pre/post pairs, fill thsee out into whole programs

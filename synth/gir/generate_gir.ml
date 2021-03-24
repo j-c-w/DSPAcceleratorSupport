@@ -439,7 +439,7 @@ let generate_define_statemens_for options api =
     (* Generate a define for each input variable in the API *)
     List.map sorted_names (fun x -> Definition(x))
 
-let generate_gir_for options (api: apispec) ((pre_skeleton: flat_skeleton_binding), (post_skeleton: flat_skeleton_binding)) =
+let generate_gir_for options (api: apispec) ((range_check, (pre_skeleton: flat_skeleton_binding)), (post_skeleton: flat_skeleton_binding)) =
 	let () = if options.debug_generate_gir then
 		Printf.printf "Starting generation for new skeleton pair\n"
 	else () in
@@ -459,7 +459,7 @@ let generate_gir_for options (api: apispec) ((pre_skeleton: flat_skeleton_bindin
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    List.map res (fun (pre, post) -> (pre, post, table_lenbinds, all_fundefs))
+    List.map res (fun (pre, post) -> (pre, post, table_lenbinds, all_fundefs, range_check))
 
 
 let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) list) =
@@ -467,13 +467,17 @@ let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) li
 		generate_gir_for options api skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
-		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds, funs) ->
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds, funs, range) ->
 			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
 	else () in
-	List.map result (fun (pre, post, bindings, fundefs) ->
+	List.map result (fun (pre, post, bindings, fundefs, range_checker) ->
 		{
 			pre = pre;
             post = post;
 			lenvar_bindings = bindings;
 			fundefs = fundefs;
+			range_checker = Option.map range_checker (fun checker ->
+            {
+                    condition = checker;
+            });
 		})

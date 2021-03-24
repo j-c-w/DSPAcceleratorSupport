@@ -90,8 +90,11 @@ and conditional_to_string cond =
 and binary_comparitor_to_string comp =
 	match comp with
 	| GreaterThan -> ">"
+    | GreaterThanOrEqual -> ">="
 	| LessThan -> "<"
+    | LessThanOrEqual -> "<="
 	| Equal -> "="
+    | FloatEqual -> "~="
 and unary_comparator_to_string comp =
 	match comp with
 	| PowerOfTwo -> "PowerOfTwo"
@@ -102,15 +105,21 @@ let gir_list_to_string girl =
 let gir_list_list_to_string girll =
 	String.concat ~sep:"\n=====\n" (List.map girll gir_list_to_string)
 
-let post_behavioural_to_string pbp =
+let post_behavioural_to_string (pbp: post_behavioural_program option) =
     match pbp with
     | None -> "None"
     | Some(prog) -> gir_to_string prog.program
 
+let range_program_to_string (rp: range_program option) =
+    match rp with
+    | None -> "None"
+    | Some(prog) -> conditional_to_string prog.condition
+
 let program_to_string (program: program) =
     "Function(" ^ (String.concat ~sep:"," program.in_variables) ^ ") {\n" ^
+    "Executed if: " ^ (range_program_to_string program.range_checker) ^ "\n" ^
     (gir_to_string program.gir) ^ "\nPostBehavioural: " ^
-    (post_behavioural_to_string program.post_behavioural) ^
+    (post_behavioural_to_string program.post_behavioural) ^ "\n" ^
     "\n EndFunction (outvars: " ^
     (String.concat ~sep:"," program.out_variables) ^ ")\n"
 
