@@ -138,7 +138,7 @@ let verify_post classmap (iospec: iospec) (apispec: apispec) post_binding_list =
     ()
 
 let verify_skeleton_pairs options classmap (iospec: iospec) (apispec: apispec) pairs =
-    ignore(List.map pairs (fun (pre, post) ->
+    ignore(List.map pairs (fun ((rangecheck, pre), post) ->
         let () = verify_pre classmap iospec apispec pre in
         let () = verify_post classmap iospec apispec post in
         ()

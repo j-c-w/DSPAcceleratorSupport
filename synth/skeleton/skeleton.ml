@@ -8,6 +8,7 @@ open Skeleton_definition;;
 open Skeleton_utils;;
 open Skeleton_filter;;
 open Skeleton_ranger;;
+open Skeleton_range_check;;
 open Utils;;
 
 (* This module deals with generating synthesis skeletons.
@@ -534,7 +535,7 @@ let binding_skeleton options classmap typesets_in typesets_out typesets_define =
 (* Given the input classmap, IOSpec, and APISpec, generate
    the pre- and post-skeletons.  Pair them, and do some
    filtering to check for sanity.  *)
-let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (apispec: apispec): (flat_skeleton_binding * flat_skeleton_binding) list =
+let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (apispec: apispec) =
     (* Get the types of the varios input variables.  *)
     let livein_types = skeleton_type_lookup classmap iospec.typemap iospec.livein in
     let livein_api_types = skeleton_type_lookup classmap apispec.typemap apispec.livein in
@@ -549,10 +550,13 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
 	(* Do range-checks and input any value map functions.  *)
-	let range_checked_pre_skeletons = rangecheck_skeletons options flattened_pre_skeletons iospec.rangemap apispec.rangemap in
-	let range_checked_post_skeletons = rangecheck_skeletons options flattened_post_skeletons apispec.rangemap iospec.rangemap in
+	let range_checked_pre_skeletons = rangecheck_skeletons options flattened_pre_skeletons iospec.rangemap apispec.validmap in
+	let range_checked_post_skeletons = rangecheck_skeletons options flattened_post_skeletons apispec.validmap iospec.rangemap in
+	(* Compute the range checks *)
+	let range_progs = generate_range_checks_skeleton options classmap iospec apispec range_checked_pre_skeletons in
+	let pre_skeletons_with_ranges = List.zip_exn range_progs range_checked_pre_skeletons in
     (* Do skeleton pairing *)
-    let all_skeleton_paris = List.cartesian_product range_checked_pre_skeletons range_checked_post_skeletons in
+    let all_skeleton_paris = List.cartesian_product pre_skeletons_with_ranges range_checked_post_skeletons in
     (* Do joint filtering *)
     let sensible_skeleton_pairs = List.filter all_skeleton_paris skeleton_pair_check in
 	let () = if options.print_synthesizer_numbers || options.debug_generate_skeletons then

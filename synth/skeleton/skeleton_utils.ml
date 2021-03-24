@@ -2,6 +2,7 @@ open Skeleton_definition;;
 open Spec_definition;;
 open Spec_utils;;
 open Core_kernel;;
+open Gir_utils;;
 open Builtin_conversion_functions;;
 
 let one_dim_var_mapping_to_string map =
@@ -116,6 +117,18 @@ let flat_skeleton_pairs_to_string skeletons =
 	String.concat ~sep:"\n" (List.map skeletons (fun (pre, post) ->
 		"Pre: " ^ (flat_skeleton_type_binding_to_string pre) ^
 		"\n\nPost" ^ (flat_skeleton_type_binding_to_string post)))
+
+let flat_skeleton_pairs_and_ranges_to_string skeletons =
+	String.concat ~sep:"\n" (List.map skeletons (fun ((range, pre), post) ->
+		"Pre: " ^ (flat_skeleton_type_binding_to_string pre) ^
+		"\nPost: " ^ (flat_skeleton_type_binding_to_string post) ^
+		(match range with
+		| None -> ""
+		| Some(range) ->
+				"\nRangeCheck: " ^ (conditional_to_string range)
+		)
+	))
+
 
 let typesets_to_string t =
 	String.concat ~sep:") List (" (List.map t (fun t -> (String.concat ~sep:", " (List.map t skeleton_type_to_string))))
