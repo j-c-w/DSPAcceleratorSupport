@@ -140,7 +140,7 @@ let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) (binds: 
 			let pre_cond_code, cond_code = cxx_generate_from_conditional typemap binds cond in
 			let true_code = cxx_generate_from_gir typemap binds iftrue in
 			let false_code = cxx_generate_from_gir typemap binds iffalse in
-			pre_cond_code ^ "\n" ^
+			(trim pre_cond_code ^ "\n") ^
 			"if (" ^ cond_code ^ ") {\n" ^
 			true_code ^ "\n} else {\n" ^
 			false_code ^ "\n}"
@@ -278,7 +278,7 @@ and cxx_generate_from_binary_comparator comparator =
 	| LessThan -> "LESS_THAN"
     | LessThanOrEqual -> "LESS_THAN_OR_EQUAL"
 	(* TODO --- perhaps a def of this depends on the type? *)
-	| Equal -> "EQUAL"
+	| Equal -> "PRIM_EQUAL"
     | FloatEqual -> "FLOAT_EQUAL"
 
 (* Some variables are 'dead in', i.e. they don't need to be assigned
@@ -435,20 +435,20 @@ let otherimports = String.concat ~sep:"\n" [
 thing --- it should respect the specification for taking in
 as args the input JSON file, and putting the outputs of the function
 in the output JSON file.  *)
-let cxx_main_function options classmap (iospec: iospec) lenvar_bindings =
+let cxx_main_function options classmap (iospec: iospec) (program: program) =
 	let json_var_name = "input_json" in
 	let header = "int main(int argc, char **argv) {" in
 	let argreader = "    char *inpname = argv[1]; " in
 	let resdump =   "    char *outname = argv[2]; " in
 	let load_file = "    std::ifstream ifs(inpname); " in
 	let load_json = "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns classmap lenvar_bindings iospec.funargs iospec.livein iospec.typemap json_var_name in
+	let parse_args, argnames = generate_input_assigns classmap program.lenvar_bindings iospec.funargs iospec.livein iospec.typemap json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
-	let call_func = iospec.funname ^ "(" ^ argnames ^ ");" in
+	let call_func = program.generated_funname ^ "(" ^ argnames ^ ");" in
 	let json_out_name = "output_json" in
 	let write_json_def = "    json " ^ json_out_name ^ ";" in
 	let liveouttypes = List.map iospec.liveout (fun i -> Hashtbl.find_exn iospec.typemap i) in
-	let gen_results = generate_output_assigns options classmap lenvar_bindings liveouttypes iospec.liveout "" json_out_name in
+	let gen_results = generate_output_assigns options classmap program.lenvar_bindings liveouttypes iospec.liveout "" json_out_name in
 	let ofstream_create = "std::ofstream out_str(outname); " in
 	let ofstream_write = "out_str << std::setw(4) << " ^ json_out_name ^ " << std::endl;" in
 	let tail = "}" in
@@ -474,7 +474,7 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
 	) in
     (* Generate the function header *)
     let function_header =
-        function_type ^ " " ^ iospec.funname ^ "(" ^
+        function_type ^ " " ^ program.generated_funname ^ "(" ^
         (String.concat ~sep:"," (cxx_names_to_type_definition program.typemap program.in_variables)) ^
         ") {" 
     in
@@ -491,7 +491,7 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
     (* And generate the return statement *)
     let function_return =
         "return " ^ outv ^ "; }" in
-	let main_func = cxx_main_function options classmap iospec program.lenvar_bindings in
+	let main_func = cxx_main_function options classmap iospec program in
     (* Generate the whole program.  *)
 	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_return; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
