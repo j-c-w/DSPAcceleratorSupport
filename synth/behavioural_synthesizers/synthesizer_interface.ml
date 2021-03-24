@@ -66,7 +66,7 @@ let create_unified_typemap h1 h2 =
 (* The iofiles are pairs of files, where one represents the inputs
    and the other represents the outputs.  We need to get
    the configuration parameters from the right one.  *)
-let post_synthesis_io_pairs options apispec iospec iofiles configuration_parameters =
+let post_synthesis_io_pairs options apispec iospec iofiles program configuration_parameters =
 	let result = List.filter_map iofiles (fun (test_results: test_result) ->
 		let () = if options.debug_post_synthesis then
 			Printf.printf "Loading inputs from file %s\n" (test_results.input)
@@ -75,21 +75,32 @@ let post_synthesis_io_pairs options apispec iospec iofiles configuration_paramet
 		(* Load only the values in configuration paramters here: *)
 		let inp_values = load_value_map_from test_results.input in
 		match test_results.measured_output, test_results.true_output with
-		| Some(measured_outps), Some(true_outps) ->
+		| Some(pre_acc_call, measured_outps), Some(true_outps) ->
 			let () = if options.debug_post_synthesis then
 				let () = Printf.printf "Loading true outputs from file %s\n" (measured_outps) in
 				Printf.printf "Loading gened outputs from file %s\n" (true_outps)
 			else () in
 			let outp_values = load_value_map_from measured_outps in
 			let true_outp_values = load_value_map_from true_outps in
+			(* let pre_accel_call_values = load_value_map_from pre_acc_call in *)
 			let _ = List.map configuration_parameters (fun v ->
 				Hashtbl.add outp_values v (Hashtbl.find_exn inp_values v)
 			) in
 			(* ((inputs, configs), required results) *)
-			Some({
-				input=outp_values;
-				output=true_outp_values
-			})
+			(* Only use this for behavioural synthesis if it passes the range
+			   checker.  *)
+			(* This doesn't use the valid in range of the accelerator,
+			but rather the range detection pass inserted by the
+			range_check_synth pass.  *)
+			(* if inputs_in_range program pre_accel_call_values then *)
+				Some({
+					input=outp_values;
+					output=true_outp_values
+				})
+			(* else *)
+				(* Values that fail the range check
+				won't be used for behavioural synthesis.  *)
+				(* None *)
 		| None, None ->
 			(* If they both failed, we just don't need to
 			do anything.  *)
@@ -146,7 +157,7 @@ let synthesize_post (options: options) classmap (iospec: iospec) (apispec: apisp
 	(* The type of the function we want to synthesize is:
 		(iospec.liveout * config_params) -> iospec.liveout *)
 	(* Hash type ((synth_value list * synth_value list) * synth_value list) list *)
-    let io_pairs = post_synthesis_io_pairs options apispec iospec io_files configuration_parameters in
+    let io_pairs = post_synthesis_io_pairs options apispec iospec io_files program configuration_parameters in
     (* create the unified typemaps.  *)
     (* TODO _-- REALLy need to handle name clashes --- perhaps
        by prefixing things? *)

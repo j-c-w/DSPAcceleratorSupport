@@ -2,6 +2,7 @@ open Core_kernel;;
 open Gir;;
 open Gir_reduce;;
 open Program;;
+open Spec_definition;;
 
 exception ProgramException of string
 
@@ -48,7 +49,44 @@ let insert_conditional_call options gir (program: program) =
             )
     | None -> gir
 
-let generate_single_gir_body_from options program =
+(* This inserts a call into a function to dump the vlaues of the variables
+   that are live in to the function.  *)
+(* It should be done before the range insertion, because it needs
+	to find the function call and insert the dump call so that
+	it is called /every/ time.  *)
+(* Various backend passes rely on this, and I'm imagining that any
+pre-behavioural synthesis will also rely on this. *)
+let insert_dump_intermediates_call apispec callname gir program =
+	let inserted = ref false in
+	let result = match gir with
+	| Sequence(elems) ->
+			Sequence(List.concat(
+				List.map elems (fun elem ->
+					match elem with
+						| (Expression(FunctionCall(FunctionRef(Name(n)), args))) as fcall ->
+							(* TODO --- need to handle assignments
+							for non-void accelerator functions.  *)
+							if (String.compare n program.api_funname) = 0 then
+								let () = inserted := true in
+								(* This is the right call --- insert right
+								before. *)
+								Expression(FunctionCall(FunctionRef(Name(callname)),
+									VariableList(
+										List.map apispec.livein (fun n ->
+											Variable(Name(n))
+										)
+									)
+								)) :: [fcall]
+							else
+								[fcall]
+						| other -> [other]
+			)))
+	| _ -> raise (ProgramException "Expected outer structure to be a sequence!")
+	in
+	let () = assert(!inserted) in
+	result
+
+let generate_single_gir_body_from options apispec dump_intermediates program =
     (* Merge all the components into a single GIR representation for
        the function body.  *)
 	(* WARNING: We don't deal with stuff like returns here right
@@ -65,7 +103,16 @@ let generate_single_gir_body_from options program =
 			| None -> EmptyGIR
 		)
 	])) in
-    insert_conditional_call options post_behavioural_addition program
+	(* If we require the intermediate output, e.g. after the array
+	output assignments, then this flag will insert a call to the
+	pre accel dump function right before the call to the accelerator.  *)
+	let intermediate_dump_addition =
+		if dump_intermediates then
+			insert_dump_intermediates_call apispec options.pre_accel_dump_function post_behavioural_addition program
+		else
+			post_behavioural_addition
+	in
+    insert_conditional_call options intermediate_dump_addition program
 
 let generate_includes_list_from program =
 	match program.post_behavioural with

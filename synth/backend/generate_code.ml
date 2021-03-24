@@ -428,35 +428,62 @@ let otherimports = String.concat ~sep:"\n" [
     "#include<vector>"; "#include<nlohmann/json.hpp>";
     "#include<fstream>"; "#include<iomanip>";
 	"#include<clib/synthesizer.h>";
+    "char *output_file; ";
+	"char *pre_accel_dump_file; // optional dump file. ";
     "using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
 ]
+
+(* Generate a dump function that dumps vnames into the file stored in
+the variable filename.  argnames must be a superset of vnames,
+and should contain auxiliary things that don't need to be dumped,
+e.g. length parameters.  *)
+let generate_dump_function options classmap (program: program) filename argnames vnames typemap funname =
+	let header = "void " ^ funname ^ "(" ^ (String.concat ~sep:", " (cxx_names_to_type_definition typemap argnames)) ^ ") {\n" in
+	let json_out_name = "output_json" in
+	let write_json_def = "    json " ^ json_out_name ^ ";" in
+	let types = List.map vnames (fun i -> Hashtbl.find_exn typemap i) in
+	let gen_results = generate_output_assigns options classmap program.lenvar_bindings types vnames "" json_out_name in
+	let ofstream_create = "std::ofstream out_str(" ^ filename ^ "); " in
+	let ofstream_write = "out_str << std::setw(4) << " ^ json_out_name ^ " << std::endl;" in
+	let tail = "}" in
+	String.concat ~sep:"\n" [
+		header; write_json_def; gen_results; ofstream_create; ofstream_write; tail
+	]
 
 (* Given the IOSpec, generate the main function required to actually run this
 thing --- it should respect the specification for taking in
 as args the input JSON file, and putting the outputs of the function
 in the output JSON file.  *)
-let cxx_main_function options classmap (iospec: iospec) (program: program) =
+let cxx_main_function options classmap (iospec: iospec) dump_intermediates (program: program) =
 	let json_var_name = "input_json" in
 	let header = "int main(int argc, char **argv) {" in
-	let argreader = "    char *inpname = argv[1]; " in
-	let resdump =   "    char *outname = argv[2]; " in
-	let load_file = "    std::ifstream ifs(inpname); " in
-	let load_json = "    json " ^ json_var_name ^ " = json::parse(ifs);" in
+	let argreader =      "    char *inpname = argv[1]; " in
+	let resdump =        "    output_file = argv[2]; " in
+	let pre_accel_dump = if dump_intermediates then
+		"    pre_accel_dump_file = argv[3];"
+	else
+		(* Only load the pre_accel_dump_file frmo the args
+		if we are using dump intermediates -- understanably
+		in the final output we don't want to have a random
+		dumpfile created... *)
+		""
+	in
+	let load_file =      "    std::ifstream ifs(inpname); " in
+	let load_json =      "    json " ^ json_var_name ^ " = json::parse(ifs);" in
 	let parse_args, argnames = generate_input_assigns classmap program.lenvar_bindings iospec.funargs iospec.livein iospec.typemap json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let call_func = program.generated_funname ^ "(" ^ argnames ^ ");" in
-	let json_out_name = "output_json" in
-	let write_json_def = "    json " ^ json_out_name ^ ";" in
-	let liveouttypes = List.map iospec.liveout (fun i -> Hashtbl.find_exn iospec.typemap i) in
-	let gen_results = generate_output_assigns options classmap program.lenvar_bindings liveouttypes iospec.liveout "" json_out_name in
-	let ofstream_create = "std::ofstream out_str(outname); " in
-	let ofstream_write = "out_str << std::setw(4) << " ^ json_out_name ^ " << std::endl;" in
+	let output_writing_function =
+		generate_dump_function options classmap program "output_file" iospec.funargs iospec.liveout iospec.typemap "write_output"
+	in
+	let output_write_call =
+        "write_output(" ^ (String.concat ~sep:", " iospec.funargs) ^ ");"
+	in
 	let tail = "}" in
-	String.concat ~sep:"\n" [header; argreader; resdump; load_file; load_json; parse_args;
-	call_func; write_json_def; gen_results; ofstream_create; ofstream_write;
-	tail]
+    String.concat ~sep:"\n" [output_writing_function; ""; header; argreader; resdump; pre_accel_dump; load_file; load_json; parse_args;
+	call_func; output_write_call; tail]
 
-let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec) program =
+let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec) dump_intermediates program =
     (* C++ only allows for single return values.  *)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
@@ -465,12 +492,18 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
         | None -> "void", ""
         | Some(x) -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap x), x
     in
+	let intermediate_dump_function =
+		if dump_intermediates then
+			[generate_dump_function options classmap program "pre_accel_dump_file" apispec.livein apispec.livein apispec.typemap options.pre_accel_dump_function]
+		else []
+	in
 	(* Generate the required helper functions.  *)
 	let helper_funcs = String.concat ~sep:"\n" (
 		(* Note that the typemap and lenvar bindings aren't
 		(/shouldn't be) used in this call anyway, they're replaced
 		by the ones in the program unit. *)
-		List.map program.fundefs (cxx_generate_from_gir program.typemap program.lenvar_bindings)
+		(List.map program.fundefs (cxx_generate_from_gir program.typemap program.lenvar_bindings))
+		@ (intermediate_dump_function)
 	) in
     (* Generate the function header *)
     let function_header =
@@ -480,7 +513,7 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
     in
     (* Generate the actual program --- need to include e.g. any range programs
 	   or behavioural programs.  *)
-	let program_gir = generate_single_gir_body_from options program in
+	let program_gir = generate_single_gir_body_from options apispec dump_intermediates program in
 	(* TODO -- probabloy need to augment the typemap and lenvar bindings with
 	those from the post-behaviour/range checker.  *)
     let program_string = cxx_generate_from_gir program.typemap program.lenvar_bindings program_gir in
@@ -491,16 +524,16 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
     (* And generate the return statement *)
     let function_return =
         "return " ^ outv ^ "; }" in
-	let main_func = cxx_main_function options classmap iospec program in
+	let main_func = cxx_main_function options classmap iospec dump_intermediates program in
     (* Generate the whole program.  *)
 	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_return; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)
 
-let generate_code (options: options) classmap apispec (iospec: iospec) (programs: program list) =
+let generate_code (options: options) classmap apispec (iospec: iospec) dump_intermediates (programs: program list) =
 	let codes = match options.target with
-	| CXX -> List.map programs (generate_cxx options classmap apispec iospec)
+	| CXX -> List.map programs (generate_cxx options classmap apispec iospec dump_intermediates)
 	in
 	let () =
 		if options.dump_generate_program then

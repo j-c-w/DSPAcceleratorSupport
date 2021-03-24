@@ -78,7 +78,8 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     (* Do some filtering pre-generation? *)
 	(* Generate some code.  *)
 	(* START ROUND 1 Of Tests *)
-	let generated_code = generate_code opts classmap api iospec reduced_programs in
+    (* True means dump intermediates  --- needed for later synthesis rounds.  *)
+	let generated_code = generate_code opts classmap api iospec true reduced_programs in
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Number of codes generated is %d%!\n" (List.length generated_code)
 	else () in
@@ -107,7 +108,8 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
         in an output file!. *)
     let working_programs = List.filter_map post_synthesis_programs (fun (p, passing) -> if passing then Some(p) else None) in
 	(* Do some opts? *)
-	let working_programs_code = generate_code opts classmap api iospec working_programs in
+    (* Do not dump intermediates in the final result! *)
+	let working_programs_code = generate_code opts classmap api iospec false working_programs in
     let () = print_working_code opts api working_programs_code in
     let () = Printf.printf "Done!\n" in
     ()

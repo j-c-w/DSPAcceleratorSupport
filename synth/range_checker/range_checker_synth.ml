@@ -149,6 +149,10 @@ let generate_check_for options var accel_valid_analysis input_range_analysis inp
 			(* If none are set, we can't do the analysis.  *)
 			None
 
+(* Note that these ranges have to be over the same variables
+ --- we use the accelerator input variables, since we have
+ a prospective transformation from the user code variables
+ to the accelerator input variables.  *)
 let generate_range_check options vars accel_valid input_range input_valid =
 	let wrapped_vars = List.map vars (fun var -> Variable(Name(var))) in
 	let range_checks: conditional list = List.filter_map wrapped_vars (fun var ->

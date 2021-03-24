@@ -7,6 +7,7 @@ type run_result =
 type test_result = {
 	input: string;
 	true_output: string option;
-	measured_output: string option;
+	(* Intermediate results * outputs *)
+	measured_output: (string * string) option;
 	passed: bool;
 }

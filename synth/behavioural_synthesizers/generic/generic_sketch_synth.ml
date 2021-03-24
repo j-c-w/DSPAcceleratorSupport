@@ -26,8 +26,8 @@ class virtual ['a] synth_manipulator =
 
 let generate_options options sketch_utils sketches =
 	let result = sketch_utils#fill_holes sketches in
-    let () = Printf.printf "Running gen options\n" in
 	let () = if options.debug_post_synthesis then
+		let () = Printf.printf "Running gen options\n" in
         let () = Printf.printf "Options are %s\n" (sketch_utils#list_to_string result) in
         Printf.printf "Number of options is %d%!\n" (List.length result)
     else () in

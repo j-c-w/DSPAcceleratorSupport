@@ -42,7 +42,7 @@ let main iospec_file classspec_file output_file =
         fundefs = []
     } in
 	(* Generate the JSON wrapper: *)
-	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec base_program in
+	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec false base_program in
 	Out_channel.write_all output_file ~data:code
 
 (* TODO -- use the flag processing also.  *)

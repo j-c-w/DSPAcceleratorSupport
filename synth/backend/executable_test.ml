@@ -90,11 +90,14 @@ let find_working_code (options:options) generated_executables generated_io_tests
 		let res = List.map tests_and_results (fun (testin, testout) ->
 			(* Get an output name for this test.  *)
 			let experiment_outname = testin ^ "_outtmp_" ^ (string_of_int test_no) ^ ".json" in
+			(* Also get the output name for the intermediate
+			(pre accelerator call) variable values.  *)
+			let pre_accel_variables_outname = testin ^ "_outtmp_pre_accel_" ^ (string_of_int test_no) ^ ".json" in
 			(* Run the program on this test input.  *)
 			(* TODO --- maybe we should time this out?  Less
 			clear whether we need that here than we did with
 			the user code (where we also don't timeout) *)
-			let cmd = execname ^ " " ^ testin ^ " " ^ experiment_outname in
+			let cmd = execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
 			let () = if options.debug_test then
 				Printf.printf "Running test command %s\n" cmd
 			else () in
@@ -117,7 +120,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
 					{
 						input=testin;
 						true_output=None;
-						measured_output=Some(experiment_outname);
+						measured_output=Some((pre_accel_variables_outname, experiment_outname));
 						passed=false
 					}
 			| RunSuccess(outf) ->
@@ -125,7 +128,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
 						{
 							input=testin;
 							true_output=Some(outf);
-							measured_output=Some(experiment_outname);
+							measured_output=Some((pre_accel_variables_outname, experiment_outname));
 							passed=(compare_outputs options experiment_outname outf)
 						}
 					else
@@ -139,6 +142,12 @@ let find_working_code (options:options) generated_executables generated_io_tests
 							measured_output=None;
 							passed=false
 						}
+			in
+			let () =
+				if options.dump_test_results then
+					let () = Printf.printf "Executbale %s and test %s had result %b\n" (execname) (same_res.input) (same_res.passed) in
+					()
+				else ()
 			in
             same_res
 		) in
