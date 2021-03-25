@@ -12,6 +12,7 @@ let ident = ['a'-'z''A'-'Z''_'][':''<''>''a'-'z''A'-'Z''_''0'-'9']*
 rule read =
 	parse
 	| white {read lexbuf }
+	| "bool" {BOOL}
 	| "int16" {INT16}
 	| "int32" {INT32}
 	| "int64" {INT64}

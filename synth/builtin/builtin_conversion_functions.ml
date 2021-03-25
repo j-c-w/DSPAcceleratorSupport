@@ -42,10 +42,12 @@ let permutationConversionOptions r1 r2 =
 	let value_set_r1 = range_values r1 in
 	let value_set_r2 = range_values r2 in
     let fromtype = match range_type r1 with
+	| RangeBoolType -> Bool
     | RangeIntegerType -> Int32
     | RangeFloatType -> Float32
     in
     let totype = match range_type r2 with
+	| RangeBoolType -> Bool
     | RangeIntegerType -> Int32
     | RangeFloatType -> Float32
     in

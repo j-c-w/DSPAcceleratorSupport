@@ -20,6 +20,7 @@ let dep_list_to_string dlist =
 
 let rec get_dependencies_for classmap typ =
 	match typ with
+	| Bool -> []
 	| Int16 -> []
 	| Int32 -> []
 	| Int64 -> []

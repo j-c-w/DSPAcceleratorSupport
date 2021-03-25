@@ -51,6 +51,7 @@ and compare_elts options v1 v2 =
 	(* TODO -- may need to make this more flexible ---
 	FFTSynth has some crappiness around dealing with
 	precise widths.  *)
+	| BoolV(b1), BoolV(b2) -> b1 = b2
     | Int16V(e1), Int16V(e2) -> e1 = e2
     | Int32V(e1), Int32V(e2) -> e1 = e2
     | Int64V(e1), Int64V(e2) -> e1 = e2

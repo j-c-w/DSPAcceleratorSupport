@@ -41,6 +41,7 @@ let dimvar_list_list_equal m1 m2 =
 let skeleton_type_to_string stype =
 	match stype with
 	| SInt(name) -> "SInt(" ^ (name_reference_to_string name) ^ ")"
+	| SBool(name) -> "SBool(" ^ (name_reference_to_string name) ^ ")"
 	| SFloat(name) -> "SFloat(" ^ (name_reference_to_string name) ^ ")"
 
 let rec skeleton_dimension_group_type_to_string stype =

@@ -16,6 +16,7 @@ type name_reference =
 
 (* This is the way that the type stream is passed in.  *)
 type synth_type =
+	| Bool
 	| Int16 | Int32 | Int64
 	| Float16 | Float32 | Float64
 	| Array of synth_type * dimension_type
@@ -31,6 +32,7 @@ and dimension_type =
 	(* TODO --- Support dimension types with single options.  *)
 
 type synth_value =
+	| BoolV of bool
     | Int16V of int
     | Int32V of int
     | Int64V of int

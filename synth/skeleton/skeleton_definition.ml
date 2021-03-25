@@ -26,6 +26,7 @@ type dimvar_mapping =
 type skeleton_type =
 	(* Base types *)
 	| SInt of name_reference
+	| SBool of name_reference
 	| SFloat of name_reference
 and skeleton_dimension_group_type =
 	(* Dimension types -- we don't give these names directly.  *)

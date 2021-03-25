@@ -69,6 +69,7 @@ let dimension_type_equal d1 d2 = match d1, d2 with
 
 let rec synth_type_to_string t =
     match t with
+	| Bool -> "bool"
     | Int16 -> "int16"
     | Int32 -> "int32"
     | Int64 -> "int64"
@@ -83,6 +84,7 @@ let rec synth_type_to_string t =
 
 let rec synth_type_equal s1 s2 =
 	match s1, s2 with
+	| Bool, Bool -> true
 	| Int16, Int16 -> true
 	| Int32, Int32 -> true
 	| Int64, Int64 -> true
@@ -102,6 +104,7 @@ let rec synth_type_equal s1 s2 =
 
 let rec synth_value_to_string value =
     match value with
+	| BoolV(v) -> string_of_bool v
     | Int16V(v) -> string_of_int v
     | Int32V(v) -> string_of_int v
     | Int64V(v) -> string_of_int v
@@ -120,6 +123,7 @@ let synth_value_from_range_value rvalue =
     match rvalue with
     | RInt(v) -> Int32V(v)
     | RFloat(v) -> Float32V(v)
+	| RBool(v) -> BoolV(v)
 
 let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in
@@ -191,6 +195,11 @@ let is_float_type typ =
 	| Float64 -> true
 	| _ -> false
 
+let is_bool_type typ =
+	match typ with
+	| Bool -> true
+	| _ -> false
+
 let is_integer_type typ =
 	match typ with
 	| Int16 -> true
@@ -237,3 +246,17 @@ let array_from_value v =
     match v with
     | ArrayV(vs) -> Some(vs)
     | _ -> None
+
+let is_float_value v =
+	match v with
+	| Float16V(_) -> true
+	| Float32V(_) -> true
+	| Float64V(_) -> true
+	| _ -> false
+
+let is_int_value v =
+	match v with
+	| Int16V(_) -> true
+	| Int32V(_) -> true
+	| Int64V(_) -> true
+	| _ -> false

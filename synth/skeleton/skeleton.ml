@@ -20,6 +20,7 @@ exception SkeletonGenerationException of string
 let name_refs_from_skeleton sk =
 	match sk with
 	| SInt(nr) -> nr
+	| SBool(nr) -> nr
 	| SFloat(nr) -> nr
 
 (* THis function turns a SType into a list of types
@@ -53,6 +54,7 @@ let rec big_intersection lists =
 let variable_in_type var typ =
 	match var, typ with
 	| n1, SInt(n2) -> (name_reference_equal n1 n2)
+	| n1, SBool(n2) -> (name_reference_equal n1 n2)
 	| n1, SFloat(n2) -> (name_reference_equal n1 n2)
 
 let dimension_types_to_names d =
@@ -122,6 +124,7 @@ let add_name_nr name ty =
 let rec add_name name ty =
     match ty with
     | SType(SInt(nr)) -> SType(SInt(add_name_nr name nr))
+	| SType(SBool(nr)) -> SType(SBool(add_name_nr name nr))
     | SType(SFloat(nr)) -> SType(SFloat(add_name_nr name nr))
     | STypes(subtyps) ->
             STypes(List.map subtyps (add_name name))
@@ -170,6 +173,7 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
 	| Unit -> raise (SkeletonGenerationException "Can't Unit typesets")
 	| Fun(_, _) -> raise (SkeletonGenerationException "Cannot generate typesets from a fun")
 	(* Everything else goes to itself.  *)
+	| Bool -> SType(SBool(name_from_opt inpname))
 	| Int16 -> SType(SInt(name_from_opt inpname))
 	| Int32 -> SType(SInt(name_from_opt inpname))
 	| Int64 -> SType(SInt(name_from_opt inpname))
@@ -218,7 +222,9 @@ let binding_check binding = true
 			in a from_t.  *)
 let rec compatible_types from_t to_t: bool =
 	match from_t, to_t with
+	(* TODO -- handle cross-conversion between bool and int? *)
 	| SInt(nfrom), SInt(nto) -> true
+	| SBool(nfrom), SBool(nto) -> true
 	| SFloat(nfrom), SFloat(nto) -> true
 	(* There are all kinds of other conversions that could be matched,
 	   just need to add them in here.  *)
@@ -450,6 +456,12 @@ let rec define_bindings_for valid_dimvars vs =
 					fromvars_index_nesting = [[]];
                     valid_dimensions_set = []
                 }]
+		| SType(SBool(n)) ->
+				[{
+					tovar_index_nesting = [name_reference_base_name n];
+					fromvars_index_nesting = [[]];
+					valid_dimensions_set = []
+				}]
 		| SType(SFloat(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];

@@ -23,16 +23,9 @@ let lookup tbl names =
 
 let valid_lenvar tbl name =
     match name with
-    | Name(varname) -> (
+    | Name(varname) ->
         let var = debug_find_exn tbl varname in
-        match var with
-        | Int16 -> true
-        | Int32 -> true
-        | Int64 -> true
-        (* Mabye have a case for array in here? 
-           Or a sub-match on classes?*)
-        | _ -> false
-        )
+		is_integer_type var
     | StructName(_) -> raise (AssignDimensionsException "Didn't know how to deal with a struct name here")
     | AnonymousName -> raise (AssignDimensionsException "Don't know how to deal with anon name here")
 

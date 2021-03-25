@@ -2,6 +2,7 @@
 	open Spec_definition
 %}
 
+%token BOOL
 %token INT16
 %token INT32
 %token INT64
@@ -28,6 +29,7 @@ t:
  | tsub; EOF {$1};
 
 tsub:
+ | BOOL { Bool }
  | INT16 { Int16 }
  | INT32 { Int32 }
  | INT64 { Int64 }

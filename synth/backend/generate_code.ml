@@ -33,6 +33,7 @@ let generate_generic_tmp () =
 (* Type signatures use pointer formatting.  *)
 let rec cxx_type_signature_synth_type_to_string typ =
     match typ with
+	| Bool -> "bool"
     | Int16 -> "short"
     | Int32 -> "int"
     | Int64 -> "long int"
@@ -48,6 +49,7 @@ let rec cxx_type_signature_synth_type_to_string typ =
 (*  Type signatirue s using vector formatting.  *)
 let rec cxx_vectors_type_signature_synth_type_to_string typ =
     match typ with
+	| Bool -> "bool"
     | Int16 -> "short"
     | Int32 -> "int"
     | Int64 -> "long int"

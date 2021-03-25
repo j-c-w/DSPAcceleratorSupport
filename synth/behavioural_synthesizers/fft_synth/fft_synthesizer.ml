@@ -190,7 +190,7 @@ and fill_array_op_hole filler v =
 and fill_variable filler v = 
     filler v
 
-let hole_options options array_variables int_variables float_variables variable_type =
+let hole_options options bool_variables array_variables int_variables float_variables variable_type =
     let result = match variable_type with
     | FSIntConstantHole -> List.map fs_int_constants (fun x -> FSConstant(x))
     | FSFloatConstantHole -> List.map fs_float_constants (fun x -> FSConstant(x))
@@ -340,18 +340,19 @@ too.  Want to think of a better way of doing this.  *)
 let rec split_variables classmap typemap variables =
     (* Get the type of each variable.  *)
     let types = List.map variables (fun v -> Hashtbl.find_exn typemap (name_reference_to_string v)) in
-    let arr_vars, i_vars, f_vars, s_vars = List.fold (List.zip_exn types variables) ~init:([], [], [], [])
-        ~f:(fun (a, i, f, s) -> fun (t, v) ->
+	let b_vars, arr_vars, i_vars, f_vars, s_vars = List.fold (List.zip_exn types variables) ~init:([], [], [], [], [])
+        ~f:(fun (b, a, i, f, s) -> fun (t, v) ->
             match t with
-            | Int16 -> (a, v :: i, f, s)
-            | Int32 -> (a, v :: i, f, s)
-            | Int64 -> (a, v :: i, f, s)
-            | Float16 -> (a, i, v :: f, s)
-            | Float32 -> (a, i, v :: f, s)
-            | Float64 -> (a, i, v :: f, s)
-            | Struct(nm) -> (a, i, f, (v, nm) :: s)
+			| Bool -> (v :: b, a, i, f, s)
+            | Int16 -> (b, a, v :: i, f, s)
+            | Int32 -> (b, a, v :: i, f, s)
+            | Int64 -> (b, a, v :: i, f, s)
+            | Float16 -> (b, a, i, v :: f, s)
+            | Float32 -> (b, a, i, v :: f, s)
+            | Float64 -> (b, a, i, v :: f, s)
+            | Struct(nm) -> (b, a, i, f, (v, nm) :: s)
             (* TODO -- perhaps we should support higher dimensions? *)
-            | Array(subty, _) -> (v :: a, i, f, s)
+            | Array(subty, _) -> (b, v :: a, i, f, s)
             | Unit -> raise (FFTSynth "Unit not supproted")
             | Fun(_, _) -> raise (FFTSynth "Higher order functions not supported")
         ) in
@@ -359,19 +360,20 @@ let rec split_variables classmap typemap variables =
         let struct_metadata = Hashtbl.find_exn classmap structname in
         let structtypemap = get_class_typemap struct_metadata in
         let structmembers = List.map (get_class_members struct_metadata) (fun mem -> Name(mem)) in
-        let (sarr, si, sf) = split_variables classmap structtypemap structmembers in
+        let (sb, sarr, si, sf) = split_variables classmap structtypemap structmembers in
 
         (* We need to prepend the structname to everything here.  *)
         let prepend_sname = name_reference_concat varname in
-        (List.map sarr prepend_sname,
+        (List.map sb prepend_sname,
+		 List.map sarr prepend_sname,
          List.map si prepend_sname,
          List.map sf prepend_sname
         )
     ) in
     (* Probably could be done in a more scalable manner.  Anyway... *)
-    List.fold struct_name_types ~init:(arr_vars, i_vars, f_vars) ~f:(fun (a, i, f) ->
-            fun (a2, i2, f2) ->
-                (a @ a2, i @ i2, f @ f2)
+    List.fold struct_name_types ~init:(b_vars, arr_vars, i_vars, f_vars) ~f:(fun (b, a, i, f) ->
+            fun (b2, a2, i2, f2) ->
+                (b @ b2, a @ a2, i @ i2, f @ f2)
     )
 
 class fft_synth_manipulator hole_opts =
@@ -389,8 +391,8 @@ class fft_synth_manipulator hole_opts =
 
 (* Now, run a generic sketch-based synthesis from these sketches. *)
 let fft_synth options classmap typemap variables (gir_program: program) iopairs: post_behavioural_program option =
-    let array_variables, int_variables, float_variables = split_variables classmap typemap variables in
-    let hole_opts = hole_options options array_variables int_variables float_variables in
+    let bool_variables, array_variables, int_variables, float_variables = split_variables classmap typemap variables in
+    let hole_opts = hole_options options bool_variables array_variables int_variables float_variables in
     let fft_manip = ((new fft_synth_manipulator hole_opts) :> (fs_structure Generic_sketch_synth.synth_manipulator)) in
     let prog_opts = Generic_sketch_synth.generate_options options fft_manip fs_sketches in
 	let valid_programs = Generic_sketch_synth.eval options fft_manip prog_opts iopairs in

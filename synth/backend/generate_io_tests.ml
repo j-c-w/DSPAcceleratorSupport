@@ -27,6 +27,12 @@ let generate_int_within_range rangemap namestring =
             | RInt(v) -> v
             | _ -> raise (TypeException "Unexpected non-int result to int query")
 
+let generate_bool_within_range rangemap namestring =
+	match Hashtbl.find rangemap namestring with
+	| None -> (Random.int (1)) = 1
+	| Some(range) ->
+			raise (TypeException "Range of bools not currently supported! (nee dto add to the rtypes etc.")
+
 let generate_float_within_range rangemap namestring =
     match Hashtbl.find rangemap namestring with
     | None -> (* Ditto above *)
@@ -40,6 +46,7 @@ let generate_float_within_range rangemap namestring =
 let rec generate_inputs_for rangemap values_so_far name_string t structure_metadata =
     match t with
     (* TODO -- Support negative values.  *)
+	| Bool -> BoolV(generate_bool_within_range rangemap name_string)
     | Int16 -> Int16V(generate_int_within_range rangemap name_string)
     | Int32 -> Int32V(generate_int_within_range rangemap name_string)
     | Int64 -> Int64V(generate_int_within_range rangemap name_string)
@@ -127,6 +134,7 @@ let rec generate_io_values num_tests rangemap livein typemap classmap =
 
 let rec value_to_string value =
     let str_value = match value with
+	| BoolV(v) -> string_of_bool v
     | Int16V(v) -> string_of_int v
     | Int32V(v) -> string_of_int v
     | Int64V(v) -> string_of_int v

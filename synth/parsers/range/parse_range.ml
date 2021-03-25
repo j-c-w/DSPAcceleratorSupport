@@ -11,6 +11,7 @@ let typecheck_item typ item =
 	match item with
 	| RangeInteger(_) -> is_integer_type typ
 	| RangeFloat(_) -> is_float_type typ
+	| RangeBool(_) -> is_bool_type typ
 
 let typecheck_range_range typ r =
 	match r with

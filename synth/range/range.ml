@@ -10,6 +10,7 @@ let value_from_range_item item =
 	match item with
 	| RangeInteger(i) -> RInt(i)
 	| RangeFloat(f) -> RFloat(f)
+	| RangeBool(b) -> RBool(b)
 
 let random_value_from_range_range_in_range r =
 	match r with
@@ -24,6 +25,14 @@ let random_value_from_range_range_in_range r =
 			| RFloat(low), RFloat(high) ->
 					let v = Random.float (high -. low) in
 					RFloat(v +. low)
+			| RBool(low), RBool(high) ->
+					if (low = false) && (high = true) then
+						let v = (Random.int 1) = 1 in
+						RBool(v)
+					else
+						(* If the aren't different, then they'll
+						be the same.  *)
+						RBool(low)
 			| _, _ ->
 					raise (RangeError "Expected a typechecked range before actualy executing it. ")
 
@@ -53,6 +62,11 @@ let range_item_size ritem =
                     (* Can we do better than this? *)
                     (* Perhaps by adding to the range size type? *)
                     Infinite
+			| RangeBool(s), RangeBool(f) ->
+					if s = f then
+						Finite(1)
+					else
+						Finite(2)
 			| _, _ ->
 					raise (RangeError ("Type Error"))
             )
@@ -68,10 +82,12 @@ let range_size r =
 let range_value_from_item i = match i with
 	| RangeInteger(fint) -> RInt(fint)
     | RangeFloat(ffloat) -> RFloat(ffloat)
+	| RangeBool(fbool) -> RBool(fbool)
 
 let range_value_to_item i = match i with
     | RInt(fint) -> RangeInteger(fint)
     | RFloat(ffloat) -> RangeFloat(ffloat)
+	| RBool(fbool) -> RangeBool(fbool)
 
 let range_values_range_range rr =
     match rr with
@@ -83,6 +99,11 @@ let range_values_range_range rr =
                         RInt(ival))
             | RangeFloat(ffloat), RangeFloat(tofloat) ->
                     raise (RangeError "Can't do value set of floating range (i.e. of infinite window)")
+			| RangeBool(sbool), RangeBool(tbool) ->
+					if sbool = tbool then
+						[RBool(sbool)]
+					else
+						[RBool(sbool); RBool(tbool)]
             | _, _ ->
                     raise (RangeError "Type error")
 
@@ -108,6 +129,7 @@ let range_size_compare r1_size r2_size =
 let rec range_type_value i = match i with
 	| RangeInteger(_) -> RangeIntegerType
 	| RangeFloat(_) -> RangeFloatType
+	| RangeBool(_) -> RangeBoolType
 
 and range_type_item i = match i with
 	| RangeItem(i) -> range_type_value i
@@ -123,15 +145,18 @@ let range_value_set_sort vset =
         match a, b with
         | RInt(a), RInt(b) -> Int.compare a b
         | RFloat(a), RFloat(b) -> Float.compare a b
+		| RBool(a), RBool(b) -> Bool.compare a b
         | _ -> raise (RangeError "Type error")
     )
 
 let range_value_eq v1 v2 =
 	match v1, v2 with
+	| RangeBool(i), RangeBool(j) -> i = j
 	| RangeInteger(i), RangeInteger(j) -> i = j
 	| RangeFloat(i), RangeFloat(j) -> Utils.float_equal i j
 	| RangeInteger(_), _ -> false
 	| RangeFloat(_), _ -> false
+	| RangeBool(_), _ -> false
 
 let range_value_in r v =
 	match r with
@@ -142,6 +167,8 @@ let range_value_in r v =
 					(i >= l) && (i <= h)
 			| RangeFloat(l), RangeFloat(h), RangeFloat(i) ->
 					((Float.compare l i) <= 0) && ((Float.compare h i) >= 0)
+			| RangeBool(b1), RangeBool(b2), RangeBool(i) ->
+					(i = b1) || (i = b2)
 			| _, _, _ -> raise (RangeError "Type error")
 
 let range_compare v1 v2 =
@@ -150,6 +177,8 @@ let range_compare v1 v2 =
 			Int.compare i1 i2
 	| RangeFloat(f1), RangeFloat(f2) ->
 			Float.compare f1 f2
+	| RangeBool(b1), RangeBool(b2) ->
+			Bool.compare b1 b2
 	| _, _ -> raise (RangeError "Type error")
 
 let range_overlap (lower, higher) (lower2, higher2) =
@@ -175,3 +204,4 @@ let range_value_to_synth_value rvalue =
 	(* TODO --- do we need to do something more sane with widths? *)
 	| RangeInteger(i) -> Int64V(i)
 	| RangeFloat(f) -> Float64V(f)
+	| RangeBool(b) -> BoolV(b)
