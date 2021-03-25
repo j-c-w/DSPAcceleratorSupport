@@ -9,6 +9,7 @@
 %token RPAREN
 %token <float> REAL
 %token <int> INTEGER
+%token <bool> BOOLEAN
 %token EOF
 
 %start t
@@ -30,3 +31,4 @@ set_item:
 item:
 	| INTEGER { RangeInteger($1) }
 	| REAL { RangeFloat($1) }
+	| BOOLEAN { RangeBool($1) }
