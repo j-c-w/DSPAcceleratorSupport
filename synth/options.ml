@@ -37,6 +37,7 @@ type options = {
     compiler_cmd: string;
 	compiler_flags: string list;
 	post_synthesizer: behavioural_synthesizer;
+	pre_accel_dump_function: string;
 
 	(* Testing configuration *)
 	number_of_tests: int;
@@ -100,6 +101,9 @@ let default_options = {
 	compiler_cmd = "g++";
 	compiler_flags = get_compiler_flags CXX;
 	post_synthesizer = FFTSynth; (* Really don't want to keep it this way long term.  But while FFT is target, it makes sense.  *)
+	(* Specified the name of the function to be used to dump
+	intermediate results.  *)
+	pre_accel_dump_function = "pre_accel_dump_function";
 
 	(* Testing configuration *)
 	number_of_tests = 100;

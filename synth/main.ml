@@ -29,7 +29,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		stop_before_build only_test debug_gir_reduce debug_comparison
 		all_tests post_synthesis_tool debug_post_synthesis
         dump_behavioural_synth debug_fft_synthesizer compiler_flags
-		debug_range_check dump_range_check =
+		debug_range_check dump_range_check pre_accel_dump_function =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -44,6 +44,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		| None -> get_compiler_flags target_type
 		);
         post_synthesizer = get_behavioural_syn post_synthesis_tool;
+		pre_accel_dump_function = pre_accel_dump_function;
 
         number_of_tests = number_of_tests;
 		all_tests = all_tests;
@@ -127,6 +128,9 @@ let compiler_flags =
 let post_synthesis_tool =
 	let doc = "Which synthesizer to use for post-synthesis (options are FFT or None now" in
     Arg.(value & opt string "FFT" & info ["post-synthesizer"] ~docv:"PostSynthesizer" ~doc)
+let pre_accel_dump_function =
+	let doc = "What to call the internal function for pre accelerator dumping (may have to be specified to avoid name clashes)" in
+	Arg.(value & opt string "pre_accel_dump_function" & info ["pre-accel-dump-funcation-name"] ~docv:"PreAccelDumpName" ~doc)
 
 (* Testing configuration flags.  *)
 let number_of_tests =
@@ -258,5 +262,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison $
 	all_tests $ post_synthesis_tool $ debug_post_synthesis
     $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags
-	$ debug_range_check $ dump_range_check)
+	$ debug_range_check $ dump_range_check $ pre_accel_dump_function)
 let () = Term.exit @@ Term.eval (args_t, info)
