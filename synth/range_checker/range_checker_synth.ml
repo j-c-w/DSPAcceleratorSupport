@@ -85,6 +85,9 @@ let positive_check_for vname range_set =
 		| RangeItem(RangeFloat(i)) ->
 				let ivalue = Constant(range_value_to_synth_value (RangeFloat(i))) in
 				Compare(vname, ivalue, FloatEqual)
+		| RangeItem(RangeBool(b)) ->
+				let ivalue = Constant(range_value_to_synth_value (RangeBool(b))) in
+				Compare(vname, ivalue, Equal)
 	) in
 	Array.fold conds ~init:None ~f:(fun acc -> (fun cond ->
 		match acc with
