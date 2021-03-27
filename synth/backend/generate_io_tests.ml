@@ -67,17 +67,20 @@ let rec generate_inputs_for rangemap values_so_far name_string t structure_metad
             (* If this throws, there's an issue with the topo sorting below --- we
                expect that the dimvars will have been assigned.  *)
             let arrlen_value_wrappers = List.map dimvar_names (
-				fun dimvar_name ->
-					let wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
-					let arrlen = match wrapper with
-					| Int16V(v) -> v
-					| Int32V(v) -> v
-					| Int64V(v) -> v
-					| _ ->
-							(* probably we could handle this --- just need to have a think
-							about what it means. *)
-							raise (TypeException "Unexpected list dimension type (non-int) ") in
-					arrlen
+				fun dimvar ->
+					match dimvar with
+					| DimVariable(dimvar_name) ->
+						let wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
+						let arrlen = match wrapper with
+						| Int16V(v) -> v
+						| Int32V(v) -> v
+						| Int64V(v) -> v
+						| _ ->
+								(* probably we could handle this --- just need to have a think
+								about what it means. *)
+								raise (TypeException "Unexpected list dimension type (non-int) ") in
+						arrlen
+					| DimConstant(c) -> c
 				)
             in
 			(* In the greatest stupid hack of all time, we are

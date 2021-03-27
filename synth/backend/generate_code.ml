@@ -67,7 +67,7 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
 let cxx_dimtype_to_name dimtype =
     match dimtype with
     | Dimension(x :: []) ->
-            (name_reference_to_string x)
+            (dimension_value_to_string x)
             (* Think this can be achieved in the gen_json call.
                Just return a TODO note, since that's what
                has to happen.  If it's (incorrectly)
@@ -79,7 +79,7 @@ let cxx_dimtype_to_name dimtype =
 
 let rec cxx_dimtype_to_definition dimtype =
     match dimtype with
-            | Dimension(x :: []) -> "[" ^ (name_reference_to_string x) ^ "]"
+            | Dimension(x :: []) -> "[" ^ (dimension_value_to_string x) ^ "]"
             | _ -> raise (CXXGenerationException "Expected individual array types to be selected by the generate pass")
 
 let rec cxx_definition_synth_type_to_string_prefix_postfix dimmap_lookup typ name =

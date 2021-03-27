@@ -29,7 +29,10 @@ let rec get_dependencies_for classmap typ =
 	| Float64 -> []
 	| Array(tp, dims) ->
 			let this_deps = match dims with
-			| Dimension([x]) -> [x]
+			| Dimension([x]) -> (match x with
+				| DimVariable(v) -> [v]
+				| DimConstant(_) -> []
+			)
 			(* This is a stupid hack that is 100% going to cause
 			problems with unwanted cyclic dependencies in the future.
 			Really, before the typemap is used for this, it needs
@@ -39,7 +42,11 @@ let rec get_dependencies_for classmap typ =
 			expect it to cause some bugs with this algorithm
 			not terminating when dimension variable assignments
 			become more complex.  *)
-			| Dimension(x :: xs) -> x :: xs
+			| Dimension(x :: xs) -> List.filter_map (x :: xs) (fun v ->
+					match v with
+					| DimVariable(vname) -> Some(vname)
+					| DimConstant(_) -> None
+			)
 			| _ -> raise (STopologyException "Unhandled")
 			in
 			this_deps @ (get_dependencies_for classmap tp)

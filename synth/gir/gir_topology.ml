@@ -173,13 +173,15 @@ let rec get_uses_defining_type typ =
     | Array(subtyp, dim) ->
             let this_dim = match dim with
             | Dimension(nm) ->
-                    List.map nm (fun n -> match n with
-					| AnonymousName -> raise (TopologicalSortException "No anon names in the typemap!")
-					| Name(n) -> UDName(Name(n))
-					| StructName(ns) -> raise (TopologicalSortException "Congratualations, you hit the case
+                    List.filter_map nm (fun n -> match n with
+					| DimVariable(AnonymousName) -> raise (TopologicalSortException "No anon names in the typemap!")
+					| DimVariable(Name(n)) -> Some(UDName(Name(n)))
+					| DimVariable(StructName(ns)) -> raise (TopologicalSortException "Congratualations, you hit the case
 					that means you need to do a f*ck of a lot of work fixing the typemaps so that
 					they are actually sane and are recursive rather than the weird implicit
-					'.' that they use now.  Enjoy!"))
+					'.' that they use now.  Enjoy!")
+					| DimConstant(_) -> None
+					)
             | _ -> raise (TopologicalSortException "Don't think this is possible?") in
             this_dim @ (get_uses_defining_type subtyp)
     | _ -> []
