@@ -2,7 +2,7 @@
 <backend>: include
 <builtin>: include
 <dimensions>:include
-<frontend>: include
+<spec>: include
 <gir>: include
 <behavioural_synthesizers>: include
 <behavioural_synthesizers/**/*>: include
