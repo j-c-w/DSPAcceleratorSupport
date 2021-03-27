@@ -9,6 +9,8 @@ let one_dim_var_mapping_to_string map =
 	match map with
 	| ExactVarMatch(fromv, tov) -> (name_reference_to_string fromv) ^
     " = " ^ (name_reference_to_string tov)
+	| ConstantMatch(from_const, to_v) ->
+			(string_of_int from_const) ^ " = " ^ (name_reference_to_string to_v)
 
 let rec dimvar_mapping_to_string mapping = match mapping with
 	| DimvarOneDimension(map) -> one_dim_var_mapping_to_string map
@@ -21,6 +23,10 @@ let one_dimension_mapping_equal m1 m2 =
     | ExactVarMatch(fromv1, tov1), ExactVarMatch(fromv2, tov2) ->
             (name_reference_equal fromv1 fromv2) &&
             (name_reference_equal tov1 tov2)
+	| ConstantMatch(fconst1, tov1), ConstantMatch(fconst2, tov2) ->
+			(fconst1 = fconst2) &&
+			(name_reference_equal tov1 tov2)
+    | _, _ -> false
 
 let dimvar_equal m1 m2 =
 	match m1, m2 with
@@ -44,6 +50,12 @@ let skeleton_type_to_string stype =
 	| SBool(name) -> "SBool(" ^ (name_reference_to_string name) ^ ")"
 	| SFloat(name) -> "SFloat(" ^ (name_reference_to_string name) ^ ")"
 
+let assignment_type_to_string stype =
+    match stype with
+    | AssignVariable(v) -> name_reference_list_to_string v
+    | AssignConstant(c) ->
+            "Constant(" ^ synth_value_to_string c ^ ")"
+
 let rec skeleton_dimension_group_type_to_string stype =
 	match stype with
 	| SType(subtype) -> skeleton_type_to_string subtype
@@ -58,7 +70,7 @@ let skeleton_dimension_group_type_list_to_string typs =
 let flat_single_variable_binding_to_string (binding: flat_single_variable_binding) =
 	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
-		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]" ^
+		   (List.map binding.fromvars_index_nesting (assignment_type_to_string))) ^ "]" ^
        "\nUnder dimensions [" ^ (String.concat ~sep:", "
             (List.map binding.valid_dimensions dimvar_mapping_to_string)) ^ "]" ^
        "\nWith conversion function " ^ (conversion_function_to_string binding.conversion_function)
@@ -87,7 +99,7 @@ let flat_skeleton_list_to_string bindings =
 let single_variable_binding_to_string (binding: single_variable_binding_option_group) =
 	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
-		   (List.map binding.fromvars_index_nesting (fun x -> (String.concat ~sep:" ," (List.map x name_reference_to_string))))) ^ "]" ^
+		   (List.map binding.fromvars_index_nesting (assignment_type_to_string))) ^ "]" ^
        "\nUnder dimensions [" ^ (String.concat ~sep:", "
             (List.map binding.valid_dimensions_set (fun dimset ->
                 String.concat ~sep:" or " (List.map dimset dimvar_mapping_to_string)))) ^ "]"
@@ -140,7 +152,25 @@ let types_to_string t =
 let index_nesting_to_string nest =
     name_reference_list_to_string nest
 
+let assignment_type_equal a1 a2 =
+    match a1, a2 with
+    | AssignConstant(c1), AssignConstant(c2) ->
+            synth_value_equal c1 c2
+    | AssignVariable(v1), AssignVariable(v2) ->
+            name_reference_list_equal v1 v2
+    | _, _ -> false
+
+(* Apparently we don't care about list ordering? *)
+(* I mean, allowing for unequal ordering would 100% make
+this much better --- just a bit of a question of if it's
+worth the effot/runtime.  *)
+let assignment_type_list_equal l1 l2 =
+    let res = List.zip l1 l2 in
+    match res with
+    | Ok(rlist) -> List.for_all rlist (fun (a1, a2) -> assignment_type_equal a1 a2)
+    | Unequal_lengths -> false
+
 let single_variable_binding_equal (s1: single_variable_binding_option_group) (s2: single_variable_binding_option_group) =
-    (name_reference_list_list_equal s1.fromvars_index_nesting s2.fromvars_index_nesting) &&
+    (assignment_type_list_equal s1.fromvars_index_nesting s2.fromvars_index_nesting) &&
     (name_reference_list_equal s1.tovar_index_nesting s2.tovar_index_nesting) &&
     (dimvar_list_list_equal s1.valid_dimensions_set s2.valid_dimensions_set)

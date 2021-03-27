@@ -74,20 +74,23 @@ let check_not_double_defined vars =
 
 let single_bind_opt_check_not_double_defined (binds: single_variable_binding_option_group list list) =
 	let defs =
-		List.map binds (fun bindset ->
-			(* Assume that there is at least one assign
-			for each bind set--- if this fails,
-			that's a problem of it's own.  *)
-			let tvar = StructName((List.hd_exn bindset).tovar_index_nesting) in
-			tvar
+		List.filter_map binds (fun bindset ->
+            match bindset with
+            | [] -> None
+            | bind :: _ ->
+                let tvar = StructName(bind.tovar_index_nesting) in
+                Some(tvar)
 		) in
 	check_non_dup defs
 
 let single_bind_opt_check_sets (binds: single_variable_binding_option_group list list) =
 	let defs =
-		List.map binds (fun bindset ->
-			let tvar = StructName((List.hd_exn bindset).tovar_index_nesting) in
-			(tvar, List.map bindset (fun b -> StructName(b.tovar_index_nesting)))
+		List.filter_map binds (fun bindset ->
+            match bindset with
+            | [] -> None
+            | bind :: _ ->
+                let tvar = StructName(bind.tovar_index_nesting) in
+                Some(tvar, List.map bindset (fun b -> StructName(b.tovar_index_nesting)))
 		) in
 	let result = List.for_all defs (fun (v, vs) ->
 		List.for_all vs (fun e ->

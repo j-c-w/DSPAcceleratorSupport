@@ -30,6 +30,27 @@ let new_conversion_function () =
     let () = conversion_function_count := !conversion_function_count + 1 in
     Name("conversion" ^ (string_of_int !conversion_function_count))
 
+let generate_gir_name_for nref =
+    match nref with
+    | AnonymousName -> None
+    | Name(n) -> Some(Variable(Name(n)))
+    | StructName(names) ->
+            let names = List.map names (fun n -> match n with
+            | Name(n) -> n
+            | _ -> raise (GenerateGIRException "UNexepcted!")
+            ) in
+            let n, ns = match names with
+            | n :: ns -> n, ns
+            | _ -> raise (GenerateGIRException "Empyt struct name!") in
+            Some(List.fold
+                ns
+                ~init:(Variable(Name(n)))
+                ~f:(fun namesofar nextname ->
+                    MemberReference(namesofar, Name(nextname))))
+
+let generate_gir_names_for nrefs =
+    List.map nrefs generate_gir_name_for
+
 let rec generate_variable_reference_to namerefs =
     match namerefs with
     | AnonymousName -> raise (GenerateGIRException "Can't genereate a variable reference from anonymous names!")
@@ -51,6 +72,9 @@ let rec generate_variable_reference_to namerefs =
                     let original_tail = List.rev tail_xs in
                     MemberReference(generate_variable_reference_to (StructName(original_tail)), Name(head_name))
 
+let generate_const_reference_to const =
+	Constant(const)
+
 (*  This should generate a list of functions
 that can be used to generate wrappers when
 given a simple assignment sequence Assignment.  *)
@@ -67,6 +91,13 @@ let rec generate_loop_wrappers_from_dimensions dim =
                     LoopOver(assign, indvar, generate_variable_reference_to from)
                     ) in
                 (in_loop_assign, [indvar])
+			| ConstantMatch(from, tov) ->
+				let indvar = new_induction_variable () in
+				let in_loop_assign = (fun assign ->
+					LoopOver(assign, indvar, generate_const_reference_to (Int64V(from)))
+				)
+				in
+				(in_loop_assign, [indvar])
     )
 
 let rec maybe_create_reference_from post_indexes indvarnames =
@@ -106,11 +137,17 @@ let rec maybe_create_reference_from post_indexes indvarnames =
 	| _ -> raise (GenerateGIRException "Indexes and indvarnames must be the same length!")
 
 let create_reference_from post_indexes indvarnames =
-	(* This thing only works with the list backwards apparently.  *)
-	let result = maybe_create_reference_from (List.rev post_indexes) indvarnames in
-	match result with
-	| None -> raise (GenerateGIRException "Ended up producing no result!")
-	| Some(x) -> x
+	match post_indexes with
+	| AssignVariable(post_indexes) ->
+			(* This thing only works with the list backwards apparently.  *)
+			let result = maybe_create_reference_from (List.rev (generate_gir_names_for post_indexes)) indvarnames in
+			(
+			match result with
+			| None -> raise (GenerateGIRException "Ended up producing no result!")
+			| Some(x) -> x
+			)
+	| AssignConstant(c) ->
+			Constant(c)
 
 (* This generates a set of functions that take
 a list representing the variables that are used to index
@@ -128,14 +165,16 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 					let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in
 					let () = Printf.printf "tvars is %s\n" (variable_reference_option_list_to_string tvar_index_nesting) in
 					let () = Printf.printf "fvar ind nest length is %d \n " (List.length fvar_index_nestings) in *)
-					let () = assert(List.length(fvar_ind_nest) - 1 = List.length index_vars) in
+					let () = assert(match fvar_ind_nest with
+					| AssignVariable(vlist) -> List.length(vlist) - 1 = List.length index_vars
+					| AssignConstant(c) -> true) in
 					let () = assert(List.length(tvar_index_nesting) - 1 = List.length index_vars) in
 					(* Get the LVars --- if there
 					are no indexes then it is just
 					a list, otherwise we need to do 
 					a fold. *)
                     let conversion_ref = FunctionRef(conversion_function_name) in
-					let lvars = LVariable(create_reference_from tvar_index_nesting index_vars) in
+					let lvars = LVariable(create_reference_from (AssignVariable(tvar_index_nesting)) index_vars) in
                     let rvars: rvalue = Expression(FunctionCall(conversion_ref, VariableList([create_reference_from fvar_ind_nest index_vars]))) in
 					Assignment(lvars, rvars)
 			)
@@ -160,24 +199,6 @@ let get_define_for vnameref =
 from the name_references to gir names --- there's way
 too many exceptions flying around in all these implementations
 *)
-let generate_gir_name_for nref =
-    match nref with
-    | AnonymousName -> None
-    | Name(n) -> Some(Variable(Name(n)))
-    | StructName(names) ->
-            let names = List.map names (fun n -> match n with
-            | Name(n) -> n
-            | _ -> raise (GenerateGIRException "UNexepcted!")
-            ) in
-            let n, ns = match names with
-            | n :: ns -> n, ns
-            | _ -> raise (GenerateGIRException "Empyt struct name!") in
-            Some(List.fold
-                ns
-                ~init:(Variable(Name(n)))
-                ~f:(fun namesofar nextname ->
-                    MemberReference(namesofar, Name(nextname))))
-
 (* takes some variable that's been split up into e.g.
 cpx ['x', 'y'] where it's intended use is
 cpx.x[i].y[j] and turns it into cpx.x.y.  It's used
@@ -192,16 +213,17 @@ let rec define_name_of index_points =
 	(* Pretty sure it should always hit ^^^ *)
 	| None :: xs -> define_name_of xs
 
-let generate_gir_names_for nrefs =
-    List.map nrefs generate_gir_name_for
+let get_unwarpped_dim_dependency (dimension_value): gir_name option =
+    match dimension_value with
+    | DimVariable(vnam) -> (match vnam with
+        | Name(n) -> Some(Name(n))
+        | _ -> raise (GenerateGIRException "Can't convert anything that isn't a name!")
+        )
+    | DimConstant(c) -> None
 
-let generate_unwrapped_gir_name_for (nref: name_reference): gir_name =
-    match nref with
-    | Name(n) -> Name(n)
-    | _ -> raise (GenerateGIRException "Can't convert anything that isn't a name!")
 
-let generate_unwrapped_gir_names_for nrefs =
-    List.map nrefs generate_unwrapped_gir_name_for
+let get_unwrapped_dim_dependencies nrefs =
+    List.filter_map nrefs get_unwarpped_dim_dependency
 
 let rec get_bindings_by_name tvars dims =
 	(* let () = Printf.printf "Getting bindings for %s under dims %s\n" (name_reference_list_to_string tvars) (dimvar_mapping_list_to_string dims) in *)
@@ -217,7 +239,8 @@ let rec get_bindings_by_name tvars dims =
             (*  Needs to only havea s inle entry -- keeping it like this
             because I think we may want more complex types in the
             future here.  *)
-            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension([f])
+            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension([DimVariable(f)])
+			| DimvarOneDimension(ConstantMatch(f, t)) -> Dimension([DimConstant(f)])
             in
             let subdims = get_bindings_by_name tvars dims in
             (* Need to put the tvar name on the front of all
@@ -309,8 +332,8 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 		let loop_wrappers = List.map single_variable_binding.valid_dimensions
 			generate_loop_wrappers_from_dimensions in
 		let conversion_function, conversion_function_name = generate_conversion_function single_variable_binding.conversion_function in
-        let fvars_indexes = List.map single_variable_binding.fromvars_index_nesting generate_gir_names_for in
-        let tovar_indexes = generate_gir_names_for single_variable_binding.tovar_index_nesting in
+        let fvars_indexes = single_variable_binding.fromvars_index_nesting in
+        let tovar_indexes = single_variable_binding.tovar_index_nesting in
         (* Convert the variable references mentioned
             in the bindings into real variable refs.  *)
 		(* Generate the possible assignments *)
@@ -321,7 +344,7 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 				let () = Printf.printf "Have the following tovars for the generation round:\n " in
 				let () = Printf.printf "%s\n" (name_reference_list_to_string single_variable_binding.tovar_index_nesting) in
 			() else () in
-			get_define_for (define_name_of tovar_indexes)
+			get_define_for (define_name_of (generate_gir_names_for tovar_indexes))
 		else
 			EmptyGIR in
         let () =
@@ -389,7 +412,7 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 let rec all_dimvars_from dimtype =
 	match dimtype with
 			| EmptyDimension -> []
-			| Dimension(nms) -> generate_unwrapped_gir_names_for nms
+			| Dimension(nms) -> get_unwrapped_dim_dependencies nms
 
 let rec type_topo_dependencies (nam, typ) =
 	match typ with

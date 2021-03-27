@@ -90,8 +90,16 @@ let transform_rangemap_by options map bindings =
             (* First, get the ranges for each of the input
                variables for this binding.  *)
             let ranges = List.map flat_binding.fromvars_index_nesting (fun fvar ->
-                let valuesets: range_set option = Hashtbl.find map (index_nesting_to_string fvar) in
-                valuesets
+                match fvar with
+                | AssignConstant(c) ->
+                    (* This value set will have a constant value --- note
+                    that not all types are currently supported by the
+                    range thing, so this will give none in some cases.  *)
+                    let value_set: range_set option = range_from_synth_value c in
+                    value_set
+                | AssignVariable(fvar_nest) ->
+                    let valuesets: range_set option = Hashtbl.find map (index_nesting_to_string fvar_nest) in
+                    valuesets
             ) in
             (* Convert the input ranges to output values if they
             exist.  *)

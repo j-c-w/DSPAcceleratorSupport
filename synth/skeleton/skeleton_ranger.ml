@@ -40,14 +40,20 @@ let range_compat_check from_range to_range =
         true
 
 let range_from_fromvars rangemap fromvars =
-    let fromvar_names = List.map fromvars index_nesting_to_string in
-    let ranges = List.map fromvar_names (Hashtbl.find rangemap) in
-    match ranges with
+    match fromvars with
     | [] -> (* no fromvars -- means that this dead-in, so doesnt
 			   need to be assigned to. *)
 			None
     | [x] ->
-            x
+            (
+            match x with
+            | AssignVariable(v) ->
+                    let fromvar_name = index_nesting_to_string v in
+                    let ranges = Hashtbl.find rangemap fromvar_name in
+                    ranges
+            | AssignConstant(c) ->
+                    range_from_synth_value c
+            )
     (* Although the type conceptually supports this, I'm not 100% sure
     that multiple fromvars is really a sane thing to do.  It will
     lead to a lot of blowup if done naively.   Anyway, does warrant

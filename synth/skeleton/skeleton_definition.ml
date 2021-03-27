@@ -8,6 +8,7 @@ open Builtin_conversion_functions;;
    than the direct mappings entailed by this.  *)
 type one_dim_var_mapping =
 	| ExactVarMatch of name_reference * name_reference
+	| ConstantMatch of int * name_reference
 
 type dimvar_mapping =
     | DimvarOneDimension of one_dim_var_mapping
@@ -35,15 +36,19 @@ and skeleton_dimension_group_type =
     (* Except for this one :) because it's really a type and has a name *)
 	| SArray of name_reference * skeleton_dimension_group_type * dimension_type
 
-(* These store bindings.  They are both of the form <from> * <to> *)
-type single_variable_binding_option_group = {
-    (* What parts of the names apply to each fromvar? *)
+type assignment_type =
     (* ie. this is trying to keep track of where the list
        index should go, e.g. complexes[i].real vs complexes.real[i].
 
        One list for each fromvars
        *)
-    fromvars_index_nesting: name_reference list list;
+	| AssignVariable of name_reference list
+	| AssignConstant of synth_value
+
+(* These store bindings.  They are both of the form <from> * <to> *)
+type single_variable_binding_option_group = {
+    (* What parts of the names apply to each fromvar? *)
+    fromvars_index_nesting: assignment_type list;
     tovar_index_nesting: name_reference list;
 	(* Which dimensions is this assignment valid over? *)
 	(* Again, we have one element for each list, but
@@ -57,7 +62,7 @@ type skeleton_type_binding = {
 }
 
 type flat_single_variable_binding = {
-    fromvars_index_nesting: name_reference list list;
+    fromvars_index_nesting: assignment_type list;
     tovar_index_nesting: name_reference list;
     valid_dimensions: dimvar_mapping list;
     conversion_function: conversion_functions

@@ -24,6 +24,8 @@ let filter_dimvar_set dms =
         | DimvarOneDimension(ExactVarMatch(f, t)) -> (
 			(tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t))
 		)
+        (* TODO -- do we also need to do some filtering here? *)
+		| DimvarOneDimension(ConstantMatch(f, t)) -> true
     )
 
 (* No variables assigned from more than once.  *)
@@ -31,15 +33,19 @@ let no_multiplie_cloning_check (skel: skeleton_type_binding) =
     let assigned_from = Hashtbl.create (module String) in
     let () = ignore(
         List.map skel.bindings (fun bind ->
-            List.map bind.fromvars_index_nesting (fun indnest ->
-                (* Get the indnesst string *)
-                let indnest_string = name_reference_to_string (StructName(indnest)) in
-                let existing_count = Hashtbl.find assigned_from indnest_string in
-                let newvar = match existing_count with
-                | None -> 1
-                | Some(x) -> x + 1
-                in
-                Hashtbl.set assigned_from indnest_string newvar
+            List.map bind.fromvars_index_nesting (fun vbind ->
+                match vbind with
+                | AssignConstant(c) -> ()
+                | AssignVariable(indnest) ->
+                    (* Get the indnesst string *)
+                    let indnest_string = name_reference_to_string (StructName(indnest)) in
+                    let existing_count = Hashtbl.find assigned_from indnest_string in
+                    let newvar = match existing_count with
+                    | None -> 1
+                    | Some(x) -> x + 1
+                    in
+                    let _ = Hashtbl.set assigned_from indnest_string newvar in
+                    ()
             )
         )
     ) in
