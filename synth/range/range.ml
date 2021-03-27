@@ -205,3 +205,20 @@ let range_value_to_synth_value rvalue =
 	| RangeInteger(i) -> Int64V(i)
 	| RangeFloat(f) -> Float64V(f)
 	| RangeBool(b) -> BoolV(b)
+
+(* Since we don't currently support range types of functions,units/arrays etc.
+   we return just an option here.  *)
+let range_from_synth_value svalue =
+	let rvalue = match svalue with
+		| Int16V(v) -> Some(RangeInteger(v))
+		| Int32V(v) -> Some(RangeInteger(v))
+		| Int64V(v) -> Some(RangeInteger(v))
+		| Float16V(v) -> Some(RangeFloat(v))
+		| Float32V(v) -> Some(RangeFloat(v))
+		| Float64V(v) -> Some(RangeFloat(v))
+		| BoolV(v) -> Some(RangeBool(v))
+		| _ -> None
+	in
+	Option.map rvalue (fun rv -> RangeSet(
+		Array.of_list [RangeItem(rv)]
+	))

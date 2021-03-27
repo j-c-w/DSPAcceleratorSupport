@@ -16,7 +16,12 @@ let generate_ind_name () =
 let fft_generate_gir_from_dimension (x: dimension_type) =
     match x with
     | EmptyDimension -> raise (CXXHoleError "Dimension too empty")
-    | Dimension([x]) -> Variable(Name(name_reference_to_string x))
+    | Dimension([x]) ->
+			(
+			match x with
+			| DimVariable(x) -> Variable(Name(name_reference_to_string x))
+			| DimConstant(c) -> Constant(Int64V(c))
+			)
     | Dimension(_) -> raise (CXXHoleError "Dimension too full")
 
 let rec generate_gir_program options lenvar_bindings fft_behaviour =

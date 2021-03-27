@@ -42,11 +42,22 @@ let rec name_reference_equal n1 n2 =
 	oddly nested structnames *)
 	| _, _ -> false
 
+let dimension_value_to_string dim =
+	match dim with
+	| DimConstant(i) -> (string_of_int i)
+	| DimVariable(n) -> (name_reference_to_string n)
+	
+let dimension_value_equal d1 d2 =
+	match d1, d2 with
+	| DimConstant(c1), DimConstant(c2) -> c1 = c2
+	| DimVariable(v1), DimVariable(v2) -> name_reference_equal v1 v2
+	| _, _ -> false
+
 let rec dimension_type_to_string dim =
     match dim with
     | EmptyDimension -> "No dimensions set!"
     | Dimension(nrefs) ->
-            (String.concat ~sep:", " (List.map nrefs name_reference_to_string))
+            (String.concat ~sep:", " (List.map nrefs dimension_value_to_string))
 
 let empty_dimension dim = match dim with
 	| EmptyDimension -> true
@@ -62,7 +73,7 @@ let dimension_type_equal d1 d2 = match d1, d2 with
     | Dimension(nlist1), Dimension(nlist2) -> (
             match List.zip nlist1 nlist2 with
             | Ok(l) ->
-                    List.for_all l (fun (a, b) -> name_reference_equal a b)
+                    List.for_all l (fun (a, b) -> dimension_value_equal a b)
             | Unequal_lengths -> false
 	)
 	| _ -> false
@@ -124,6 +135,53 @@ let synth_value_from_range_value rvalue =
     | RInt(v) -> Int32V(v)
     | RFloat(v) -> Float32V(v)
 	| RBool(v) -> BoolV(v)
+
+let rec synth_value_equal c1 c2 =
+	match c1, c2 with
+	| BoolV(v1), BoolV(v2) -> v1 = v2
+	(* Note that we could consider comparing
+	different widths of synth type here.  *)
+	| Int16V(v1), Int16V(v2) -> v1 = v2
+	| Int32V(v1), Int32V(v2) -> v1 = v2
+	| Int64V(v1), Int64V(v2) -> v1 = v2
+	| Float16V(v1), Float16V(v2) -> Utils.float_equal v1 v2
+	| Float32V(v1), Float32V(v2) -> Utils.float_equal v1 v2
+	| Float64V(v1), Float64V(v2) -> Utils.float_equal v1 v2
+	| UnitV, UnitV -> true
+	| ArrayV(vs1), ArrayV(vs2) ->
+			(
+			match List.zip vs1 vs2 with
+			| Ok(l) ->
+					List.for_all l (fun (v1, v2) -> synth_value_equal v1 v2)
+			| Unequal_lengths ->
+					false
+			)
+	| StructV(name, tbl), StructV(name2, tbl2) ->
+			if (String.compare name name2) = 0 then
+				synth_table_equal tbl tbl2
+			else
+				false
+	| FunV(n1), FunV(n2) ->
+			(String.compare n1 n2) = 0
+	| _, _ -> false
+
+and synth_table_equal tbl1 tbl2 =
+	let keys1 = List.sort (Hashtbl.keys tbl1) String.compare in
+	let keys2 = List.sort (Hashtbl.keys tbl2) String.compare in
+	match List.zip keys1 keys2 with
+	| Ok(l) ->
+			List.for_all l (fun (k1, k2) ->
+				if (String.compare k1 k2) = 0 then
+					synth_value_equal
+						(Hashtbl.find_exn tbl1 k1)
+						(Hashtbl.find_exn tbl2 k2)
+				else
+					false
+			)
+	| Unequal_lengths ->
+			false
+
+
 
 let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in

@@ -26,10 +26,13 @@ type synth_type =
 and dimension_type =
 	(* For each array variable, this keeps the
 	   /prospective/ dimensions that it could have. *)
-	(* This should be assigned in the assign_dimensions pass.  *)
+	(* This should be assigned in the assign_dimensions pass##
+	or can be specified by the .  *)
     | EmptyDimension
-	| Dimension of name_reference list
-	(* TODO --- Support dimension types with single options.  *)
+	| Dimension of dimension_value list
+and dimension_value =
+	| DimVariable of name_reference
+	| DimConstant of int
 
 type synth_value =
 	| BoolV of bool
