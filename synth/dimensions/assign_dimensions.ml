@@ -57,6 +57,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name =
 					let () = Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," (List.map all_vars_at_level name_reference_to_string))) in
 					Printf.printf "%s\n" ("These are possible: " ^ (String.concat ~sep:"," (List.map possible_len_vars name_reference_to_string)))
 				else () in
+				let possible_len_vars = List.map possible_len_vars (fun lv -> DimVariable(lv)) in
                 let newarrtyp = Array(newsubtyp, Dimension(possible_len_vars)) in
                 newarrtyp
     | othertype ->
