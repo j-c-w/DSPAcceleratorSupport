@@ -65,7 +65,10 @@ type iospec = {
 	required_includes: string list;
 	typemap: (string, synth_type) Hashtbl.t;
 	rangemap: (string, range_set) Hashtbl.t;
-	validmap: (string, range_set) Hashtbl.t
+	validmap: (string, range_set) Hashtbl.t;
+	(* Which consts appear in the user code -- indexed
+	by type --- used as a guide to generate consts.  *)
+	constmap: (string, synth_value list) Hashtbl.t;
 }
 
 type apispec = {

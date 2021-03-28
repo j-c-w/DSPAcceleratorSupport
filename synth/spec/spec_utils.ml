@@ -130,6 +130,9 @@ let rec synth_value_to_string value =
     | FunV(name) ->
             name
 
+let synth_value_list_to_string values =
+    String.concat ~sep:", " (List.map values synth_value_to_string)
+
 let synth_value_from_range_value rvalue =
     match rvalue with
     | RInt(v) -> Int32V(v)

@@ -112,6 +112,6 @@ let rec synth_khan vars s sorted = match s with
 
 let synthtype_toposort classmap snames typemap =
 	let deps = compute_use_defs classmap snames typemap in
-	let stack, rest = split_deps deps in
+	let rest, stack = split_deps deps in
 	let topo_sorted = synth_khan rest stack [] in
 	List.map topo_sorted (fun t -> t.name)
