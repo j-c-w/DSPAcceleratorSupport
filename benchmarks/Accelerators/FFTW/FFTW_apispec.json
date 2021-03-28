@@ -5,10 +5,15 @@
 	"execcmd": "../../../benchmarks/Accelerators/FFTW/FFTW",
 	"functionname": "fftw_example_api",
 	"typemap": {
-		"api_in": "array(std::complex<double>)",
-		"api_out": "array(std::complex<double>)",
+		"api_in": "array(_complex_double_)",
+		"api_out": "array(_complex_double_)",
 		"dir": "int16",
 		"interface_len": "int32"
 	},
-	"required_includes": ["../../../benchmarks/Accelerators/FFTW/interface.hpp", "complex"]
+	"required_includes": ["../../benchmarks/Accelerators/FFTW/interface.hpp", "complex"],
+	"valid": {
+		"dir": "set(-1, 1)",
+		"interface_len": "set(1, 2, 4, 8, 16, 32, 64)"
+	},
+	"compiler_flags": ["-lfftw3"]
 }

@@ -1,0 +1,14 @@
+{
+	"livein":["data_real", "data_imag", "coef_real", "coef_imag"],
+	"liveout": ["data_real", "data_imag"],
+	"execcmd": "../benchmarks/Suites/UT-DSP/UTDSP_exec",
+	"funname": "fft",
+	"funargs":["data_real", "data_imag", "coef_real", "coef_imag"],
+	"typemap": {
+		"data_real": "array(float32#1024)",
+		"data_imag": "array(float32#1024)",
+		"coef_real": "array(float32#1024)",
+		"coef_imag": "array(float32#1024)"
+		},
+	"required_includes": ["../../benchmarks/Suites/UT-DSP/1024/arrays/fft_1024.c"]
+}

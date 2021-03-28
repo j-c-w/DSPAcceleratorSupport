@@ -4,10 +4,14 @@
 #include "ddcmath.h"
 #include "fourier.h"
 #include<iomanip>
+#include<iostream>
+#include<chrono>
+char *pre_accel_dump_file;
 using json = nlohmann::json;
 int main(int argc, char **argv) {
     char *inpname = argv[1]; 
     char *outname = argv[2]; 
+	pre_accel_dump_file = argv[3];
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
 int NumSamples = input_json["NumSamples"];
@@ -23,20 +27,41 @@ for (auto& elem : input_json["ImagIn"]) {
 float ImagIn_inner = elem;
 ImagIn_vec.push_back(ImagIn_inner);
 }
-float *ImagIn = &ImagIn_vec[0];
+float *ImagIn = ImagIn_vec.data();
 std::vector<float> RealOut_vec;
-for (auto& elem : input_json["RealOut"]) {
+for (auto& elem : input_json["RealIn"]) {
 float RealOut_inner = elem;
 RealOut_vec.push_back(RealOut_inner);
 }
-float *RealOut = &RealOut_vec[0];
+float *RealOut = RealOut_vec.data();
 std::vector<float> ImagOut_vec;
-for (auto& elem : input_json["ImagOut"]) {
+std::cout << "Imaginaries are" << std::endl;
+for (auto& elem : input_json["ImagIn"]) {
+	std::cout << elem << ",";
 float ImagOut_inner = elem;
 ImagOut_vec.push_back(ImagOut_inner);
 }
-float *ImagOut = &ImagOut_vec[0];
+std::cout << std::endl;
+float *ImagOut = ImagOut_vec.data();
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+
+    auto t1 = high_resolution_clock::now();
+
 fft_float(NumSamples, InverseTransform, RealIn, ImagIn, RealOut, ImagOut);
+    auto t2 = high_resolution_clock::now();
+
+    /* Getting number of milliseconds as an integer. */
+    auto ms_int = duration_cast<milliseconds>(t2 - t1);
+
+    /* Getting number of milliseconds as a double. */
+    duration<double, std::milli> ms_double = t2 - t1;
+
+    std::cout << ms_int.count() << "ms\n";
+    std::cout << ms_double.count() << "ms";
+
     json output_json;
 std::vector<json> output_temp_1;
 for (unsigned int i2 = 0; i2 < NumSamples; i2++) {
@@ -46,11 +71,14 @@ output_temp_1.push_back(output_temp_3);
 }
 output_json["RealOut"] = output_temp_1;
 std::vector<json> output_temp_4;
+// std::cout << "Imag out is " << std::endl;
 for (unsigned int i5 = 0; i5 < NumSamples; i5++) {
 float output_temp_6 = ImagOut[i5];
+	// std::cout << output_temp_6 << ",";
 
 output_temp_4.push_back(output_temp_6);
 }
+std::cout << std::endl;
 output_json["ImagOut"] = output_temp_4;
 std::ofstream out_str(outname); 
 out_str << std::setw(4) << output_json << std::endl;

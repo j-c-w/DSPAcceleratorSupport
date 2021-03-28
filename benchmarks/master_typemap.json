@@ -21,6 +21,17 @@
 		}
 	},
 
+	"_complex_double_": {
+		"notes": "Internal compiler representation of std::complex<double>",
+		"type": "class",
+		"symbols": ["re", "im"],
+		"functions": [],
+		"typemap": {
+			"re": "float64",
+			"im": "float64"
+		}
+	},
+
 	"Complex": {
 		"type": "struct",
 		"symbols": ["re", "im"],
