@@ -8,7 +8,7 @@ open Builtin_conversion_functions;;
    than the direct mappings entailed by this.  *)
 type one_dim_var_mapping =
 	| ExactVarMatch of name_reference * name_reference
-	| ConstantMatch of int * name_reference
+	| ConstantMatch of int
 
 type dimvar_mapping =
     | DimvarOneDimension of one_dim_var_mapping

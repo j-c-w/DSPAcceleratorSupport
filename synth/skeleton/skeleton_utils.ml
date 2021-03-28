@@ -9,8 +9,8 @@ let one_dim_var_mapping_to_string map =
 	match map with
 	| ExactVarMatch(fromv, tov) -> (name_reference_to_string fromv) ^
     " = " ^ (name_reference_to_string tov)
-	| ConstantMatch(from_const, to_v) ->
-			(string_of_int from_const) ^ " = " ^ (name_reference_to_string to_v)
+	| ConstantMatch(from_const) ->
+			(string_of_int from_const)
 
 let rec dimvar_mapping_to_string mapping = match mapping with
 	| DimvarOneDimension(map) -> one_dim_var_mapping_to_string map
@@ -23,9 +23,8 @@ let one_dimension_mapping_equal m1 m2 =
     | ExactVarMatch(fromv1, tov1), ExactVarMatch(fromv2, tov2) ->
             (name_reference_equal fromv1 fromv2) &&
             (name_reference_equal tov1 tov2)
-	| ConstantMatch(fconst1, tov1), ConstantMatch(fconst2, tov2) ->
-			(fconst1 = fconst2) &&
-			(name_reference_equal tov1 tov2)
+	| ConstantMatch(fconst1), ConstantMatch(fconst2) ->
+			(fconst1 = fconst2)
     | _, _ -> false
 
 let dimvar_equal m1 m2 =
@@ -174,3 +173,10 @@ let single_variable_binding_equal (s1: single_variable_binding_option_group) (s2
     (assignment_type_list_equal s1.fromvars_index_nesting s2.fromvars_index_nesting) &&
     (name_reference_list_equal s1.tovar_index_nesting s2.tovar_index_nesting) &&
     (dimvar_list_list_equal s1.valid_dimensions_set s2.valid_dimensions_set)
+
+let name_refs_from_skeleton sk =
+	match sk with
+	| SInt(nr) -> nr
+	| SBool(nr) -> nr
+	| SFloat(nr) -> nr
+

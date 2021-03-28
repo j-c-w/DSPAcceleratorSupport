@@ -104,9 +104,7 @@ let transform_rangemap_by options map bindings =
             (* Convert the input ranges to output values if they
             exist.  *)
             if List.for_all ranges (Option.is_some) then
-                let () = Printf.printf "Number of ranges in is %d\n" (List.length ranges) in
                 let ranges = List.filter_map ranges Utils.id in
-                let () = Printf.printf "Number of ranges in is %d\n" (List.length ranges) in
                 let result_range = execute_conversion_on_range flat_binding.conversion_function ranges in
                 let () =
                     Hashtbl.set result_tbl (index_nesting_to_string flat_binding.tovar_index_nesting) result_range

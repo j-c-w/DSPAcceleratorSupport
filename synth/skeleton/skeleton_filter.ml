@@ -19,14 +19,17 @@ let filter_dimvar_set dms =
 			| Some(n) -> false
 			| None -> true
 	in
-    List.filter dms (fun dm ->
+    let filtered = List.filter dms (fun dm ->
         match dm with
         | DimvarOneDimension(ExactVarMatch(f, t)) -> (
 			(tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t))
 		)
         (* TODO -- do we also need to do some filtering here? *)
-		| DimvarOneDimension(ConstantMatch(f, t)) -> true
+		| DimvarOneDimension(ConstantMatch(f)) -> true
     )
+    in
+    let unique_dimvar_set = Utils.remove_duplicates dimvar_equal filtered in
+    unique_dimvar_set
 
 (* No variables assigned from more than once.  *)
 let no_multiplie_cloning_check (skel: skeleton_type_binding) =
@@ -100,4 +103,3 @@ let skeleton_check skel =
 
 (* TODO --- Some filtering here would be a good idea.  *)
 let skeleton_pair_check p = true
-

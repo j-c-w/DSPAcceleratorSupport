@@ -91,7 +91,7 @@ let rec generate_loop_wrappers_from_dimensions dim =
                     LoopOver(assign, indvar, generate_variable_reference_to from)
                     ) in
                 (in_loop_assign, [indvar])
-			| ConstantMatch(from, tov) ->
+			| ConstantMatch(from) ->
 				let indvar = new_induction_variable () in
 				let in_loop_assign = (fun assign ->
 					LoopOver(assign, indvar, generate_const_reference_to (Int64V(from)))
@@ -240,7 +240,7 @@ let rec get_bindings_by_name tvars dims =
             because I think we may want more complex types in the
             future here.  *)
             | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension([DimVariable(f)])
-			| DimvarOneDimension(ConstantMatch(f, t)) -> Dimension([DimConstant(f)])
+			| DimvarOneDimension(ConstantMatch(f)) -> Dimension([DimConstant(f)])
             in
             let subdims = get_bindings_by_name tvars dims in
             (* Need to put the tvar name on the front of all

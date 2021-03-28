@@ -18,12 +18,6 @@ open Utils;;
 
 exception SkeletonGenerationException of string
 
-let name_refs_from_skeleton sk =
-	match sk with
-	| SInt(nr) -> nr
-	| SBool(nr) -> nr
-	| SFloat(nr) -> nr
-
 (* THis function turns a SType into a list of types
    by flattening them.  (i.e. SType(A,B,C) -> A,B,C*)
 let rec flatten_stype_list stype =
@@ -43,8 +37,10 @@ let rec contains x ys =
 	| y :: ys -> (x = y) || (contains x ys)
 
 let get_plausible_constants_for optsmap name =
-    match Hashtbl.find optsmap (skeleton_type_to_string name) with
-    | Some(opts) -> opts
+	(* let () = Printf.printf "Looking for consts compatible with %s\n" (skeleton_type_to_string name) in *)
+    match Hashtbl.find optsmap (name_reference_to_string (name_refs_from_skeleton name)) with
+    | Some(opts) ->
+            List.map opts (fun opt -> AssignConstant(opt))
     | None -> []
 
 let rec big_intersection lists =
@@ -97,7 +93,7 @@ let rec prepend_all_name_refs prep all =
    assign one variable at a time.  *)
 let dimvar_match x y =
 	(* x is the accelerator var, y is the input var *)
-	match x, y with
+    let result = match x, y with
 	| DimVariable(vname1), DimVariable(vname2) ->
 		Some(DimvarOneDimension(ExactVarMatch(vname1, vname2)))
 	| DimConstant(c1), DimConstant(c2) ->
@@ -107,11 +103,13 @@ let dimvar_match x y =
 		else
 			None
 	| DimVariable(v1), DimConstant(c2) ->
-			Some(DimvarOneDimension(ConstantMatch(c2, v1)))
+			Some(DimvarOneDimension(ConstantMatch(c2)))
 	| DimConstant(c1), DimVariable(v2) ->
 			(* TODO -- should work with the range
 			checker to support this case? *)
-			None
+			Some(DimvarOneDimension(ConstantMatch(c1)))
+    in
+    result
 
 let rec dimvar_contains x y =
 	match y with
@@ -305,7 +303,8 @@ and possible_bindings options constant_options_map (typesets_in: skeleton_dimens
 							(* Get the set of possible typevar
 							   bindings that would make this mapping
 							   possible.  *)
-							Some(intype, dimensions_overlap dim_options in_dim_options)
+                            let dimoverlap = dimensions_overlap dim_options in_dim_options in
+							Some(intype, dimoverlap)
 					(* non-dimension types can't be included. *)
 					| _ -> None
 				)) in
@@ -379,6 +378,12 @@ and possible_bindings options constant_options_map (typesets_in: skeleton_dimens
                     for this varaible.  *)
                     get_plausible_constants_for constant_options_map stype_out in
                 let all_binds = var_binds @ constbinds in
+				let () = if (List.length all_binds) = 0 then
+					let () = Printf.printf "Found no plausible binds for variable %s!\n%!" (name_reference_to_string (name_refs_from_skeleton stype_out)) in
+					let () = Printf.printf "Hashtbl keys were %s\n" (String.concat (Hashtbl.keys constant_options_map)) in
+					let () = Printf.printf "Number of constant entries was %d\n" (List.length (Hashtbl.find_exn constant_options_map (name_reference_to_string (name_refs_from_skeleton stype_out)))) in
+					assert false
+				else () in
 				let () = if options.debug_generate_skeletons then
                     let () = Printf.printf "SINGLE_ASSIGN: Assiging to variable '%s' using bindings %s\n" (name_reference_to_string (name_refs_from_skeleton stype_out))
 						((skeleton_dimension_group_type_list_to_string typesets_in )) in
@@ -445,7 +450,7 @@ let rec define_bindings_for valid_dimvars vs =
         | SArray(_, _, EmptyDimension) ->
                 raise (SkeletonGenerationException "Can't have empty dim")
 		| SArray(arnam, _, Dimension(dms)) ->
-                let dimvar_bindings = dim_has_overlap valid_dimvars dms in
+                let dimvar_bindings = dim_has_overlap dms valid_dimvars in
 				[{
 					(* May have to properly
 					deal with array childer. *)
@@ -559,7 +564,7 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
     (* Get the types that are not livein, but are function args.  *)
     let define_only_api_types = skeleton_type_lookup classmap apispec.typemap (set_difference (fun a -> fun b -> (String.compare a b) = 0) apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the pre-binds.  *)
-    let constant_options_map = generate_plausible_constants_map livein_api_types in
+    let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types livein_api_types in
     (* Get constants that we should try for the post-binds
        Empty for now --- Can't really think a user function
        is likely to return a constant -- but maybe we should
@@ -605,6 +610,11 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
         ())
     else
         ();
+	if options.dump_skeletons then
+		(Printf.printf "Pre bindings are: %s\n" (String.concat ~sep:"\nNEW PRE SKEL\n" (List.map range_checked_pre_skeletons (flat_skeleton_type_binding_to_string)));
+		())
+	else
+		();
 	(* Assert that all the pairs are valid structures, e.g. assigning once etc. *)
 	let () = verify_skeleton_pairs options classmap iospec apispec sensible_skeleton_pairs in
     sensible_skeleton_pairs
