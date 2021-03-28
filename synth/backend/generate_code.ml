@@ -80,6 +80,7 @@ let cxx_dimtype_to_name dimtype =
 let rec cxx_dimtype_to_definition dimtype =
     match dimtype with
             | Dimension(x :: []) -> "[" ^ (dimension_value_to_string x) ^ "]"
+			| EmptyDimension -> "TOFILL"
             | _ -> raise (CXXGenerationException "Expected individual array types to be selected by the generate pass")
 
 let rec cxx_definition_synth_type_to_string_prefix_postfix dimmap_lookup typ name =

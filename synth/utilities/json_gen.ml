@@ -4,6 +4,7 @@ open Generate_code;;
 open Parse_iospec;;
 open Parse_api;;
 open Parse_classmap;;
+open Spec_definition;;
 open Options;;
 open Gir;;
 open Program;;
@@ -22,9 +23,10 @@ let main iospec_file classspec_file output_file =
     because I have no clear understanding why it needs both.  *)
 	let classspec = load_classmap classspec_file in
     let iospec = load_iospec default_options classspec iospec_file in
-    (* TODO --- this needs to be filled with some placeholders
-    to indicate that we don't know.  *)
-    let emptytbl = Hashtbl.create (module String) in
+    let lenvartbl = Hashtbl.create (module String) in
+	let _ = ignore(List.map (iospec.livein @ iospec.liveout) (fun v ->
+		Hashtbl.set lenvartbl v EmptyDimension
+	)) in
     (* Most of these values aren't used since we don't gen
     the whole program, just the main.  *)
     let base_program = {
@@ -38,11 +40,12 @@ let main iospec_file classspec_file output_file =
         user_funname = "TODO";
         generated_funname = "TODO";
         api_funname = "TODO";
-        lenvar_bindings = emptytbl;
+        lenvar_bindings = lenvartbl;
         fundefs = []
     } in
 	(* Generate the JSON wrapper: *)
 	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec false base_program in
+	let () = assert (Filename.check_suffix output_file ".cpp") in
 	Out_channel.write_all output_file ~data:code
 
 (* TODO -- use the flag processing also.  *)
