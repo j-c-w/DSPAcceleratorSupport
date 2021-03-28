@@ -29,7 +29,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		stop_before_build only_test debug_gir_reduce debug_comparison
 		all_tests post_synthesis_tool debug_post_synthesis
         dump_behavioural_synth debug_fft_synthesizer compiler_flags
-		debug_range_check dump_range_check pre_accel_dump_function =
+		debug_range_check dump_range_check pre_accel_dump_function
+		param_constant_generation_threshold debug_skeleton_constant_gen =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -45,6 +46,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		);
         post_synthesizer = get_behavioural_syn post_synthesis_tool;
 		pre_accel_dump_function = pre_accel_dump_function;
+
+		param_constant_generation_threshold = param_constant_generation_threshold;
 
         number_of_tests = number_of_tests;
 		all_tests = all_tests;
@@ -80,6 +83,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         debug_synth_topology = debug_synth_topology;
 		
 		debug_skeleton_flatten = debug_skeleton_flatten;
+        debug_skeleton_constant_gen = debug_skeleton_constant_gen;
 
 		debug_range_check = debug_range_check;
 
@@ -131,6 +135,11 @@ let post_synthesis_tool =
 let pre_accel_dump_function =
 	let doc = "What to call the internal function for pre accelerator dumping (may have to be specified to avoid name clashes)" in
 	Arg.(value & opt string "pre_accel_dump_function" & info ["pre-accel-dump-funcation-name"] ~docv:"PreAccelDumpName" ~doc)
+
+(* Generation paramter flags *)
+let param_constant_generation_threshold =
+	let doc = "How large does the valid range of a parameter have to be before we will not try constants on it.  " in
+	Arg.(value & opt int 4 & info["constant-generation-threshold"] ~docv:"ConstantGenerationThreshold" ~doc)
 
 (* Testing configuration flags.  *)
 let number_of_tests =
@@ -197,6 +206,9 @@ let debug_synth_topology =
 let debug_skeleton_flatten =
 	let doc = "Debug skeleton flatten pass" in
 	Arg.(value & flag & info ["debug-skeleton-flatten"] ~docv:"DebugSkeletonFlatten" ~doc)
+let debug_skeleton_constant_gen =
+    let doc = "Debug the constant generation pass" in
+    Arg.(value & flag & info ["debug-skeleton-constant-generation"] ~docv:"DebugSkeletonConstGen" ~doc)
 
 (* Debug range passes *)
 let debug_range_check =
@@ -262,5 +274,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_skeleton_flatten $ stop_before_build $ only_test $ debug_gir_reduce $ debug_comparison $
 	all_tests $ post_synthesis_tool $ debug_post_synthesis
     $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags
-	$ debug_range_check $ dump_range_check $ pre_accel_dump_function)
+	$ debug_range_check $ dump_range_check $ pre_accel_dump_function $
+	param_constant_generation_threshold $ debug_skeleton_constant_gen)
 let () = Term.exit @@ Term.eval (args_t, info)

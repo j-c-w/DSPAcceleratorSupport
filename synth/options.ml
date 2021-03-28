@@ -39,6 +39,9 @@ type options = {
 	post_synthesizer: behavioural_synthesizer;
 	pre_accel_dump_function: string;
 
+	(* Generation Parameters.  *)
+	param_constant_generation_threshold: int;
+
 	(* Testing configuration *)
 	number_of_tests: int;
 	all_tests: bool; (* Keep running tests after failue.  *)
@@ -80,6 +83,7 @@ type options = {
 
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten: bool;
+    debug_skeleton_constant_gen: bool;
 
 	(* Post Synthesis type debug.  *)
 	debug_post_synthesis: bool;
@@ -104,6 +108,8 @@ let default_options = {
 	(* Specified the name of the function to be used to dump
 	intermediate results.  *)
 	pre_accel_dump_function = "pre_accel_dump_function";
+
+    param_constant_generation_threshold = 4;
 
 	(* Testing configuration *)
 	number_of_tests = 100;
@@ -146,6 +152,7 @@ let default_options = {
 
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten = false;
+    debug_skeleton_constant_gen = false;
 
     (* Post synthesis passes debug.  *)
     debug_post_synthesis = false;
