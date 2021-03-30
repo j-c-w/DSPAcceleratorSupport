@@ -11,6 +11,24 @@ open Range_checker_synth;;
 open Gir_utils;;
 
 exception UnimplementedException
+exception RangeCheckException of string
+
+let right_shift_value i =
+	match i with
+	| RangeInteger(i) -> RangeInteger(1 lsr i)
+	| _ -> raise (RangeCheckException "Can't shift non int!")
+
+let right_shift_item i =
+	match i with
+	| RangeItem(i) -> RangeItem(right_shift_value i)
+	| RangeRange(f, t) ->
+			RangeRange(right_shift_value f,
+						right_shift_value t)
+
+let right_shift_all r =
+	match r with
+	| RangeSet(rset) ->
+			RangeSet(Array.map rset right_shift_item)
 
 let execute_conversion_on_range conversion inp_ranges =
     match conversion with
@@ -18,6 +36,11 @@ let execute_conversion_on_range conversion inp_ranges =
             (* Identity is 1 to 1, so must be one assigning var *)
             let () = assert ((List.length inp_ranges) = 1) in
             List.hd_exn inp_ranges
+	| PowerOfTwoConversion ->
+			let () = assert ((List.length inp_ranges) = 1) in
+			let res = List.hd_exn inp_ranges in
+			let shifted = right_shift_all res in
+			shifted
     | Map(fromt, tot, mappairs) ->
             (* Maps are 1 to 1, so must be one assigning var *)
             let () = assert ((List.length inp_ranges) = 1) in

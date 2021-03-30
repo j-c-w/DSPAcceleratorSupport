@@ -16,13 +16,27 @@ within an already exponential problem.. *)
 let range_conversion r1 r2 =
     let r1_size = range_size r1 in
     let r2_size = range_size r2 in
-    if r1_size = r2_size then
+	let po2_options =
+		if is_integer_range (range_type r1) && is_integer_range (range_type r2) then
+            (* r2 is the assignment target, so we are looking
+            for the range of that to be bigger.  *)
+			let r1_max = range_max r1 in
+			let r2_max = range_max r2 in
+            if ((range_compare r1_max (RangeInteger(64))) < 0) && ((range_compare r2_max (RangeInteger(64))) > 0) then
+                [PowerOfTwoConversion]
+            else
+                []
+        else
+            []
+    in
+	let perm_options = if r1_size = r2_size then
         if (range_size_compare r1_size rangeConversionSizeLimit) = -1 then
             permutationConversionOptions r1 r2
         else
             identityConversionFunction r1 r2
     else
         identityConversionFunction r1 r2
+	in po2_options @ perm_options
 
 (* Various things are implausible, like the fromrange
 being lots and lots and the to range being nearly empty.

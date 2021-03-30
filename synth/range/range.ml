@@ -145,6 +145,57 @@ and range_type r = match r with
 	| RangeSet(items) ->
 			range_type_item (Array.get items 0)
 
+let rec range_compare v1 v2 =
+	match v1, v2 with
+	| RangeInteger(i1), RangeInteger(i2) ->
+			Int.compare i1 i2
+	| RangeFloat(f1), RangeFloat(f2) ->
+			Float.compare f1 f2
+	| RangeBool(b1), RangeBool(b2) ->
+			Bool.compare b1 b2
+	| RangeArray(t, a1), RangeArray(t2, a2) ->
+			(* Use a python-like compare --- first element matters most.  *)
+			(* Longer arrays are always later though.  *)
+            (
+			match List.zip a1 a2 with
+			| Ok(l) ->
+					let cmpranges = List.map l (fun (e1, e2) -> range_compare e1 e2) in
+					let result = List.fold cmpranges ~init:0 ~f:(fun eq -> (fun cmpvalue ->
+						if eq = 0 then
+							cmpvalue
+						else
+							eq
+					)) in
+					result
+			| Unequal_lengths ->
+					if (List.length a1) < (List.length a2) then
+						-1
+					else
+						1
+            )
+	| _, _ -> raise (RangeError "Type error")
+
+let is_integer_range t =
+	match t with
+	| RangeIntegerType -> true
+	| _ -> false
+
+let range_item_max im =
+	match im with
+	| RangeItem(i) -> i
+	| RangeRange(f, t) -> t
+
+let range_max r = match r with
+	| RangeSet(items) ->
+			let max_of_each = Array.map items range_item_max in
+			let max_overall = Array.fold max_of_each ~init:(Array.get max_of_each 0) ~f:(fun acc -> fun r ->
+				if (range_compare acc r) < 0 then
+					r
+				else
+					acc
+			) in
+			max_overall
+
 let range_value_set_sort vset =
     (* Perhaps it would be better to keep these sets as arrays? *)
     List.sort vset (fun a -> fun b ->
@@ -185,36 +236,6 @@ let range_value_in r v =
 			| RangeArray(_, _), RangeArray(_, _), RangeArray(_, _) ->
 					raise (RangeError "Unsupported range range array operation")
 			| _, _, _ -> raise (RangeError "Type error")
-
-let rec range_compare v1 v2 =
-	match v1, v2 with
-	| RangeInteger(i1), RangeInteger(i2) ->
-			Int.compare i1 i2
-	| RangeFloat(f1), RangeFloat(f2) ->
-			Float.compare f1 f2
-	| RangeBool(b1), RangeBool(b2) ->
-			Bool.compare b1 b2
-	| RangeArray(t, a1), RangeArray(t2, a2) ->
-			(* Use a python-like compare --- first element matters most.  *)
-			(* Longer arrays are always later though.  *)
-            (
-			match List.zip a1 a2 with
-			| Ok(l) ->
-					let cmpranges = List.map l (fun (e1, e2) -> range_compare e1 e2) in
-					let result = List.fold cmpranges ~init:0 ~f:(fun eq -> (fun cmpvalue ->
-						if eq = 0 then
-							cmpvalue
-						else
-							eq
-					)) in
-					result
-			| Unequal_lengths ->
-					if (List.length a1) < (List.length a2) then
-						-1
-					else
-						1
-            )
-	| _, _ -> raise (RangeError "Type error")
 
 let range_overlap (lower, higher) (lower2, higher2) =
 	let new_low = if (range_compare lower lower2) = -1 then

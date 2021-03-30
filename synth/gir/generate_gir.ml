@@ -287,6 +287,8 @@ let generate_conversion_function conv = match conv with
             should be eliminated by further passes.
             *)
             EmptyGIR, Name("identity")
+	| PowerOfTwoConversion ->
+			EmptyGIR, Name("Pow2")
     | Map(ftype, ttype, to_from_list) ->
 			let to_from_list_synths = List.map to_from_list (fun (tov, fromv) ->
 				(range_value_to_synth_value tov, 
