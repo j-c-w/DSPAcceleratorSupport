@@ -1,0 +1,18 @@
+{
+	"livein": ["InRealData", "InImagData", "OutRealData", "OutImagData", "DataSizeExponent", "SineV", "CosineV", "BitRevInd"],
+	"liveout": ["OutRealData", "OutImagData"],
+	"execcmd": "../benchmark/Suites/EEMBC/EEMBC_exec",
+	"funname": "fxpfft",
+	"funargs": ["InRealData", "InImagData", "OutRealData", "OutImagData", "DataSizeExponent", "SineV", "CosineV", "BitRevInd"],
+	"typemap": {
+		"InRealData": "array(int16#256)",
+		"InImagdata": "array(int16#256)",
+		"OutRealData": "array(int16#256)",
+		"OutImagData": "array(int16#256)",
+		"DataSizeExponent": "int16",
+		"SineV": "array(int16#256)",
+		"CosineV": "array(int16#256)",
+		"BitRevInd": "array(int16#256)",
+	},
+	"required_includes": ["../../benchmarks/Suites/EEMBC/fft00.c"]
+}
