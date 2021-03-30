@@ -42,6 +42,15 @@ let generate_float_within_range rangemap namestring =
             | RFloat(v) -> v
             | _ -> raise (TypeException "Unexepced non-float result to float query")
 
+(* This one assumes that the array has been specified -- the implementation
+for generating a random array is below.  *)
+let generate_array_from_range rangemap namestring =
+	let range = Hashtbl.find_exn rangemap namestring in
+	match random_value_in_range range with
+	| RArray(_, v) as rarr -> range_value_to_synth_value rarr
+	| _ -> raise (TypeException "Unexepected non-array result to the array query")
+
+
 (* TODO --- Could do with making this a bit more deterministic. *)
 let rec generate_inputs_for rangemap values_so_far name_string t structure_metadata =
     match t with
@@ -59,46 +68,54 @@ let rec generate_inputs_for rangemap values_so_far name_string t structure_metad
        make a distinction between square and non
        square arrays.  *)
     | Array(subtype, dimvar) ->
-            let dimvar_names = match dimvar with
-            | Dimension(dms) -> dms
-			| EmptyDimension ->
-					raise (TypeException "Can't have empty dimensions!")
-            in
-            (* If this throws, there's an issue with the topo sorting below --- we
-               expect that the dimvars will have been assigned.  *)
-            let arrlen_value_wrappers = List.map dimvar_names (
-				fun dimvar ->
-					match dimvar with
-					| DimVariable(dimvar_name) ->
-						let wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
-						let arrlen = match wrapper with
-						| Int16V(v) -> v
-						| Int32V(v) -> v
-						| Int64V(v) -> v
-						| _ ->
-								(* probably we could handle this --- just need to have a think
-								about what it means. *)
-								raise (TypeException "Unexpected list dimension type (non-int) ") in
-						arrlen
-					| DimConstant(c) -> c
-				)
-            in
-			(* In the greatest stupid hack of all time, we are
-			just going to set the array values to the max
-			ov the possible lengths.
-			This shouldn't matter for langauges like C unless
-			we are considering strings.
-			There may be some size issues however.
+			if Hashtbl.mem rangemap name_string then
+				(* If the array has specified values
+				we should use those --- often occurs with things
+				that have precomputed constant tables, e.g. twiddle factors.  *)
+				generate_array_from_range rangemap name_string
+			else
+				(* If the name wasn't specified, then we should
+				generate an array.  *)
+				let dimvar_names = match dimvar with
+				| Dimension(dms) -> dms
+				| EmptyDimension ->
+						raise (TypeException "Can't have empty dimensions!")
+				in
+				(* If this throws, there's an issue with the topo sorting below --- we
+				   expect that the dimvars will have been assigned.  *)
+				let arrlen_value_wrappers = List.map dimvar_names (
+					fun dimvar ->
+						match dimvar with
+						| DimVariable(dimvar_name) ->
+							let wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
+							let arrlen = match wrapper with
+							| Int16V(v) -> v
+							| Int32V(v) -> v
+							| Int64V(v) -> v
+							| _ ->
+									(* probably we could handle this --- just need to have a think
+									about what it means. *)
+									raise (TypeException "Unexpected list dimension type (non-int) ") in
+							arrlen
+						| DimConstant(c) -> c
+					)
+				in
+				(* In the greatest stupid hack of all time, we are
+				just going to set the array values to the max
+				ov the possible lengths.
+				This shouldn't matter for langauges like C unless
+				we are considering strings.
+				There may be some size issues however.
 
-			Anyway, there is a fix to support that, but it
-			will require a more complex io_test input
-			format.  Est a few days of work.
+				Anyway, there is a fix to support that, but it
+				will require a more complex io_test input
+				format.  Est a few days of work.
 
-			For langauges like python or Java, this should also
-			be OK, since there should only be one possible
-			array length variable. :) *)
-			let arrlen = max_of_int_list arrlen_value_wrappers in
-            ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for rangemap values_so_far name_string subtype structure_metadata))
+				For langauges like python or Java, this should also
+				be OK, since there should only be one possible
+				array length variable. :) *)
+				let arrlen = max_of_int_list arrlen_value_wrappers in
+				ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for rangemap values_so_far name_string subtype structure_metadata))
     | Struct(name) ->
             let metadata = Hashtbl.find structure_metadata name in
             (* Get the strcuture metadata *)
@@ -141,9 +158,11 @@ let rec value_to_string value =
     | Int16V(v) -> string_of_int v
     | Int32V(v) -> string_of_int v
     | Int64V(v) -> string_of_int v
-    | Float16V(v) -> string_of_float v
-    | Float32V(v) -> string_of_float v
-    | Float64V(v) -> string_of_float v
+	(* JSON does not support formats of the form 1., so
+	we need to append a 0 to make it valid :) *)
+    | Float16V(v) -> (string_of_float v) ^ "0"
+    | Float32V(v) -> (string_of_float v) ^ "0"
+    | Float64V(v) -> (string_of_float v) ^ "0"
     (* Probably not right --- needs to mesh with
     however 'unit' is passed in from the JSON representation.
     Can avoid for now with C++ as main target.  *)
