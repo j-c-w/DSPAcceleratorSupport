@@ -39,6 +39,7 @@ let parse_range typ range_string =
     if res then
         ast
     else
+		let () = Printf.printf "Type is %s and range is %s\n" (synth_type_to_string typ) (range_string) in
         raise (TypeCheckException "Range for variable doesn't typecheck")
 
 
