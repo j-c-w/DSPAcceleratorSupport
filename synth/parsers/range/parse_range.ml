@@ -7,11 +7,17 @@ open Yojson.Basic.Util;;
 
 exception TypeCheckException of string
 
-let typecheck_item typ item =
+let rec typecheck_item typ item =
 	match item with
 	| RangeInteger(_) -> is_integer_type typ
 	| RangeFloat(_) -> is_float_type typ
 	| RangeBool(_) -> is_bool_type typ
+	| RangeArray(t, arr) ->
+			match typ with
+			(* TODO --- could also do a check against dimension here.  *)
+			| Array(stype, dims) ->
+					List.for_all arr (typecheck_item stype)
+			| _ -> false
 
 let typecheck_range_range typ r =
 	match r with

@@ -6,11 +6,13 @@ open Utils;;
 
 exception RangeError of string
 
-let value_from_range_item item =
+let rec value_from_range_item item =
 	match item with
 	| RangeInteger(i) -> RInt(i)
 	| RangeFloat(f) -> RFloat(f)
 	| RangeBool(b) -> RBool(b)
+    | RangeArray(typ, a) ->
+            RArray(typ, List.map a value_from_range_item)
 
 let random_value_from_range_range_in_range r =
 	match r with
@@ -33,6 +35,9 @@ let random_value_from_range_range_in_range r =
 						(* If the aren't different, then they'll
 						be the same.  *)
 						RBool(low)
+            | RArray(_, low), RArray(_, high) ->
+                    (* Is there a better way to do this? *)
+                    raise (RangeError "Invalid range range with arrays")
 			| _, _ ->
 					raise (RangeError "Expected a typechecked range before actualy executing it. ")
 
@@ -67,6 +72,8 @@ let range_item_size ritem =
 						Finite(1)
 					else
 						Finite(2)
+            | RangeArray(typ, low), RangeArray(typ2, high) ->
+                    raise (RangeError "Invlaid range range with arrays")
 			| _, _ ->
 					raise (RangeError ("Type Error"))
             )
@@ -79,19 +86,15 @@ let range_size r =
             let item_lengths = Array.map items range_item_size in
             Array.fold item_lengths ~f:range_size_add ~init:(Finite(0))
 
-let range_value_from_item i = match i with
-	| RangeInteger(fint) -> RInt(fint)
-    | RangeFloat(ffloat) -> RFloat(ffloat)
-	| RangeBool(fbool) -> RBool(fbool)
-
-let range_value_to_item i = match i with
+let rec range_value_to_item i = match i with
     | RInt(fint) -> RangeInteger(fint)
     | RFloat(ffloat) -> RangeFloat(ffloat)
 	| RBool(fbool) -> RangeBool(fbool)
+	| RArray(typ, farr) -> RangeArray(typ, List.map farr range_value_to_item)
 
 let range_values_range_range rr =
     match rr with
-    | RangeItem(i) -> [range_value_from_item i]
+    | RangeItem(i) -> [value_from_range_item i]
     | RangeRange(f, t) ->
             match f, t with
             | RangeInteger(fint), RangeInteger(toint) ->
@@ -104,6 +107,8 @@ let range_values_range_range rr =
 						[RBool(sbool)]
 					else
 						[RBool(sbool); RBool(tbool)]
+			| RangeArray(typ, sarr), RangeArray(ttyp, tarr) ->
+					raise (RangeError "can't have rangesrange of arrays")
             | _, _ ->
                     raise (RangeError "Type error")
 
@@ -130,6 +135,7 @@ let rec range_type_value i = match i with
 	| RangeInteger(_) -> RangeIntegerType
 	| RangeFloat(_) -> RangeFloatType
 	| RangeBool(_) -> RangeBoolType
+	| RangeArray(typ, sub) -> RangeArrayType(typ)
 
 and range_type_item i = match i with
 	| RangeItem(i) -> range_type_value i
@@ -149,14 +155,21 @@ let range_value_set_sort vset =
         | _ -> raise (RangeError "Type error")
     )
 
-let range_value_eq v1 v2 =
+let rec range_value_eq v1 v2 =
 	match v1, v2 with
 	| RangeBool(i), RangeBool(j) -> i = j
 	| RangeInteger(i), RangeInteger(j) -> i = j
 	| RangeFloat(i), RangeFloat(j) -> Utils.float_equal i j
+	| RangeArray(t, suba), RangeArray(t1, suba2) ->
+			(
+			match List.zip suba suba2 with
+			| Ok(l) -> List.for_all l (fun (e1, e2) -> range_value_eq e1 e2)
+			| Unequal_lengths -> false
+			)
 	| RangeInteger(_), _ -> false
 	| RangeFloat(_), _ -> false
 	| RangeBool(_), _ -> false
+	| RangeArray(_, _), _ -> false
 
 let range_value_in r v =
 	match r with
@@ -169,9 +182,11 @@ let range_value_in r v =
 					((Float.compare l i) <= 0) && ((Float.compare h i) >= 0)
 			| RangeBool(b1), RangeBool(b2), RangeBool(i) ->
 					(i = b1) || (i = b2)
+			| RangeArray(_, _), RangeArray(_, _), RangeArray(_, _) ->
+					raise (RangeError "Unsupported range range array operation")
 			| _, _, _ -> raise (RangeError "Type error")
 
-let range_compare v1 v2 =
+let rec range_compare v1 v2 =
 	match v1, v2 with
 	| RangeInteger(i1), RangeInteger(i2) ->
 			Int.compare i1 i2
@@ -179,6 +194,26 @@ let range_compare v1 v2 =
 			Float.compare f1 f2
 	| RangeBool(b1), RangeBool(b2) ->
 			Bool.compare b1 b2
+	| RangeArray(t, a1), RangeArray(t2, a2) ->
+			(* Use a python-like compare --- first element matters most.  *)
+			(* Longer arrays are always later though.  *)
+            (
+			match List.zip a1 a2 with
+			| Ok(l) ->
+					let cmpranges = List.map l (fun (e1, e2) -> range_compare e1 e2) in
+					let result = List.fold cmpranges ~init:0 ~f:(fun eq -> (fun cmpvalue ->
+						if eq = 0 then
+							cmpvalue
+						else
+							eq
+					)) in
+					result
+			| Unequal_lengths ->
+					if (List.length a1) < (List.length a2) then
+						-1
+					else
+						1
+            )
 	| _, _ -> raise (RangeError "Type error")
 
 let range_overlap (lower, higher) (lower2, higher2) =
@@ -199,16 +234,40 @@ let range_overlap (lower, higher) (lower2, higher2) =
 	else
 		Some(RangeRange(new_low, new_high))
 
-let range_value_to_synth_value rvalue =
+let rec range_item_to_synth_value rvalue =
 	match rvalue with
 	(* TODO --- do we need to do something more sane with widths? *)
 	| RangeInteger(i) -> Int64V(i)
 	| RangeFloat(f) -> Float64V(f)
 	| RangeBool(b) -> BoolV(b)
+	| RangeArray(t, arr) ->
+			ArrayV(List.map arr range_item_to_synth_value)
+
+let rec range_value_to_synth_value rvalue =
+    match rvalue with
+    | RInt(v) -> Int32V(v)
+    | RFloat(v) -> Float32V(v)
+	| RBool(v) -> BoolV(v)
+	| RArray(t, arr) ->
+			ArrayV(List.map arr range_value_to_synth_value)
+
+
+let rec synth_type_to_range_type stype =
+	match stype with
+	| Int16 -> RangeIntegerType
+	| Int32 -> RangeIntegerType
+	| Int64 -> RangeIntegerType
+	| Float16 -> RangeFloatType
+	| Float32 -> RangeFloatType
+	| Float64 -> RangeFloatType
+	| Bool -> RangeBoolType
+	| Array(sty, dim) ->
+			RangeArrayType(synth_type_to_range_type sty)
+	| _ -> raise (RangeError "Unsupported range type")
 
 (* Since we don't currently support range types of functions,units/arrays etc.
    we return just an option here.  *)
-let range_from_synth_value svalue =
+let rec item_from_synth_value svalue =
 	let rvalue = match svalue with
 		| Int16V(v) -> Some(RangeInteger(v))
 		| Int32V(v) -> Some(RangeInteger(v))
@@ -217,8 +276,26 @@ let range_from_synth_value svalue =
 		| Float32V(v) -> Some(RangeFloat(v))
 		| Float64V(v) -> Some(RangeFloat(v))
 		| BoolV(v) -> Some(RangeBool(v))
+		| ArrayV(v) ->
+                (
+				match v with
+				| [] -> (* Just generate something I suppose --- think
+				that where this is used it doesn't matter too much.
+				Also, empty arrays in C etc. is a bit strange.
+				*)
+						Some(RangeArray(RangeIntegerType, []))
+				| xs ->
+						let xs = List.map xs item_from_synth_value in
+                        let xs: range_item list = List.map xs (fun f -> match f with | None -> raise (RangeError "Unexpected") | Some(f) -> f) in
+						let typ = range_type_value (List.hd_exn xs) in
+						Some(RangeArray(typ, xs))
+                )
 		| _ -> None
 	in
+    rvalue
+
+let range_from_synth_value svalue =
+    let rvalue = item_from_synth_value svalue in
 	Option.map rvalue (fun rv -> RangeSet(
 		Array.of_list [RangeItem(rv)]
 	))

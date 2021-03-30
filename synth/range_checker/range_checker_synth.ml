@@ -29,6 +29,8 @@ let item_between i (lower, higher) =
 			(i >= lower) && (i <= higher)
 	| RangeFloat(i), RangeFloat(lower), RangeFloat(higher) ->
 			(i >= lower) && (i <= higher)
+	| RangeArray(ti, i), RangeArray(tl, l), RangeArray(th, h) ->
+			raise (RangeSynthError "Unuspported array range")
 	| _, _, _ -> raise (RangeSynthError "Type error")
 
 let check_value_in v set =
@@ -73,21 +75,23 @@ let positive_check_for vname range_set =
 	let conds = Array.map range_set (fun range_elem ->
 		match range_elem with
 		| RangeRange(lower, higher) ->
-				let lowerv = range_value_to_synth_value lower in
-				let higherv = range_value_to_synth_value higher in
+				let lowerv = range_item_to_synth_value lower in
+				let higherv = range_item_to_synth_value higher in
 				CondAnd(
 					Compare(vname, Constant(lowerv), GreaterThanOrEqual),
 					Compare(vname, Constant(higherv), LessThanOrEqual)
 				)
 		| RangeItem(RangeInteger(i)) ->
-				let ivalue = Constant(range_value_to_synth_value (RangeInteger(i))) in
+				let ivalue = Constant(range_item_to_synth_value (RangeInteger(i))) in
 				Compare(vname, ivalue, Equal)
 		| RangeItem(RangeFloat(i)) ->
-				let ivalue = Constant(range_value_to_synth_value (RangeFloat(i))) in
+				let ivalue = Constant(range_item_to_synth_value (RangeFloat(i))) in
 				Compare(vname, ivalue, FloatEqual)
 		| RangeItem(RangeBool(b)) ->
-				let ivalue = Constant(range_value_to_synth_value (RangeBool(b))) in
+				let ivalue = Constant(range_item_to_synth_value (RangeBool(b))) in
 				Compare(vname, ivalue, Equal)
+		| RangeItem(RangeArray(_, _)) ->
+				raise (RangeSynthError "Unsupported equality checks for arrays")
 	) in
 	Array.fold conds ~init:None ~f:(fun acc -> (fun cond ->
 		match acc with
@@ -152,6 +156,30 @@ let generate_check_for options var accel_valid_analysis input_range_analysis inp
 			(* If none are set, we can't do the analysis.  *)
 			None
 
+(* Array types are currently not supported
+	for range gen because they require a complicated
+	equality check --- the space of arrays is also
+	extremely sparse, so there is some question about
+	the potential usefulness of such equality checks.  *)
+let supports rty =
+	match rty with
+	| Some(RangeIntegerType) -> true
+	| Some(RangeBoolType) -> true
+	| Some(RangeFloatType) -> true
+	| Some(RangeArrayType(_)) -> false
+	| None -> true
+
+let is_supported_type s1 s2 s3 =
+	let s1_type = Option.map s1 range_type in
+	let s2_type = Option.map s2 range_type in
+	let s3_type = Option.map s3 range_type in
+	
+	let s1_supported = supports s1_type in
+	let s2_supported = supports s2_type in
+	let s3_supported = supports s3_type in
+
+	s1_supported && s2_supported && s3_supported
+
 (* Note that these ranges have to be over the same variables
  --- we use the accelerator input variables, since we have
  a prospective transformation from the user code variables
@@ -167,7 +195,17 @@ let generate_range_check options vars accel_valid input_range input_valid =
             let () = Printf.printf "Starting rage gen for var %s\n" (var_string) in
             ()
         else () in
-        let res = generate_check_for options var accel_valid_for_var input_range_for_var input_valid_for_var in
+        let res =
+			if is_supported_type accel_valid_for_var input_range_for_var input_valid_for_var then
+				generate_check_for options var accel_valid_for_var input_range_for_var input_valid_for_var
+			else
+				(* E.g. arrays are not currently supported for range
+				generation here -- only for guiding the random
+				input generator/skeleton binder.
+				Just need to support array equality and this should
+				be fine. *)
+				None
+		in
         let () = if options.debug_range_check then
             let () = Printf.printf "Finished range check for var %s, has result %s\n" (var_string) (match res with | None -> "None" | Some(r) -> (conditional_to_string r)) in
             ()

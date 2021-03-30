@@ -12,6 +12,7 @@ open Gir_topology;;
 open Utils;;
 open Builtin_conversion_functions;;
 open Program;;
+open Range;;
 
 exception GenerateGIRException of string
 
@@ -288,8 +289,8 @@ let generate_conversion_function conv = match conv with
             EmptyGIR, Name("identity")
     | Map(ftype, ttype, to_from_list) ->
 			let to_from_list_synths = List.map to_from_list (fun (tov, fromv) ->
-				(synth_value_from_range_value tov, 
-				 synth_value_from_range_value fromv)
+				(range_value_to_synth_value tov, 
+				 range_value_to_synth_value fromv)
 			) in
             let fname = new_conversion_function () in
             let argname = new_variable () in

@@ -133,12 +133,6 @@ let rec synth_value_to_string value =
 let synth_value_list_to_string values =
     String.concat ~sep:", " (List.map values synth_value_to_string)
 
-let synth_value_from_range_value rvalue =
-    match rvalue with
-    | RInt(v) -> Int32V(v)
-    | RFloat(v) -> Float32V(v)
-	| RBool(v) -> BoolV(v)
-
 let rec synth_value_equal c1 c2 =
 	match c1, c2 with
 	| BoolV(v1), BoolV(v2) -> v1 = v2
@@ -320,4 +314,9 @@ let is_int_value v =
 	| Int16V(_) -> true
 	| Int32V(_) -> true
 	| Int64V(_) -> true
+	| _ -> false
+
+let is_array_value v =
+	match v with
+	| ArrayV(_) -> true
 	| _ -> false

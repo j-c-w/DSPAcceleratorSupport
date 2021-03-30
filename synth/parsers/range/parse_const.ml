@@ -23,10 +23,8 @@ let load_consttable json =
 				let range_value_list = List.concat (
 					List.map parsed_range range_values
 				) in
-				let range_item_list =
-					List.map range_value_list range_value_to_item in
 				let synth_values =
-					List.map range_item_list range_value_to_synth_value in
+					List.map range_value_list range_value_to_synth_value in
 				Hashtbl.set result key synth_values
 			)
 		) in

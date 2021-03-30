@@ -74,7 +74,7 @@ let generate_plausible_constants_from_range options vrange: synth_value list opt
 					let rvalues = range_values vrange in
 					Some(
 						List.map rvalues (fun rval ->
-							range_value_to_synth_value(range_value_to_item rval)
+							range_value_to_synth_value rval
 						)
 					)
 				else

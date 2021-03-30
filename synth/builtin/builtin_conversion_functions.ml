@@ -4,6 +4,8 @@ open Range;;
 open Spec_utils;;
 open Spec_definition;;
 
+exception BuiltinException of string
+
 (* What size of sets should we generate conversion sets for.  *)
 let rangeConversionSizeLimit = Finite(4);;
 
@@ -45,11 +47,15 @@ let permutationConversionOptions r1 r2 =
 	| RangeBoolType -> Bool
     | RangeIntegerType -> Int32
     | RangeFloatType -> Float32
+	| RangeArrayType(_) ->
+			raise (BuiltinException "Array types not supported for conversion")
     in
     let totype = match range_type r2 with
 	| RangeBoolType -> Bool
     | RangeIntegerType -> Int32
     | RangeFloatType -> Float32
+	| RangeArrayType(_) ->
+			raise (BuiltinException "Array types not supported for conversion")
     in
 	[
 		forwardMap fromtype value_set_r1 totype value_set_r2;

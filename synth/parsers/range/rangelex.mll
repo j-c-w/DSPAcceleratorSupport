@@ -13,6 +13,8 @@ rule read =
         | white {read lexbuf}
         | "range" {RANGE}
         | "set" {SET}
+		| "[" {L_SQ_BRACKET}
+		| "]" {R_SQ_BRACKET}
         | "(" {LPAREN}
         | ")" {RPAREN}
         | "," {COMMA}
