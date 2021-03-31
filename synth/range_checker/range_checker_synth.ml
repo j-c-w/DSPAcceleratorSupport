@@ -28,7 +28,7 @@ let item_between i (lower, higher) =
 	| RangeInteger(i), RangeInteger(lower), RangeInteger(higher) ->
 			(i >= lower) && (i <= higher)
 	| RangeFloat(i), RangeFloat(lower), RangeFloat(higher) ->
-			(i >= lower) && (i <= higher)
+			((Float.compare i lower) > 0) && ((Float.compare i higher) < 0)
 	| RangeArray(ti, i), RangeArray(tl, l), RangeArray(th, h) ->
 			raise (RangeSynthError "Unuspported array range")
 	| _, _, _ -> raise (RangeSynthError "Type error")

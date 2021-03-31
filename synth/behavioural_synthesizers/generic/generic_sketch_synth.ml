@@ -51,7 +51,7 @@ and compare_elts options v1 v2 =
 	(* TODO -- may need to make this more flexible ---
 	FFTSynth has some crappiness around dealing with
 	precise widths.  *)
-	| BoolV(b1), BoolV(b2) -> b1 = b2
+	| BoolV(b1), BoolV(b2) -> (Bool.compare b1 b2) = 0
     | Int16V(e1), Int16V(e2) -> e1 = e2
     | Int32V(e1), Int32V(e2) -> e1 = e2
     | Int64V(e1), Int64V(e2) -> e1 = e2
@@ -65,7 +65,7 @@ and compare_elts options v1 v2 =
 				compare_elts options i1 i2
 			))
     | StructV(n, vls), StructV(n2, vls2) ->
-			(n = n2) && (compare options vls vls2)
+			((String.compare n n2) = 0) && (compare options vls vls2)
 	| _, _ -> false
 	in
 	let () = if options.debug_post_synthesis then

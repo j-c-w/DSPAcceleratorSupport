@@ -42,7 +42,7 @@ let rec name_reference_equal n1 n2 =
 	oddly nested structnames *)
 	| _, _ -> false
 
-let dimension_value_to_string dim =
+let dimension_value_to_string (dim: dimension_value) =
 	match dim with
 	| DimConstant(i) -> (string_of_int i)
 	| DimVariable(n) -> (name_reference_to_string n)
@@ -135,7 +135,7 @@ let synth_value_list_to_string values =
 
 let rec synth_value_equal c1 c2 =
 	match c1, c2 with
-	| BoolV(v1), BoolV(v2) -> v1 = v2
+	| BoolV(v1), BoolV(v2) -> (Bool.compare v1 v2) = 0
 	(* Note that we could consider comparing
 	different widths of synth type here.  *)
 	| Int16V(v1), Int16V(v2) -> v1 = v2

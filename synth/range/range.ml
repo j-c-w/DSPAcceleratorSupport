@@ -28,7 +28,7 @@ let random_value_from_range_range_in_range r =
 					let v = Random.float (high -. low) in
 					RFloat(v +. low)
 			| RBool(low), RBool(high) ->
-					if (low = false) && (high = true) then
+					if (not low) && (high) then
 						let v = (Random.int 1) = 1 in
 						RBool(v)
 					else
@@ -68,7 +68,7 @@ let range_item_size ritem =
                     (* Perhaps by adding to the range size type? *)
                     Infinite
 			| RangeBool(s), RangeBool(f) ->
-					if s = f then
+					if (Bool.compare s f) = 0 then
 						Finite(1)
 					else
 						Finite(2)
@@ -103,7 +103,7 @@ let range_values_range_range rr =
             | RangeFloat(ffloat), RangeFloat(tofloat) ->
                     raise (RangeError "Can't do value set of floating range (i.e. of infinite window)")
 			| RangeBool(sbool), RangeBool(tbool) ->
-					if sbool = tbool then
+					if (Bool.compare sbool tbool) = 0 then
 						[RBool(sbool)]
 					else
 						[RBool(sbool); RBool(tbool)]
@@ -208,7 +208,7 @@ let range_value_set_sort vset =
 
 let rec range_value_eq v1 v2 =
 	match v1, v2 with
-	| RangeBool(i), RangeBool(j) -> i = j
+	| RangeBool(i), RangeBool(j) -> (Bool.compare i j) = 0
 	| RangeInteger(i), RangeInteger(j) -> i = j
 	| RangeFloat(i), RangeFloat(j) -> Utils.float_equal i j
 	| RangeArray(t, suba), RangeArray(t1, suba2) ->
@@ -232,7 +232,7 @@ let range_value_in r v =
 			| RangeFloat(l), RangeFloat(h), RangeFloat(i) ->
 					((Float.compare l i) <= 0) && ((Float.compare h i) >= 0)
 			| RangeBool(b1), RangeBool(b2), RangeBool(i) ->
-					(i = b1) || (i = b2)
+					((Bool.compare i b1) = 0) || ((Bool.compare i b2) = 0)
 			| RangeArray(_, _), RangeArray(_, _), RangeArray(_, _) ->
 					raise (RangeError "Unsupported range range array operation")
 			| _, _, _ -> raise (RangeError "Type error")

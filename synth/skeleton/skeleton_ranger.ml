@@ -29,7 +29,7 @@ let range_conversion r1 r2 =
         else
             []
     in
-	let perm_options = if r1_size = r2_size then
+	let perm_options = if (range_size_compare r1_size r2_size) = 0 then
         if (range_size_compare r1_size rangeConversionSizeLimit) = -1 then
             permutationConversionOptions r1 r2
         else
