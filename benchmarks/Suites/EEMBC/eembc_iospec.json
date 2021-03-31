@@ -14,5 +14,7 @@
 		"CosineV": "array(int16#256)",
 		"BitRevInd": "array(int16#256)",
 	},
+	"range": {
+	},
 	"required_includes": ["../../benchmarks/Suites/EEMBC/fft00.c"]
 }
