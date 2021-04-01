@@ -85,6 +85,7 @@ let length_variable_compatability (skel: flat_skeleton_binding) =
 			let arnm_so_far_str = (name_reference_to_string arnm) in
 			(* let () = Printf.printf "Arnm is %s\n" arnm_so_far_str in *)
 			let v_used = Hashtbl.find lenvars_for arnm_so_far_str in
+			(* let () = Printf.printf "VUsed is %s\n" (dimvar_mapping_to_string dimvar) in *)
 			let _ = Hashtbl.set lenvars_for arnm_so_far_str dimvar in
 			match v_used with
 			| None ->
@@ -94,6 +95,67 @@ let length_variable_compatability (skel: flat_skeleton_binding) =
 		)
 	)
 
+let no_multiple_lengths tbl binding_list =
+    (* let () = Printf.printf "%s\n" (flat_skeleton_type_binding_to_string binding_list) in *)
+    let result = List.for_all binding_list.flat_bindings (fun fb ->
+		let tname_so_far = ref [] in
+		let fname_so_far = ref [] in
+        let fromvars = match fb.fromvars_index_nesting with
+        | [] -> (* This is just a def --- we still want to consider the tovar
+                    but we need to zip right for the next section.  So just spoof it :) *)
+        (* This is literally a teribly hack. *)
+        (* Should not escape this method at all *)
+            [AssignConstant(Int64V(0))]
+        | other -> other
+        in
+		List.for_all (truncate_zip (extend_zip fb.tovar_index_nesting fromvars) fb.valid_dimensions) (fun ((t, f), dimvar) ->
+			let () = tname_so_far := t :: !tname_so_far in
+			let has_tbinds = Hashtbl.find tbl (name_reference_to_string t) in
+			let has_fbinds = match f with
+			| AssignVariable(v) ->
+					let () = fname_so_far := v @ !fname_so_far in
+					let result = Hashtbl.find tbl (name_reference_list_to_string !fname_so_far) in
+					(* Set the used dimensions for the fvar.  *)
+					let _ = Hashtbl.set tbl (name_reference_list_to_string !fname_so_far) dimvar in
+					result
+			(* If we are assigning a constant, then we don't have to bother. *)
+			| AssignConstant(c) -> None
+			in
+			let tbinds_valid =
+				match has_tbinds with
+				| None ->
+						true
+				| Some(other) ->
+						(* We could use a more loose sense of equality
+						here, e.g. one that is closer to "could equal",
+						but this seems more sensible *)
+						dimvar_equal dimvar other
+			in
+			let fbinds_valid =
+				match has_fbinds with
+				| None ->
+						true
+				| Some(other: dimvar_mapping) ->
+						dimvar_equal dimvar other
+			in
+			(* Now, set the used dimensions for the tvar *)
+			let _ = Hashtbl.set tbl (name_reference_list_to_string !tname_so_far) dimvar in
+			tbinds_valid && fbinds_valid
+		)
+	) in
+    let () = if not result then
+        let () = Printf.printf "Successfully filtered a skeleton\n" in
+        ()
+    else ()
+    in
+    result
+
+let no_multiple_lengths_check ((range, pre), post) =
+	let lenvar_ass = Hashtbl.create (module String) in
+	let pre_asses = no_multiple_lengths lenvar_ass pre in
+	let post_asses = no_multiple_lengths lenvar_ass post in
+	pre_asses && post_asses
+
 (* Check a single skeleton.  *)
 let skeleton_check skel =
 	(* Don't assign to multiple interface variables
@@ -101,5 +163,7 @@ let skeleton_check skel =
 	unlikely to happen in most contexts.  *)
 	no_multiplie_cloning_check skel
 
-(* TODO --- Some filtering here would be a good idea.  *)
-let skeleton_pair_check p = true
+let skeleton_pair_check p =
+	(* Don't assign to/from a variable using different
+	length parameters.  *)
+	no_multiple_lengths_check p

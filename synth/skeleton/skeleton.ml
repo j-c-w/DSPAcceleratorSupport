@@ -238,6 +238,11 @@ let rec compatible_types from_t to_t: bool =
 	| SInt(nfrom), SInt(nto) -> true
 	| SBool(nfrom), SBool(nto) -> true
 	| SFloat(nfrom), SFloat(nto) -> true
+	(* Sometimes, cross conversoin sbetween floats and its
+	   are useful -- can we use heuristics to decide when this
+	   is likely to be the case? *)
+	| SFloat(nfrom), SInt(nto) -> true
+	| SInt(nfrom), SFloat(sto) -> true
 	(* There are all kinds of other conversions that could be matched,
 	   just need to add them in here.  *)
 	| _ -> false
