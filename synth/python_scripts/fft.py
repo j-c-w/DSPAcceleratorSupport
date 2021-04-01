@@ -12,8 +12,8 @@ import sys
 with open(sys.argv[1]) as f:
     json = json.load(f)
 
-RealIn = json['data_real']
-ImagIn = json['data_imag']
+RealIn = json['InRealData']
+ImagIn = json['InImagData']
 
 a = []
 for i in range(len(RealIn)):
