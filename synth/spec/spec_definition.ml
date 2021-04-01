@@ -69,6 +69,7 @@ type iospec = {
 	(* Which consts appear in the user code -- indexed
 	by type --- used as a guide to generate consts.  *)
 	constmap: (string, synth_value list) Hashtbl.t;
+	compiler_flags: string list;
 }
 
 type apispec = {
