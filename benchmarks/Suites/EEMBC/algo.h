@@ -37,10 +37,10 @@
 #ifndef	SET_INTERLEAVE
 
 /* default, case. */
-#if (!defined(C_INTERLEAVED) && !defined(D_INTERLEAVED))
-#define C_INTERLEAVED 
-#define D_INTERLEAVED
-#endif
+/* #if (!defined(C_INTERLEAVED) && !defined(D_INTERLEAVED)) */
+/* #define C_INTERLEAVED */ 
+/* #define D_INTERLEAVED */
+/* #endif */
 
 #endif
 

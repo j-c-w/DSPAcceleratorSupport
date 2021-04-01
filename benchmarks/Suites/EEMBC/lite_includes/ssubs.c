@@ -512,7 +512,7 @@ int str_icmp( const char *s1, const char *s2 )
  * RETURNS: The length of the string in the buffer
  * ---------------------------------------------------------------------------*/
 
-#if !defined( NO_CRLF_XLATE )
+// #if !defined( NO_CRLF_XLATE )
 
 int xlate_nl( const char *str, char *dest_buf )
 
@@ -537,7 +537,7 @@ int xlate_nl( const char *str, char *dest_buf )
    return cnt;
    }
 
-#endif
+// #endif
 
 /*------------------------------------------------------------------------------
  * FUNC   : xlate_nl_inplace
@@ -553,7 +553,7 @@ int xlate_nl( const char *str, char *dest_buf )
  * RETURNS: The length of the translated string
  * ---------------------------------------------------------------------------*/
 
-#if !defined( NO_CRLF_XLATE )
+// #if !defined( NO_CRLF_XLATE )
 
 int xlate_nl_inplace( char *str )
 
@@ -588,4 +588,4 @@ int xlate_nl_inplace( char *str )
    return len; /* Return the length of the string in the destination buffer */
    }
 
-#endif
+// #endif
