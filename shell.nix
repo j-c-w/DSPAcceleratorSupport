@@ -10,13 +10,13 @@ mkShell {
 		ocamlPackages.ppx_expect ocamlPackages.parmap
 		ocamlPackages.alcotest
 		# C++ deps for the synnthesizer
-		gcc nlohmann_json
+		gcc10 nlohmann_json
 		# Other indirect deps for the synthesizer.
 		parallel
 		# Deps for tests
 		fftw
 		# Deps for helper scripts
-		python37 python37Packages.numpy
+		python38 python38Packages.numpy
 	];
 	# Enable ocaml stack traces.
 	OCAMLRUNPARAM = "b";
