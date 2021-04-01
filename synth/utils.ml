@@ -1,5 +1,7 @@
 open Core_kernel;;
 
+exception UtilException of string
+
 let id x = x
 
 let rec cross_product ls =
@@ -38,6 +40,17 @@ let rec truncate_zip l1 l2 =
 	| _, [] -> []
 	| x :: xs, y :: ys ->
 			(x, y) :: (truncate_zip xs ys)
+
+let rec extend_zip l1 l2 =
+	match l1, l2 with
+    | y :: [], x :: [] -> [(y, x)]
+	| [], x :: xs -> raise (UtilException "Invalid Unequal lengths")
+	| y :: ys, [] -> raise (UtilException "Invalid Unequal lengths")
+	| [], [] -> []
+	| x :: xs, y1 :: y2 :: ys ->
+			(x, y1) :: (extend_zip xs (y2 :: ys))
+	| x :: xs, y :: [] ->
+			(x, y) :: (extend_zip xs [y])
 
 let prepend_all x xs =
     List.map xs (fun l -> x :: l)
