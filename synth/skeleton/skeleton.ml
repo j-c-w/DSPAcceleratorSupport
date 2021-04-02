@@ -591,7 +591,7 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
     (* Do skeleton pairing *)
     let all_skeleton_paris = List.cartesian_product pre_skeletons_with_ranges range_checked_post_skeletons in
     (* Do joint filtering *)
-    let sensible_skeleton_pairs = List.filter all_skeleton_paris skeleton_pair_check in
+    let sensible_skeleton_pairs = List.filter all_skeleton_paris (skeleton_pair_check options) in
 	let () = if options.print_synthesizer_numbers || options.debug_generate_skeletons then
         (Printf.printf "Number of types (livein IO=%d, livein API=%d, liveout API=%d, liveout IO=%d)\n"
             (List.length livein_types) (List.length livein_api_types)

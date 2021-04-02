@@ -30,7 +30,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		all_tests post_synthesis_tool debug_post_synthesis
         dump_behavioural_synth debug_fft_synthesizer compiler_flags
 		debug_range_check dump_range_check pre_accel_dump_function
-		param_constant_generation_threshold debug_skeleton_constant_gen =
+		param_constant_generation_threshold debug_skeleton_constant_gen
+		debug_skeleton_multiple_lengths_filter =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -84,6 +85,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		
 		debug_skeleton_flatten = debug_skeleton_flatten;
         debug_skeleton_constant_gen = debug_skeleton_constant_gen;
+		debug_skeleton_multiple_lengths_filter = debug_skeleton_multiple_lengths_filter;
 
 		debug_range_check = debug_range_check;
 
@@ -209,6 +211,9 @@ let debug_skeleton_flatten =
 let debug_skeleton_constant_gen =
     let doc = "Debug the constant generation pass" in
     Arg.(value & flag & info ["debug-skeleton-constant-generation"] ~docv:"DebugSkeletonConstGen" ~doc)
+let debug_skeleton_multiple_lengths_filter =
+	let doc = "Debug multiple lengths removal pass" in
+	Arg.(value & flag & info ["debug-multiple-length-filter"] ~docv:"DebugMultipleLengthFilter" ~doc)
 
 (* Debug range passes *)
 let debug_range_check =
@@ -275,5 +280,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	all_tests $ post_synthesis_tool $ debug_post_synthesis
     $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags
 	$ debug_range_check $ dump_range_check $ pre_accel_dump_function $
-	param_constant_generation_threshold $ debug_skeleton_constant_gen)
+	param_constant_generation_threshold $ debug_skeleton_constant_gen $
+	debug_skeleton_multiple_lengths_filter)
 let () = Term.exit @@ Term.eval (args_t, info)

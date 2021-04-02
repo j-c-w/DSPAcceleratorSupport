@@ -4,6 +4,7 @@ open Spec_utils;;
 open Skeleton_definition;;
 open Skeleton_utils;;
 open Utils;;
+open Options;;
 
 let filter_dimvar_set dms = 
     (* We don't need to have the same dimension with
@@ -95,8 +96,12 @@ let length_variable_compatability (skel: flat_skeleton_binding) =
 		)
 	)
 
-let no_multiple_lengths tbl binding_list =
-    (* let () = Printf.printf "%s\n" (flat_skeleton_type_binding_to_string binding_list) in *)
+let no_multiple_lengths options tbl binding_list =
+	let () = if options.debug_skeleton_multiple_lengths_filter then
+		let () = Printf.printf "Trying to check if  has multiple lengths: %s\n" (flat_skeleton_type_binding_to_string binding_list) in
+		()
+	else ()
+	in
     let result = List.for_all binding_list.flat_bindings (fun fb ->
 		let tname_so_far = ref [] in
 		let fname_so_far = ref [] in
@@ -106,20 +111,33 @@ let no_multiple_lengths tbl binding_list =
         (* This is literally a teribly hack. *)
         (* Should not escape this method at all *)
             [AssignConstant(Int64V(0))]
-        | other -> other
+		| other -> other
         in
-		List.for_all (truncate_zip (extend_zip fb.tovar_index_nesting fromvars) fb.valid_dimensions) (fun ((t, f), dimvar) ->
-			let () = tname_so_far := t :: !tname_so_far in
-			let has_tbinds = Hashtbl.find tbl (name_reference_to_string t) in
-			let has_fbinds = match f with
+		List.for_all fromvars (fun fromvar ->
+			let fvar_contents = match fromvar with
+			| AssignConstant(_) ->
+					[None]
 			| AssignVariable(v) ->
-					let () = fname_so_far := v @ !fname_so_far in
+					List.map v (fun v -> Some(v))
+			in
+		List.for_all (truncate_zip (extend_zip fb.tovar_index_nesting fvar_contents) fb.valid_dimensions) (fun ((t, f), dimvar) ->
+			let () = tname_so_far := t :: !tname_so_far in
+			let has_tbinds = Hashtbl.find tbl (name_reference_list_to_string !tname_so_far) in
+			let has_fbinds = match f with
+			| Some(v) ->
+					let () = fname_so_far := v :: !fname_so_far in
 					let result = Hashtbl.find tbl (name_reference_list_to_string !fname_so_far) in
 					(* Set the used dimensions for the fvar.  *)
 					let _ = Hashtbl.set tbl (name_reference_list_to_string !fname_so_far) dimvar in
 					result
 			(* If we are assigning a constant, then we don't have to bother. *)
-			| AssignConstant(c) -> None
+			| None -> None
+			in
+			let () = if options.debug_skeleton_multiple_lengths_filter then
+				let () = Printf.printf "Considering fromvar %s and tovar %s\n" (name_reference_list_to_string !fname_so_far) (name_reference_list_to_string !tname_so_far) in
+				let () = Printf.printf "Under dim %s\n" (dimvar_mapping_to_string dimvar) in
+				()
+			else ()
 			in
 			let tbinds_valid =
 				match has_tbinds with
@@ -129,6 +147,10 @@ let no_multiple_lengths tbl binding_list =
 						(* We could use a more loose sense of equality
 						here, e.g. one that is closer to "could equal",
 						but this seems more sensible *)
+						let () = if options.debug_skeleton_multiple_lengths_filter then
+							let () = Printf.printf "Comparing (tbinds) %s and %s\n" (dimvar_mapping_to_string dimvar) (dimvar_mapping_to_string other) in
+							() else ()
+						in
 						dimvar_equal dimvar other
 			in
 			let fbinds_valid =
@@ -136,24 +158,30 @@ let no_multiple_lengths tbl binding_list =
 				| None ->
 						true
 				| Some(other: dimvar_mapping) ->
+						let () = if options.debug_skeleton_multiple_lengths_filter then
+							let () = Printf.printf "Comparing %s and %s\n" (dimvar_mapping_to_string dimvar) (dimvar_mapping_to_string other) in
+							() else ()
+						in
 						dimvar_equal dimvar other
 			in
 			(* Now, set the used dimensions for the tvar *)
 			let _ = Hashtbl.set tbl (name_reference_list_to_string !tname_so_far) dimvar in
 			tbinds_valid && fbinds_valid
 		)
+		)
 	) in
-    let () = if not result then
-        let () = Printf.printf "Successfully filtered a skeleton\n" in
-        ()
-    else ()
+	let () =
+		if options.debug_skeleton_multiple_lengths_filter then
+			let () = Printf.printf "Keep that skeleton bool is %b\n" (result)
+			in ()
+		else ()
     in
     result
 
-let no_multiple_lengths_check ((range, pre), post) =
+let no_multiple_lengths_check options ((range, pre), post) =
 	let lenvar_ass = Hashtbl.create (module String) in
-	let pre_asses = no_multiple_lengths lenvar_ass pre in
-	let post_asses = no_multiple_lengths lenvar_ass post in
+	let pre_asses = no_multiple_lengths options lenvar_ass pre in
+	let post_asses = no_multiple_lengths options lenvar_ass post in
 	pre_asses && post_asses
 
 (* Check a single skeleton.  *)
@@ -163,7 +191,7 @@ let skeleton_check skel =
 	unlikely to happen in most contexts.  *)
 	no_multiplie_cloning_check skel
 
-let skeleton_pair_check p =
+let skeleton_pair_check options p =
 	(* Don't assign to/from a variable using different
 	length parameters.  *)
-	no_multiple_lengths_check p
+	no_multiple_lengths_check options p

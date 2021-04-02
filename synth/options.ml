@@ -84,6 +84,7 @@ type options = {
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten: bool;
     debug_skeleton_constant_gen: bool;
+	debug_skeleton_multiple_lengths_filter: bool;
 
 	(* Post Synthesis type debug.  *)
 	debug_post_synthesis: bool;
@@ -153,6 +154,7 @@ let default_options = {
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten = false;
     debug_skeleton_constant_gen = false;
+	debug_skeleton_multiple_lengths_filter = false;
 
     (* Post synthesis passes debug.  *)
     debug_post_synthesis = false;
