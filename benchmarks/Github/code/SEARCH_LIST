@@ -1,0 +1,23 @@
+https://github.com/FFTW/fftw3 --- Unsupported. Code too complex for me to find the correct structs --- expect them to be complicated however. (would only be valid in context.
+https://github.com/xiahouzuoxin/fft --- Valid
+https://github.com/simonwunderlich/FFT_eval --- NotFFT. Just a visualizer, doesn't execute any FFTs
+https://github.com/mborgerding/kissfft --- Valid. (Using the simple API.  Otherwise, may be valid in context.)
+https://github.com/alexbw/iPhoneFFT --- Unsupported, but Valid-in-context Unlikely to be able to support out-of-context, and provides no tests that could be used as in-context references. (input sparsity).
+https://github.com/stg/SYLT-FFT --- Valid.  IntegerFFT, so may have speedup/accuracy issues
+https://github.com/Lauszus/fftw3-android --- NotFFT. (Just an FFTW wrapper).
+https://github.com/jeremyfix/FFTConvolution --- Unsupported 2DFFT (For 2D) -- a wrapper around FFTW, but provides enough context for compilation.  
+https://github.com/cpuimage/FFTResampler --- Valid.
+https://github.com/fakufaku/esp32-fft --- Likely Valid.  Takes twiddle factors as input.  Interleaved input values. May be challenging.
+https://github.com/undees/fftw-example --- Unsupported. Requires understanding FFTW structs --- provides enough context to execute if you do understand the FFTW structs however.
+https://github.com/JodiTheTigger/meow_fft --- Valid.
+https://github.com/slowjud/FFT --- Valid.  Novel structure for storing inputs.
+https://github.com/extemporelang/kiss_fft --- Clone of kissfft above.
+https://github.com/jtfell/c-fft --- Valid for some functions.  Provides too much input sparsity on others.
+https://github.com/adafruit/Adafruit_ZeroFFT --  Valid.
+https://github.com/FFmpeg/FFmpeg -- Valid after preprocessor generates the functions.
+https://github.com/Themaister/muFFT --- Unsupported --- it's a very complex code base, so hard for me to find the right points, but didn't see there to be much in the end.
+https://github.com/MrJBSwe/fft_lcd --- No implementation of an FFT.  Does call an FFT, but unclear where the source for that FFT is.
+https://github.com/BanTheRewind/Cinder-KissFft --- A wrapper around KissFFT -- Since Kiss FFT is supported, this should be supported.
+https://github.com/cpmech/gosl --- Written in Go not C.
+https://github.com/swharden/FftSharp --- Written for .Net in C#
+https://github.com/ibireme/YYBenchmarkFFT --- This is a benchmark suite of other FFT implementations.

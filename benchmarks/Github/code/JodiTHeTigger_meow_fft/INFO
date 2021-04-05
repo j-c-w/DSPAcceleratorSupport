@@ -1,0 +1,6 @@
+Source: https://github.com/JodiTheTigger/meow_fft
+Commit: 6047282
+License: BSD-0
+MainFile: None
+FFTFunction: meow_fft.h:meow_radix_2_dit
+Notes: Multiple compileable functions.  Main interface requires understanding sparse struct.
