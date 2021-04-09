@@ -206,12 +206,12 @@ let wrap_nrefs nms =
 let generate_io_tests options classmap (iospec: iospec) =
 	let () =
 		if options.debug_generate_io_tests then
-			Printf.printf "Starting to generate IO tests"
+			Printf.printf "Starting to generate IO tests\n"
 		else () in
 	(* generate the values for each input. *)
 	let num_tests = options.number_of_tests in
     let livein_namerefs = wrap_nrefs iospec.livein in
-	let toposorted_values = synthtype_toposort classmap livein_namerefs iospec.typemap in
+	let toposorted_values = synthtype_toposort options classmap livein_namerefs iospec.typemap in
 	let () =
 		if options.debug_generate_io_tests then
 			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)

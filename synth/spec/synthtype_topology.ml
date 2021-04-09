@@ -1,4 +1,5 @@
 open Spec_definition;;
+open Options;;
 open Spec_utils;;
 open Core_kernel;;
 
@@ -97,7 +98,14 @@ let filter_deps name deps =
 		dependencies = List.filter deps.dependencies (name_ref_def_check name)
 	}
 
-let rec synth_khan vars s sorted = match s with
+let rec synth_khan options vars s sorted =
+	let () = if options.debug_synth_topology then
+		let () = Printf.printf "Have a list of %s left\n" (dep_list_to_string vars) in
+		let () = Printf.printf "Have a list of %s done\n" (dep_list_to_string sorted) in
+		()
+	else ()
+	in
+	match s with
 	|  [] -> let () = if (List.length vars <> 0) then
 		let () = Printf.printf "FAILED\n" in
 		let () = Printf.printf "Had a list of %s left\n" (dep_list_to_string vars) in
@@ -108,10 +116,10 @@ let rec synth_khan vars s sorted = match s with
 	| n :: ss -> 
 			let remaining_vars = List.map vars (filter_deps n.name) in
 			let still_has_deps, no_more_deps = split_deps remaining_vars in
-			synth_khan still_has_deps (ss @ no_more_deps) (n :: sorted)
+			synth_khan options still_has_deps (ss @ no_more_deps) (n :: sorted)
 
-let synthtype_toposort classmap snames typemap =
+let synthtype_toposort options classmap snames typemap =
 	let deps = compute_use_defs classmap snames typemap in
 	let rest, stack = split_deps deps in
-	let topo_sorted = synth_khan rest stack [] in
-	List.map topo_sorted (fun t -> t.name)
+	let topo_sorted = synth_khan options rest stack [] in
+	List.rev (List.map topo_sorted (fun t -> t.name))

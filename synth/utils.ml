@@ -89,3 +89,9 @@ let float_equal f1 f2 =
 	  let thresh = (Float.abs (f2)) /. 10.0 in
 	  ((Float.compare f1 (f2 +. thresh)) = -1) &&
 	  ((Float.compare f1 (f2 -. thresh) = 1))
+
+let rec between x y =
+	if x = y then
+		[]
+	else
+		x :: (between (x + 1) y)
