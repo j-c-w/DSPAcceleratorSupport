@@ -32,9 +32,9 @@ let load_iospec options classmap filename: iospec =
     | `Null -> []
     | other -> List.map (other |> to_list) to_string in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
-	let range_tbl = load_rangetable classmap typemap (json |> member "range") in
-	let valid_tbl = load_rangetable classmap typemap (json |> member "valid") in
-	let const_tbl = load_consttable (json |> member "consts") in
+	let range_tbl = load_rangetable options classmap typemap (json |> member "range") in
+	let valid_tbl = load_rangetable options classmap typemap (json |> member "valid") in
+	let const_tbl = load_consttable options (json |> member "consts") in
 	let iospec: iospec = {
 		livein=livein;
 		liveout=liveout;

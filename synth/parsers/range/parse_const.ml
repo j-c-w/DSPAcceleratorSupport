@@ -7,7 +7,7 @@ open Range;;
 
 exception ConstTableException of string
 
-let load_consttable json =
+let load_consttable options json =
     let result = Hashtbl.create (module String) in
 	let () = match json with
 	| `Assoc(_) ->
@@ -19,7 +19,7 @@ let load_consttable json =
 			   indexes into the hash table.  *)
 				let typ = parse_type key in
 				let range = List.map (json |> member key |> to_list) (to_string_option) in
-				let parsed_range = List.filter_map range (fun x -> Option.map x (parse_range typ)) in
+				let parsed_range = List.filter_map range (fun x -> Option.map x (parse_range options typ)) in
 				let range_value_list = List.concat (
 					List.map parsed_range range_values
 				) in

@@ -1,5 +1,6 @@
 (* Parse a range value.  *)
 open Core_kernel;;
+open Options;;
 open Range_definition;;
 open Spec_definition;;
 open Spec_utils;;
@@ -30,12 +31,38 @@ let typecheck t ast =
 	| RangeSet(itms) ->
 			Array.for_all (Array.map itms (typecheck_range_range t)) (fun x -> x)
 
+let rec desugar_item i =
+    match i with
+    | SugaredRangeInteger(i) -> RangeInteger(i)
+    | SugaredRangeFloat(f) -> RangeFloat(f)
+    | SugaredRangeBool(b) -> RangeBool(b)
+    | SugaredRangeArray(t, a) -> RangeArray(t, List.map a desugar_item)
+and desugar_range_range rr = match rr with
+    | SugaredRangeRange(f, t) -> [RangeRange(desugar_item f, desugar_item t)]
+    | SugaredRangeItem(i) -> [RangeItem(desugar_item i)]
+    | SugaredRangeFunction(f) ->
+            match f with
+            | SugaredRangePowerOfTwo ->
+                    (* TODO --- we should consider the type 
+                    of the variable here...  e.g. not generate 2^63 unless
+                    it is a 64-bit int.  *)
+                    List.map (Utils.between 0 64) (fun x -> RangeItem(RangeInteger(1 lsr x)))
+and desugar r = match r with
+    | SugaredRangeSet(srange) ->
+            RangeSet(Array.concat (Array.to_list (Array.map srange (fun x -> (Array.of_list (desugar_range_range x))))))
+
 (* We'd really like to handle more complex things, like
 functions, e.g. every odd number in this.  *)
-let parse_range typ range_string =
+let parse_range options typ range_string =
 	let lexbuf = Lexing.from_string range_string in
-	let ast = Rangeparse.t Rangelex.read lexbuf in
+	let ast = desugar (Rangeparse.t Rangelex.read lexbuf) in
     let res = typecheck typ ast in
+    let () =
+        if options.debug_load then
+            let () = Printf.printf "Type is %s and range is %s\n" (synth_type_to_string typ) (range_string) in
+            ()
+        else ()
+    in
     if res then
         ast
     else
@@ -43,7 +70,7 @@ let parse_range typ range_string =
         raise (TypeCheckException "Range for variable doesn't typecheck")
 
 
-let load_rangetable classmap typemap range_field =
+let load_rangetable options classmap typemap range_field =
     let range_tbl = Hashtbl.create (module String) in
     let () = match range_field with
     | `Null -> ()
@@ -51,7 +78,7 @@ let load_rangetable classmap typemap range_field =
             let ranged_vars = keys range_json in
             let _ = List.map ranged_vars (fun k ->
             let typof = type_of typemap classmap k in
-            let r = Hashtbl.add range_tbl k (parse_range typof (range_field |> member k |> to_string)) in
+            let r = Hashtbl.add range_tbl k (parse_range options typof (range_field |> member k |> to_string)) in
             let () = match r with
             | `Ok -> ()
             | `Duplicate -> raise (TypeCheckException "Duplicate range def!")

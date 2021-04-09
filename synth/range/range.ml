@@ -137,6 +137,12 @@ let rec range_type_value i = match i with
 	| RangeBool(_) -> RangeBoolType
 	| RangeArray(typ, sub) -> RangeArrayType(typ)
 
+let rec sugared_range_type_value i = match i with
+	| SugaredRangeInteger(_) -> RangeIntegerType
+    | SugaredRangeFloat(_) -> RangeFloatType
+    | SugaredRangeBool(_) -> RangeBoolType
+    | SugaredRangeArray(t, s) -> RangeArrayType(t)
+
 and range_type_item i = match i with
 	| RangeItem(i) -> range_type_value i
 	| RangeRange(f, _) -> range_type_value f

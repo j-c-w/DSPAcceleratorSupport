@@ -9,6 +9,23 @@ type range_type =
 	| RangeBoolType
 	| RangeArrayType of range_type
 
+(* These are the types the range parser reads in ---
+has some extra defs for things like all powers of two. *)
+type sugared_function =
+	| SugaredRangePowerOfTwo
+
+type sugared_range_item =
+	| SugaredRangeInteger of int
+	| SugaredRangeFloat of float
+	| SugaredRangeBool of bool
+	| SugaredRangeArray of range_type * sugared_range_item list
+and sugared_range_range =
+	| SugaredRangeRange of sugared_range_item * sugared_range_item
+	| SugaredRangeItem of sugared_range_item
+	| SugaredRangeFunction of sugared_function
+and sugared_range_set =
+	| SugaredRangeSet of sugared_range_range Array.t
+
 (* TODO -- may have to migrate to 64b ints? *)
 type range_item =
 	| RangeInteger of int

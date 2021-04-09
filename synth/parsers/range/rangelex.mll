@@ -13,6 +13,7 @@ rule read =
         | white {read lexbuf}
         | "range" {RANGE}
         | "set" {SET}
+		| "power_of_two" { POWER_OF_TWO }
 		| "[" {L_SQ_BRACKET}
 		| "]" {R_SQ_BRACKET}
         | "(" {LPAREN}
