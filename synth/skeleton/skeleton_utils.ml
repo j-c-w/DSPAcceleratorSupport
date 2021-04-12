@@ -27,9 +27,25 @@ let one_dimension_mapping_equal m1 m2 =
 			(fconst1 = fconst2)
     | _, _ -> false
 
+let one_dimension_mapping_equal_commutative m1 m2 =
+	match m1, m2 with
+	| ExactVarMatch(fromv1, tov1), ExactVarMatch(fromv2, tov2) ->
+			((name_reference_equal fromv1 fromv2) &&
+			 (name_reference_equal tov1 tov2)) ||
+			((name_reference_equal fromv1 tov2) &&
+			 (name_reference_equal fromv2 tov1))
+	| other1, other2 ->
+			(* No difference for constant matching *)
+			one_dimension_mapping_equal other1 other2
+
 let dimvar_equal m1 m2 =
 	match m1, m2 with
 	| DimvarOneDimension(map1), DimvarOneDimension(map2) -> one_dimension_mapping_equal map1 map2
+
+let dimvar_equal_commutative m1 m2 =
+	match m1, m2 with
+	| DimvarOneDimension(map1), DimvarOneDimension(map2) ->
+			one_dimension_mapping_equal_commutative map1 map2
 
 let dimvar_list_equal m1 m2 =
     let zipped = List.zip m1 m2 in

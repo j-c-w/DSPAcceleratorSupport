@@ -151,7 +151,7 @@ let no_multiple_lengths options tbl binding_list =
 							let () = Printf.printf "Comparing (tbinds) %s and %s\n" (dimvar_mapping_to_string dimvar) (dimvar_mapping_to_string other) in
 							() else ()
 						in
-						dimvar_equal dimvar other
+						dimvar_equal_commutative dimvar other
 			in
 			let fbinds_valid =
 				match has_fbinds with
@@ -162,7 +162,13 @@ let no_multiple_lengths options tbl binding_list =
 							let () = Printf.printf "Comparing %s and %s\n" (dimvar_mapping_to_string dimvar) (dimvar_mapping_to_string other) in
 							() else ()
 						in
-						dimvar_equal dimvar other
+                        (* Really not 100% sure why we need
+                        the commutative equality here.  Anyway, the
+                        skeleton pass seems to assign dimensions
+                        in different directions depending on
+                        whether this is pre or post, so this triggers
+                        false-negatives here.  Ditto above.  *)
+						dimvar_equal_commutative dimvar other
 			in
 			(* Now, set the used dimensions for the tvar *)
 			let _ = Hashtbl.set tbl (name_reference_list_to_string !tname_so_far) dimvar in

@@ -5,6 +5,8 @@ open Skeleton_definition;;
 open Skeleton_utils;;
 open Builtin_conversion_functions;;
 open Range;;
+open Range_definition;;
+open Options;;
 open Utils;;
 
 exception SkeletonRangerException of string
@@ -29,7 +31,8 @@ let range_conversion r1 r2 =
         else
             []
     in
-	let perm_options = if (range_size_compare r1_size r2_size) = 0 then
+	let range_size_comp = range_size_compare r1_size r2_size in
+	let perm_options = if range_size_comp = 0 then
         if (range_size_compare r1_size rangeConversionSizeLimit) = -1 then
             permutationConversionOptions r1 r2
         else
@@ -44,14 +47,20 @@ I suspect a lot more could be done here.  *)
 (* There is a lot of nuance we want to avoid here, e.g.
 if the user has picked doubles, and the accelerator is
 floats, we probably still want to try it.  *)
-let range_compat_check from_range to_range =
+let range_compat_check options from_range to_range =
     let from_size = range_size from_range in
     let to_size = range_size to_range in
-    let to_smaller = (range_size_compare from_size to_size) = 1 in
-    if to_smaller then
-        false
-    else
-        true
+    let range_comp = range_size_diff from_size to_size in
+    let range_factor = range_size_divide (range_comp) (to_size) in
+    let to_smaller = (range_size_less_than range_factor
+        (options.range_size_difference_factor)) in
+    let () = if options.debug_skeleton_range_filter then
+        let () = Printf.printf "Considering values with fromsize %s and tosize %s, range factor is %s\n" (range_size_to_string from_size) (range_size_to_string to_size) (range_size_to_string range_factor) in
+        let () = Printf.printf "Threshold is %s, decision is therefore %b\n" (range_size_to_string options.range_size_difference_factor) (to_smaller) in
+        ()
+    else ()
+    in
+    to_smaller
 
 let range_from_fromvars rangemap fromvars =
     match fromvars with
@@ -82,7 +91,7 @@ let range_from_fromvars rangemap fromvars =
 let range_from_tovar rangemap tovar =
     Hashtbl.find rangemap (index_nesting_to_string tovar)
 
-let check_binds from_rangemap to_rangemap (bind: flat_single_variable_binding) =
+let check_binds options from_rangemap to_rangemap (bind: flat_single_variable_binding) =
     (* Currently only support the range detection from a single
        var at this time.  I think that that is the right way
        to go about this --- more vars, and you obviously need
@@ -96,7 +105,7 @@ let check_binds from_rangemap to_rangemap (bind: flat_single_variable_binding) =
     | None, _ -> [bind]
     | _, None -> [bind]
     | Some(frange), Some(trange) ->
-            let compatible = range_compat_check frange trange in
+            let compatible = range_compat_check options frange trange in
             if compatible then
                 let conv_fs = range_conversion frange trange in
 				List.map conv_fs (fun conv_f -> {
@@ -122,9 +131,9 @@ let check_binds from_rangemap to_rangemap (bind: flat_single_variable_binding) =
    or None, if at least one of the binds seemed so range-incompatible
    that it didn't need to happen.
    *)
-let rangecheck_binds vbinds from_rangemap to_rangemap =
+let rangecheck_binds options vbinds from_rangemap to_rangemap =
     let individual_bind_checks =
-        List.map vbinds (check_binds from_rangemap to_rangemap) in
+        List.map vbinds (check_binds options from_rangemap to_rangemap) in
     let binds = List.fold individual_bind_checks ~f:(fun binds ->
             fun bindcheck -> match bindcheck, binds with
 				| [], _ -> None
@@ -143,5 +152,5 @@ let rangecheck_binds vbinds from_rangemap to_rangemap =
    to check.  *)
 let rangecheck_skeletons options (skeletons: flat_skeleton_binding list) from_rangemap to_rangemap =
 	List.concat (List.map skeletons (fun skeleton ->
-		rangecheck_binds skeleton.flat_bindings from_rangemap to_rangemap
+		rangecheck_binds options skeleton.flat_bindings from_rangemap to_rangemap
 	))

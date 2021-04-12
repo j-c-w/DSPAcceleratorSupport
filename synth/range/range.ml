@@ -326,3 +326,30 @@ let range_from_synth_value svalue =
 	Option.map rvalue (fun rv -> RangeSet(
 		Array.of_list [RangeItem(rv)]
 	))
+
+let range_size_less_than r1 r2 =
+	match r1, r2 with
+	| Infinite, _ -> false
+	| _, Infinite -> true
+	| Finite(x), Finite(y) -> x < y
+
+let range_size_diff r1 r2 =
+	match r1, r2 with
+	(* This isn't really math, more 'it does what 
+	I need it to do' *)
+	| Infinite, Infinite -> Finite(0)
+	| Finite(n), Infinite -> Finite(0)
+	| Infinite, Finite(n) -> Infinite
+	| Finite(n), Finite(m) -> Finite(n - m)
+
+let range_size_divide n m =
+	match n, m with
+	| Infinite, Infinite -> Finite(1)
+	| Infinite, Finite(n) -> Infinite
+	| Finite(n), Infinite -> Finite(0)
+	| Finite(n), Finite(m) -> Finite(n / m)
+
+let range_size_to_string n =
+    match n with
+    | Finite(x) -> string_of_int x
+    | Infinite -> "Inf"

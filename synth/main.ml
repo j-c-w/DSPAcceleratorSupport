@@ -31,7 +31,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         dump_behavioural_synth debug_fft_synthesizer compiler_flags
 		debug_range_check dump_range_check pre_accel_dump_function
 		param_constant_generation_threshold debug_skeleton_constant_gen
-		debug_skeleton_multiple_lengths_filter =
+		debug_skeleton_multiple_lengths_filter range_size_diff_factor
+        debug_skeleton_range_filter debug_skeleton_filter =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -49,6 +50,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		pre_accel_dump_function = pre_accel_dump_function;
 
 		param_constant_generation_threshold = param_constant_generation_threshold;
+        range_size_difference_factor = range_factor_from_option range_size_diff_factor;
 
         number_of_tests = number_of_tests;
 		all_tests = all_tests;
@@ -86,6 +88,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_skeleton_flatten = debug_skeleton_flatten;
         debug_skeleton_constant_gen = debug_skeleton_constant_gen;
 		debug_skeleton_multiple_lengths_filter = debug_skeleton_multiple_lengths_filter;
+        debug_skeleton_range_filter = debug_skeleton_range_filter;
+		debug_skeleton_filter = debug_skeleton_filter;
 
 		debug_range_check = debug_range_check;
 
@@ -142,6 +146,9 @@ let pre_accel_dump_function =
 let param_constant_generation_threshold =
 	let doc = "How large does the valid range of a parameter have to be before we will not try constants on it.  " in
 	Arg.(value & opt int 4 & info["constant-generation-threshold"] ~docv:"ConstantGenerationThreshold" ~doc)
+let range_size_difference_factor =
+	let doc = "What fraction of inputs does the accelerator have to support to be useful? (int, so really 1 / support fraction) -- for out-of-context this should be really high.  For in-context, it should be quite low.  None indicates infinite range size differences supported (recommneded for out-of-context)" in
+	Arg.(value & opt (some int) (Some(3)) & info["range-size-difference-factor"] ~docv:"InputSupportFraction" ~doc)
 
 (* Testing configuration flags.  *)
 let number_of_tests =
@@ -214,6 +221,12 @@ let debug_skeleton_constant_gen =
 let debug_skeleton_multiple_lengths_filter =
 	let doc = "Debug multiple lengths removal pass" in
 	Arg.(value & flag & info ["debug-multiple-length-filter"] ~docv:"DebugMultipleLengthFilter" ~doc)
+let debug_skeleton_range_filter =
+    let doc = "Debug the range filtering pass" in
+    Arg.(value & flag & info ["debug-skeleton-range-filter"] ~docv:"DebugRangeFilter" ~doc)
+let debug_skeleton_filter =
+	let doc = "Debug the skeleton filter" in
+	Arg.(value & flag & info ["debug-skeleton-filter"] ~docv:"DebugSkeletonFIlter" ~doc)
 
 (* Debug range passes *)
 let debug_range_check =
@@ -281,5 +294,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
     $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags
 	$ debug_range_check $ dump_range_check $ pre_accel_dump_function $
 	param_constant_generation_threshold $ debug_skeleton_constant_gen $
-	debug_skeleton_multiple_lengths_filter)
+	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
+    $ debug_skeleton_range_filter $ debug_skeleton_filter)
 let () = Term.exit @@ Term.eval (args_t, info)

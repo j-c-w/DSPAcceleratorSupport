@@ -1,3 +1,5 @@
+open Range_definition;;
+
 exception OptionsException of string
 
 type backend_target =
@@ -30,6 +32,11 @@ let get_behavioural_syn name =
 	| "None" -> NoSynthesizer
 	| _ -> raise (OptionsException ("Unexpect behavioural synth " ^ name))
 
+let range_factor_from_option o =
+    match o with
+            | Some(n) -> Finite(n)
+            | None -> Infinite;
+
 type options = {
 	(* Generic configuration *)
 	target: backend_target; (* Language target *)
@@ -41,6 +48,7 @@ type options = {
 
 	(* Generation Parameters.  *)
 	param_constant_generation_threshold: int;
+	range_size_difference_factor: range_size_t;
 
 	(* Testing configuration *)
 	number_of_tests: int;
@@ -85,6 +93,8 @@ type options = {
 	debug_skeleton_flatten: bool;
     debug_skeleton_constant_gen: bool;
 	debug_skeleton_multiple_lengths_filter: bool;
+    debug_skeleton_range_filter: bool;
+	debug_skeleton_filter: bool;
 
 	(* Post Synthesis type debug.  *)
 	debug_post_synthesis: bool;
@@ -111,6 +121,7 @@ let default_options = {
 	pre_accel_dump_function = "pre_accel_dump_function";
 
     param_constant_generation_threshold = 4;
+	range_size_difference_factor = Finite(3);
 
 	(* Testing configuration *)
 	number_of_tests = 100;
@@ -155,6 +166,8 @@ let default_options = {
 	debug_skeleton_flatten = false;
     debug_skeleton_constant_gen = false;
 	debug_skeleton_multiple_lengths_filter = false;
+    debug_skeleton_range_filter = false;
+    debug_skeleton_filter = false;
 
     (* Post synthesis passes debug.  *)
     debug_post_synthesis = false;
