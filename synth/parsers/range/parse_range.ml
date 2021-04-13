@@ -46,7 +46,9 @@ and desugar_range_range rr = match rr with
                     (* TODO --- we should consider the type 
                     of the variable here...  e.g. not generate 2^63 unless
                     it is a 64-bit int.  *)
-                    List.map (Utils.between 0 64) (fun x -> RangeItem(RangeInteger(1 lsr x)))
+					(* We should really gen some bigger ones -- just don't want to get into the business of generating massive
+					arrays.  So keeping it at 20 *)
+                    List.map (Utils.between 0 20) (fun x -> RangeItem(RangeInteger(1 lsl x)))
 and desugar r = match r with
     | SugaredRangeSet(srange) ->
             RangeSet(Array.concat (Array.to_list (Array.map srange (fun x -> (Array.of_list (desugar_range_range x))))))
