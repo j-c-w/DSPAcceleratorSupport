@@ -97,7 +97,8 @@ let find_working_code (options:options) generated_executables generated_io_tests
 			(* TODO --- maybe we should time this out?  Less
 			clear whether we need that here than we did with
 			the user code (where we also don't timeout) *)
-			let cmd = execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
+			let timeout = string_of_int options.execution_timeout in
+			let cmd = "timeout " ^ timeout ^ " " ^ execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
 			let () = if options.debug_test then
 				Printf.printf "Running test command %s\n" cmd
 			else () in
