@@ -100,7 +100,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
 			let timeout = string_of_int options.execution_timeout in
 			let cmd = "timeout " ^ timeout ^ " " ^ execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
 			let () = if options.debug_test then
-				Printf.printf "Running test command %s\n" cmd
+				Printf.printf "Running test command %s\n%!" cmd
 			else () in
 			let result = Sys.command cmd in
 			let same_res = match testout with

@@ -14,10 +14,15 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
 		let timeout = (string_of_int opts.execution_timeout) in
         let runcmd = "timeout " ^ timeout ^ " " ^ progexec ^ " " ^ infile ^ " " ^ outfile in
 		let () = if opts.debug_iospec_manipulator then
-			Printf.printf "Runcmd is %s\n" (runcmd)
+			let () = Printf.printf "Runcmd is %s\n%!" (runcmd) in
+			()
 		else () in
         (* TODO -- Need to have a timeout here.  *)
         let res = Sys.command runcmd in
+		let () = if opts.debug_iospec_manipulator then
+			let () = Printf.printf "Finished with result: %d\n" (res) in
+			() else ()
+		in
         if res <> 0 then
             RunFailure
         else

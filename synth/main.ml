@@ -271,7 +271,7 @@ let debug_generate_io_tests =
     let doc = "Debug generation of IO tests " in
     Arg.(value & flag & info ["debug-generate-io-tests"] ~docv:"DebugGenerateIO" ~doc)
 let debug_iospec_manipulator =
-	let doc = "Debug iospec manipulator (e.g. running the generated tests over the tested API" in
+	let doc = "Debug iospec manipulator (e.g. running the generated tests over the tested API)" in
 	Arg.(value & flag & info ["debug-iospec-manipulator"] ~docv:"DebugIOSpecManip" ~doc)
 let debug_test =
 	let doc = "Debug the testing phase.  " in
