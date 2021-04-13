@@ -347,6 +347,7 @@ let range_size_divide n m =
 	| Infinite, Infinite -> Finite(1)
 	| Infinite, Finite(n) -> Infinite
 	| Finite(n), Infinite -> Finite(0)
+	| Finite(n), Finite(0) -> Infinite
 	| Finite(n), Finite(m) -> Finite(n / m)
 
 let range_size_to_string n =

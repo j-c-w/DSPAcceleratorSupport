@@ -11,6 +11,9 @@ open Utils;;
 
 exception SkeletonRangerException of string
 
+(* There is a lot more we could do here, e.g.
+   making ranges with 0 overlap unlikely etc.  *)
+
 (* Generate a conversion from r1 to r2.  *)
 (* We really only do a small subset of this right now ---
 handling the general case is obviously exponential,
@@ -50,8 +53,11 @@ floats, we probably still want to try it.  *)
 let range_compat_check options from_range to_range =
     let from_size = range_size from_range in
     let to_size = range_size to_range in
-    let range_comp = range_size_diff from_size to_size in
-    let range_factor = range_size_divide (range_comp) (to_size) in
+    (* Want to check if fom_size >> to_size (if so then fail) *)
+    (* So, compute fom_size / to_size, and see if it's greater
+       than a threshold.  *)
+    let range_factor = range_size_divide (from_size) (to_size) in
+    (* If this is less than the range factor, then keep it.  *)
     let to_smaller = (range_size_less_than range_factor
         (options.range_size_difference_factor)) in
     let () = if options.debug_skeleton_range_filter then
@@ -105,6 +111,11 @@ let check_binds options from_rangemap to_rangemap (bind: flat_single_variable_bi
     | None, _ -> [bind]
     | _, None -> [bind]
     | Some(frange), Some(trange) ->
+            let () = if options.debug_skeleton_range_filter then
+                let () = Printf.printf "Doing range compat check for %s and %s\n" (index_nesting_to_string bind.tovar_index_nesting) (String.concat (List.map bind.fromvars_index_nesting assignment_type_to_string)) in
+                ()
+            else ()
+            in
             let compatible = range_compat_check options frange trange in
             if compatible then
                 let conv_fs = range_conversion frange trange in

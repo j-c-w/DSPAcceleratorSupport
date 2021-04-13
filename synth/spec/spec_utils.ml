@@ -42,6 +42,9 @@ let rec name_reference_equal n1 n2 =
 	oddly nested structnames *)
 	| _, _ -> false
 
+let name_reference_list_concat ns =
+	List.fold ~init:AnonymousName ~f:name_reference_concat ns
+
 let dimension_value_to_string (dim: dimension_value) =
 	match dim with
 	| DimConstant(i) -> (string_of_int i)

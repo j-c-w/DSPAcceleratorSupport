@@ -45,6 +45,7 @@ type options = {
 	compiler_flags: string list;
 	post_synthesizer: behavioural_synthesizer;
 	pre_accel_dump_function: string;
+    execution_timeout: int;
 
 	(* Generation Parameters.  *)
 	param_constant_generation_threshold: int;
@@ -119,6 +120,7 @@ let default_options = {
 	(* Specified the name of the function to be used to dump
 	intermediate results.  *)
 	pre_accel_dump_function = "pre_accel_dump_function";
+    execution_timeout = 5;
 
     param_constant_generation_threshold = 4;
 	range_size_difference_factor = Finite(3);

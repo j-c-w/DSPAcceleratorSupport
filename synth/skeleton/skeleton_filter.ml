@@ -6,6 +6,8 @@ open Skeleton_utils;;
 open Utils;;
 open Options;;
 
+exception SkeletonFilter of string
+
 let filter_dimvar_set dms = 
     (* We don't need to have the same dimension with
     the same source var for multiple targets.  *)
@@ -190,6 +192,84 @@ let no_multiple_lengths_check options ((range, pre), post) =
 	let post_asses = no_multiple_lengths options lenvar_ass post in
 	pre_asses && post_asses
 
+let dim_assign_equal dimlist dimvar =
+    (* Don't currently support non-square multi-dimensional
+    arrays, although we presumably could do.  *)
+    name_reference_equal (name_reference_list_concat dimlist) dimvar
+
+let check_assignment_compatability skel dimensions =
+	List.for_all skel.flat_bindings (fun bind ->
+        let conversion_function = bind.conversion_function in
+        let fromvars = match bind.fromvars_index_nesting with
+        | [] -> []
+        | [fromv] ->
+                (match fromv with
+                | AssignConstant(_) -> []
+                | AssignVariable(v) -> v
+                )
+        (* To be honest, I'd just skip this here and go through
+        to true.  I'm sure a betteer check dependending
+        on the conversion function is pssible.  *)
+        (* We could just replace this with an empty list ---
+        doing this to give a hint when/if this multi variable
+        assignment thing is fianlly supported.  *)
+        | x :: xs -> raise (SkeletonFilter "Multiple from assignvars not currently supported")
+        in
+        let tovars = bind.tovar_index_nesting in
+        (* This is just an heuristic check -- admittedly,
+        later passes can crash if it fails, but in
+        those could be (easily) fixed on their own. *)
+        (* As a result, we aren't trying to handle anything complex
+        here. *)
+        match conversion_function with
+        | IdentityConversion ->
+            List.for_all dimensions (fun dim ->
+                match dim with
+                | DimvarOneDimension(ExactVarMatch(fromv, tov)) ->
+                        if dim_assign_equal tovars tov then
+                            (* Basically, say if we are assigning
+                            to the variable then make sure that
+                            the from variables are equal.  *)
+                            dim_assign_equal fromvars fromv
+                        else if dim_assign_equal fromvars tov then
+                            (* It doesn't matter which way around
+                            this is --- the ExactVarMatch is
+                            more a mathemtaical assertion
+                            of equality than an assignment per-sey. *)
+                            dim_assign_equal tovars fromv
+                        else
+                            (* This dimension has no overlap with
+                            the assignment we are considering. *)
+                            true
+                | DimvarOneDimension(ConstantMatch(_)) ->
+                        true
+            )
+        | PowerOfTwoConversion ->
+                (* When we support non-linear length
+                var assignments, we could do someting here.
+                *)
+                true
+        | Map(_, _, _) ->
+                (* Perhaps we should be stricter about filtering
+                this? *)
+                true
+	)
+
+let get_dimension_assignments skel =
+	Utils.remove_duplicates dimvar_equal_commutative (List.concat (List.map skel.flat_bindings (fun bind ->
+                bind.valid_dimensions
+            )
+        )
+    )
+	
+let length_assignment_check options ((range, pre), post) =
+	(* Check that dimvars have the same assignments as
+	are actually going to be performed in the code.  *)
+	let dimensions_list = (get_dimension_assignments pre) @ (get_dimension_assignments post) in
+	let pre_asses = check_assignment_compatability pre dimensions_list in
+	let post_asses = check_assignment_compatability post dimensions_list in
+	pre_asses && post_asses
+
 (* Check a single skeleton.  *)
 let skeleton_check skel =
 	(* Don't assign to multiple interface variables
@@ -200,4 +280,5 @@ let skeleton_check skel =
 let skeleton_pair_check options p =
 	(* Don't assign to/from a variable using different
 	length parameters.  *)
-	no_multiple_lengths_check options p
+	(no_multiple_lengths_check options p) &&
+	(length_assignment_check options p)
