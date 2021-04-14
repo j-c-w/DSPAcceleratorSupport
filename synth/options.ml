@@ -60,6 +60,7 @@ type options = {
 	(* Speedup configs to enable partial runs during debugging. *)
 	skip_build: bool;
 	stop_before_build: bool;
+	skip_test: bool;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
@@ -134,6 +135,7 @@ let default_options = {
 	(* Speedup configs to enable partial runs during debugging. *)
 	skip_build = false;
 	stop_before_build = false;
+	skip_test = false;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions = false;

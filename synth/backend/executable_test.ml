@@ -29,7 +29,7 @@ and compare_json_elts options e1 e2 =
 			  match List.zip sorted_p1 sorted_p2 with
 			  | Ok(ls) ->
 					  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
-						  ((String.compare name1 name2) = 0) && (compare_jsons options json1 json2)
+						  ((String.compare name1 name2) = 0) && (compare_json_elts options json1 json2)
 					  ) in
 					  r
 			  | Unequal_lengths -> false
@@ -102,7 +102,17 @@ let find_working_code (options:options) generated_executables generated_io_tests
 			let () = if options.debug_test then
 				Printf.printf "Running test command %s\n%!" cmd
 			else () in
-			let result = Sys.command cmd in
+			let result =
+				if options.skip_test then
+					if Sys.file_exists experiment_outname then
+						(* Assume the test would pass if the output
+						file exists, and that it would fail
+						otherwise.  *)
+						0
+					else
+						1
+				else
+					Sys.command cmd in
 			let same_res = match testout with
 			| RunFailure -> 
 				(* We could be a bit smarter than this.  Anyway,

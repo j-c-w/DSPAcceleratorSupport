@@ -32,7 +32,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_range_check dump_range_check pre_accel_dump_function
 		param_constant_generation_threshold debug_skeleton_constant_gen
 		debug_skeleton_multiple_lengths_filter range_size_diff_factor
-        debug_skeleton_range_filter debug_skeleton_filter execution_timeout =
+        debug_skeleton_range_filter debug_skeleton_filter
+		execution_timeout skip_test =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -58,6 +59,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 
 		skip_build = skip_build;
 		stop_before_build = stop_before_build;
+		skip_test = skip_test;
 		
 		only_test = only_test;
 
@@ -178,6 +180,9 @@ let skip_build =
 let stop_before_build =
 	let doc = "Stop before building any candidate programs.  " in
 	Arg.(value & flag & info ["stop-before-build"] ~docv:"StopBeforeBuild" ~doc)
+let skip_test =
+	let doc = "Only run post-synth and not testing. Debug only. " in
+	Arg.(value & flag & info ["skip-test"] ~docv:"SkipTest" ~doc)
 
 (* Print IR flags *)
 let dump_skeletons =
@@ -299,5 +304,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	$ debug_range_check $ dump_range_check $ pre_accel_dump_function $
 	param_constant_generation_threshold $ debug_skeleton_constant_gen $
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
-    $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout)
+    $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
+	$ skip_test)
 let () = Term.exit @@ Term.eval (args_t, info)
