@@ -226,7 +226,7 @@ let check_assignment_compatability options skel dimensions =
             let () = 
                 if options.debug_skeleton_multiple_lengths_filter then
                     let () = Printf.printf "Looking at assignment %s to %s with conversion %s and dimvar assumption %s\n"
-                    (if fromvars = [] then "(Const)" else name_reference_list_to_string fromvars)
+                    (if (List.length fromvars) = 0 then "(Const)" else name_reference_list_to_string fromvars)
                     (name_reference_list_to_string tovars)
                     (conversion_function_to_string conversion_function)
                     (dimvar_mapping_to_string dim)
