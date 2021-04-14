@@ -42,13 +42,12 @@ and desugar_range_range rr = match rr with
     | SugaredRangeItem(i) -> [RangeItem(desugar_item i)]
     | SugaredRangeFunction(f) ->
             match f with
-            | SugaredRangePowerOfTwo ->
-                    (* TODO --- we should consider the type 
-                    of the variable here...  e.g. not generate 2^63 unless
-                    it is a 64-bit int.  *)
-					(* We should really gen some bigger ones -- just don't want to get into the business of generating massive
-					arrays.  So keeping it at 20 *)
-                    List.map (Utils.between 0 20) (fun x -> RangeItem(RangeInteger(1 lsl x)))
+            | SugaredRangePowerOfTwo(upto) ->
+					(* TODO --- perhaps this should be a two-argument thing?  e.g. from and to? *)
+					(* It's very plausible that an FFT wouldn't support powers from 1 *)
+					(* Note that since ocaml only has 63-bit signed ints, we only really support
+					up to 2^62 before things get weird. *)
+                    List.map (Utils.between 0 upto) (fun x -> RangeItem(RangeInteger(1 lsl x)))
 and desugar r = match r with
     | SugaredRangeSet(srange) ->
             RangeSet(Array.concat (Array.to_list (Array.map srange (fun x -> (Array.of_list (desugar_range_range x))))))

@@ -13,6 +13,7 @@
 %token R_SQ_BRACKET
 %token <float> REAL
 %token <int> INTEGER
+%token <int> NAT
 %token <bool> BOOLEAN
 %token POWER_OF_TWO
 %token EOF
@@ -31,7 +32,7 @@ set_contents:
 
 set_item:
 	| RANGE LPAREN item COMMA item RPAREN { SugaredRangeRange($3, $5) }
-    | POWER_OF_TWO { SugaredRangeFunction(SugaredRangePowerOfTwo) }
+    | POWER_OF_TWO LPAREN NAT RPAREN { SugaredRangeFunction(SugaredRangePowerOfTwo($3)) }
 	| item { SugaredRangeItem($1) }
 
 item_list:
@@ -40,6 +41,7 @@ item_list:
 
 item:
 	| INTEGER { SugaredRangeInteger($1) }
+	| NAT { SugaredRangeInteger($1) }
 	| REAL { SugaredRangeFloat($1) }
 	| BOOLEAN { SugaredRangeBool($1) }
 	| L_SQ_BRACKET; item_list; R_SQ_BRACKET { SugaredRangeArray(sugared_range_type_value (List.hd_exn $2), $2) }
