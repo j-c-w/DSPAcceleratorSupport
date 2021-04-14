@@ -145,7 +145,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
 					else
 						(* Run of accelerator failed --- this probably
 						shouldn't have happened.  *)
-						let () = Printf.printf "Warning: Accelerator failed on input: accelerator bounds should be specified for better performance. \n" in
+						let () = Printf.printf "Warning: Accelerator failed on input (input file %s): accelerator bounds should be specified for better performance. \n" (testin) in
 						(* Say this was a non-match.  *)
 						{
 							input=testin;
