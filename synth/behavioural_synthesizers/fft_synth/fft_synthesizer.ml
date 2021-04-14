@@ -262,6 +262,30 @@ let bit_reversal arr =
     done in
     Array.to_list array_version
 
+let rec get_value inputs vname =
+	match vname with
+	| Name(n) -> Hashtbl.find_exn inputs n
+	| StructName([n]) -> Hashtbl.find_exn inputs (name_reference_to_string n)
+	| StructName(n :: ns) ->
+			let substruct = Hashtbl.find_exn inputs (name_reference_to_string n) in
+			(
+			match substruct with
+			| StructV(n, values) ->
+					get_value values (StructName(ns))
+			| _ ->
+					raise (FFTSynth "Unexpected non struct")
+			)
+	| _ -> raise (FFTSynth "Unexpected name")
+
+let rec set_value inputs vname result =
+	match vname with
+	| Name(n) -> Hashtbl.set inputs n result
+	| StructName([n]) ->
+			Hashtbl.set inputs (name_reference_to_string n) result
+	| StructName(n :: ns) ->
+			set_value inputs (StructName(ns)) result
+	| _ -> raise (FFTSynth "Unexepected Name")
+
 let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
     match program with
     | FSConditional(act, condition) -> (
@@ -275,7 +299,7 @@ let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
                 runner e inputs
             ))
     | FSArrayOp(action_name, FSVariable(on)) ->
-            let arr = match array_from_value (Hashtbl.find_exn inputs (name_reference_to_string on)) with
+            let arr = match array_from_value (get_value inputs on) with
             | Some(arr) -> arr
             | None -> raise (FFTSynth "TYpe error")
             in
@@ -283,7 +307,7 @@ let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
             match action_name with
             | FSBitReversal ->
                     let reversed = bit_reversal arr in
-                    Hashtbl.set inputs (name_reference_to_string on) (ArrayV(reversed))
+                    set_value inputs on (ArrayV(reversed))
             | FSNormalize ->
                     let values = List.map arr (fun elt -> match float_from_value elt with
                         | Some(f) -> f
@@ -294,14 +318,14 @@ let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
                      note is tied to comparisons --- which is tied to reading
                      in values from json_utils. *)
                     let result = List.map (normalize values) (fun x -> Float64V(x)) in
-                    Hashtbl.set inputs (name_reference_to_string on) (ArrayV(result))
+                    set_value inputs on (ArrayV(result))
             | FSDenormalize ->
                     let values = List.map arr (fun elt -> match float_from_value elt with
                         | Some(f) -> f
                         | None -> raise (FFTSynth "Type error")
                     ) in
                     let result = List.map (denormalize values) (fun x -> Float64V(x)) in
-                    Hashtbl.set inputs (name_reference_to_string on) (ArrayV(result))
+                    set_value inputs on (ArrayV(result))
             | FSArrayOpHole ->
                     raise (FFTSynth "Can't execute algs with holes")
             )
@@ -330,7 +354,7 @@ and eval_variable v (inputs: (string, synth_value) Hashtbl.t): synth_value =
 	match v with
     | FSConstant(v) -> v
     | FSVariable(n) ->
-        let v = Hashtbl.find_exn inputs (name_reference_to_string n) in
+        let v = get_value inputs n in
         v
     | _ -> raise (FFTSynth "Can't eval a hole")
 
@@ -352,11 +376,33 @@ let rec split_variables classmap typemap variables =
             | Float64 -> (b, a, i, v :: f, s)
             | Struct(nm) -> (b, a, i, f, (v, nm) :: s)
             (* TODO -- perhaps we should support higher dimensions? *)
-            | Array(subty, _) -> (b, v :: a, i, f, s)
+            | Array(subty, _) ->
+					(* Is the subtype is a struct, the split out
+					the sub-elements.  *)
+					let vs = match subty with
+					| Struct(nm) -> 
+							let (sb, sa, si, sf) = get_struct_variables classmap v nm in
+							(* Really don't think these would be too hard to support... *)
+							let () = if List.length sa <> 0 then raise (FFTSynth "Multi-dimensional arrays not currently supported") else () in
+							sb @ si @ sf @ a
+					| Array(_, _) -> raise (FFTSynth "Multi-dimensional arrays not currently supported")
+					| other ->
+							(* If this is an array of elementary type, then just use as-is *)
+							[v]
+					in
+					(b, vs @ a, i, f, s)
             | Unit -> raise (FFTSynth "Unit not supproted")
             | Fun(_, _) -> raise (FFTSynth "Higher order functions not supported")
         ) in
     let struct_name_types = List.map s_vars (fun (varname, structname) ->
+		get_struct_variables classmap varname structname
+    ) in
+    (* Probably could be done in a more scalable manner.  Anyway... *)
+    List.fold struct_name_types ~init:(b_vars, arr_vars, i_vars, f_vars) ~f:(fun (b, a, i, f) ->
+            fun (b2, a2, i2, f2) ->
+                (b @ b2, a @ a2, i @ i2, f @ f2)
+    )
+and get_struct_variables classmap varname structname =
         let struct_metadata = Hashtbl.find_exn classmap structname in
         let structtypemap = get_class_typemap struct_metadata in
         let structmembers = List.map (get_class_members struct_metadata) (fun mem -> Name(mem)) in
@@ -369,12 +415,6 @@ let rec split_variables classmap typemap variables =
          List.map si prepend_sname,
          List.map sf prepend_sname
         )
-    ) in
-    (* Probably could be done in a more scalable manner.  Anyway... *)
-    List.fold struct_name_types ~init:(b_vars, arr_vars, i_vars, f_vars) ~f:(fun (b, a, i, f) ->
-            fun (b2, a2, i2, f2) ->
-                (b @ b2, a @ a2, i @ i2, f @ f2)
-    )
 
 class fft_synth_manipulator hole_opts =
     object
