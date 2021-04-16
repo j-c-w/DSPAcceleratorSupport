@@ -218,13 +218,42 @@ let compare_fs (a: synth_value) b = match (int_from_value a, int_from_value b) w
             (* No other cases are currently handled.  *)
             | _, _ -> raise (FFTSynth ("Type error, can't compare " ^ (synth_value_to_string a) ^ " and " ^ (synth_value_to_string b)))
 
-let normalize arr =
+let rec generic_normalize op arr: synth_value list =
     let length = float_of_int (List.length arr) in
-    List.map arr (fun el -> el /. length)
+    List.map arr (fun e1 ->
+        let result: synth_value = match e1 with
+		| StructV(sname, subeles) ->
+				let newtbl = Hashtbl.create (module String) in
+				let _ = List.map (Hashtbl.keys subeles) (fun key ->
+                    let value = Hashtbl.find_exn subeles key in
+					match value with
+					| Float16V(f) -> Hashtbl.set newtbl key (Float16V(op f length))
+					| Float32V(f) -> Hashtbl.set newtbl key (Float16V(op f length))
+					| Float64V(f) -> Hashtbl.set newtbl key (Float16V(op f length))
+					| ArrayV(subarr) -> Hashtbl.set newtbl key (ArrayV(generic_normalize op subarr))
+					(* TODO  -- support nested classes.  *)
+					| _ -> raise (FFTSynth "Unexpected non-float")
+				) in
+				StructV(sname, newtbl)
+		| ArrayV(subarray) ->
+				ArrayV(generic_normalize op subarray)
+		| Float16V(f) ->
+                let r: synth_value = Float16V(op f length) in
+                r
+		| Float32V(f) ->
+				Float32V(op f length)
+		| Float64V(f) ->
+				Float64V(op f length)
+		| _ -> raise (FFTSynth "Unepxected non-float")
+        in
+        result
+		)
+
+let normalize arr =
+	generic_normalize (fun f -> fun length -> f /. length) arr
 
 let denormalize arr =
-    let length = float_of_int (List.length arr) in
-    List.map arr (fun el -> el *. length)
+	generic_normalize (fun f -> fun length -> f *. length) arr
 
 let bit_reverse n maxbits =
     (* not sure (a) what this should do for non power of two
@@ -291,6 +320,7 @@ let rec set_value inputs vname result =
 	| StructName([n]) ->
 			Hashtbl.set inputs (name_reference_to_string n) result
 	| StructName(n :: ns) ->
+			(
 			match Hashtbl.find_exn inputs (name_reference_to_string n) with
 			| StructV(n, vmap) ->
 					set_value vmap (StructName(ns)) result
@@ -299,8 +329,12 @@ let rec set_value inputs vname result =
 						List.map values (fun v ->
 							match v with
 							| StructV(n, vmap) ->
-									set_value vmap (name_reference_to_string n)
+									set_value vmap (StructName(ns))
+							| _ -> raise (FFTSynth "Unexpected type")
 						)
+					)
+			| _ -> raise (FFTSynth "Unexpected type")
+			)
 	| _ -> raise (FFTSynth "Unexepected Name")
 
 let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
@@ -326,23 +360,11 @@ let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
                     let reversed = bit_reversal arr in
                     set_value inputs on (ArrayV(reversed))
             | FSNormalize ->
-                    let values = List.map arr (fun elt -> match float_from_value elt with
-                        | Some(f) -> f
-                        | None -> raise (FFTSynth "Type error")
-                    )
-                    in
-                    (* TODO --- could do better than rewraping in float64 probably ---
-                     note is tied to comparisons --- which is tied to reading
-                     in values from json_utils. *)
-                    let result = List.map (normalize values) (fun x -> Float64V(x)) in
-                    set_value inputs on (ArrayV(result))
+					let new_value = normalize arr in
+                    set_value inputs on (ArrayV(new_value))
             | FSDenormalize ->
-                    let values = List.map arr (fun elt -> match float_from_value elt with
-                        | Some(f) -> f
-                        | None -> raise (FFTSynth "Type error")
-                    ) in
-                    let result = List.map (denormalize values) (fun x -> Float64V(x)) in
-                    set_value inputs on (ArrayV(result))
+					let new_value = denormalize arr in
+                    set_value inputs on (ArrayV(new_value))
             | FSArrayOpHole ->
                     raise (FFTSynth "Can't execute algs with holes")
             )
@@ -392,22 +414,8 @@ let rec split_variables classmap typemap variables =
             | Float32 -> (b, a, i, v :: f, s)
             | Float64 -> (b, a, i, v :: f, s)
             | Struct(nm) -> (b, a, i, f, (v, nm) :: s)
-            (* TODO -- perhaps we should support higher dimensions? *)
             | Array(subty, _) ->
-					(* Is the subtype is a struct, the split out
-					the sub-elements.  *)
-					let vs = match subty with
-					| Struct(nm) -> 
-							let (sb, sa, si, sf) = get_struct_variables classmap v nm in
-							(* Really don't think these would be too hard to support... *)
-							let () = if List.length sa <> 0 then raise (FFTSynth "Multi-dimensional arrays not currently supported") else () in
-							sb @ si @ sf @ a
-					| Array(_, _) -> raise (FFTSynth "Multi-dimensional arrays not currently supported")
-					| other ->
-							(* If this is an array of elementary type, then just use as-is *)
-							[v]
-					in
-					(b, vs @ a, i, f, s)
+					(b, v :: a, i, f, s)
             | Unit -> raise (FFTSynth "Unit not supproted")
             | Fun(_, _) -> raise (FFTSynth "Higher order functions not supported")
         ) in
@@ -458,5 +466,5 @@ let fft_synth options classmap typemap variables (gir_program: program) iopairs:
 	| x :: xs ->
 			Some({
 				includes = (fft_synth_includes options);
-				program = (generate_gir_program options gir_program.lenvar_bindings x)
+				program = (generate_gir_program options classmap typemap gir_program.lenvar_bindings x)
 			})
