@@ -12,7 +12,7 @@ let test_remove_duplicates () =
 
 
 let main () =
-	run "SpecTest" [
+	[
 		"synth-val-equal",
 		[
 			test_case "veq" `Quick test_synth_val_eq;

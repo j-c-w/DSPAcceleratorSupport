@@ -1,2 +1,5 @@
-let () = Fft_synth_test.main ()
-let () = Spec_test.main ()
+open Alcotest
+
+let () =
+	run "Test"
+	((Utils_test.utils_tests) @ (Spec_test.main ()) @ (Fft_synth_test.main ()))

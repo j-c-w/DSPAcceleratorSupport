@@ -29,7 +29,7 @@ let test_sim () =
 	in
 	let () = runner program inputs in
 	let flist = match Hashtbl.find_exn inputs "v" with
-	| ArrayV([Float64V(x); Float64V(y)]) -> [x; y]
+	| ArrayV([Float32V(x); Float32V(y)]) -> [x; y]
 	| v ->
             let () = Printf.printf "Output was %s, expected two elt array." (synth_value_to_string v) in
             raise (TestFail "")
@@ -38,7 +38,7 @@ let test_sim () =
 
 
 let main () = 
-	run "FFTSynth" [
+	[
 		"bit-reversal",
 		[
 			test_case "Po2 test" `Quick test_bit_reversal
