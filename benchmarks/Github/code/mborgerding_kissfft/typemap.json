@@ -1,0 +1,10 @@
+{
+	"kiss_fft_cpx": {
+		"type": "struct",
+		"symbols": ["r", "i"],
+		"typemap": {
+			"r": "float32",
+			"i": "float32"
+		}
+	}
+}
