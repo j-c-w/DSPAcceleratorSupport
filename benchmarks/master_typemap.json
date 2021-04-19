@@ -1,4 +1,20 @@
 {
+	"COMPLEX": {
+		"type": "struct",
+		"symbols": ["real", "imag"],
+		"typemap": {
+			"real": "float32",
+			"imag": "float32"
+		}
+	},
+	"kiss_fft_cpx": {
+		"type": "struct",
+		"symbols": ["r", "i"],
+		"typemap": {
+			"r": "float32",
+			"i": "float32"
+		}
+	},
 	"std::complex<double>": {
 		"notes": "C++ style complex. ",
 		"type": "class",
