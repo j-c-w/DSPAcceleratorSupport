@@ -13,6 +13,10 @@ open Gir_utils;;
 exception UnimplementedException
 exception RangeCheckException of string
 
+type range_direction =
+	| RangeForward
+	| RangeBackward
+
 let right_shift_value i =
 	match i with
 	| RangeInteger(i) -> RangeInteger(1 lsr i)
@@ -30,7 +34,23 @@ let right_shift_all r =
 	| RangeSet(rset) ->
 			RangeSet(Array.map rset right_shift_item)
 
-let execute_conversion_on_range conversion inp_ranges =
+let log_value i =
+	match i with
+	| RangeInteger(i) -> RangeInteger(Utils.log_2 i)
+	| _ -> raise (RangeCheckException "Cna't log non-int!") (* I mean, we could... *)
+
+let log_item i =
+	match i with
+	| RangeItem(i) -> RangeItem(log_value i)
+	| RangeRange(f, t) ->
+			RangeRange(log_value f, log_value t)
+
+let log_all r = 
+	match r with
+	| RangeSet(rset) ->
+			RangeSet(Array.map rset log_item)
+
+let execute_conversion_on_range direction conversion inp_ranges =
     match conversion with
     | IdentityConversion ->
             (* Identity is 1 to 1, so must be one assigning var *)
@@ -39,8 +59,15 @@ let execute_conversion_on_range conversion inp_ranges =
 	| PowerOfTwoConversion ->
 			let () = assert ((List.length inp_ranges) = 1) in
 			let res = List.hd_exn inp_ranges in
-			let shifted = right_shift_all res in
-			shifted
+			(
+			match direction with
+			| RangeForward ->
+					let shifted = right_shift_all res in
+					shifted
+			| RangeBackward ->
+					let shifted = log_all res in
+					shifted
+			)
     | Map(fromt, tot, mappairs) ->
             (* Maps are 1 to 1, so must be one assigning var *)
             let () = assert ((List.length inp_ranges) = 1) in
@@ -94,7 +121,10 @@ let execute_conversion_on_range conversion inp_ranges =
                     ) in
                     RangeSet(Array.of_list result_list)
 
-let transform_rangemap_by options map bindings =
+(* This supports either forward or backward range analysis --- you need a forward
+analysis to generate the range-checking code, and you need a backward analysis to
+generate range restrictions for input-value generation.  *)
+let transform_rangemap_by options forward_range map bindings =
     let result_tbl = Hashtbl.create (module String) in
     let () = ignore(List.map bindings.flat_bindings (fun flat_binding ->
         let inputs_count = List.length flat_binding.fromvars_index_nesting in
@@ -128,7 +158,9 @@ let transform_rangemap_by options map bindings =
             exist.  *)
             if List.for_all ranges (Option.is_some) then
                 let ranges = List.filter_map ranges Utils.id in
-                let result_range = execute_conversion_on_range flat_binding.conversion_function ranges in
+                let result_range =
+					execute_conversion_on_range forward_range flat_binding.conversion_function ranges
+				in
                 let () =
                     Hashtbl.set result_tbl (index_nesting_to_string flat_binding.tovar_index_nesting) result_range
                 in
@@ -143,8 +175,8 @@ let transform_rangemap_by options map bindings =
 let generate_range_check_skeleton options classmap iospec apispec pre_binding =
     (* First, we need to generate what the real input/valid
     ranges are /after/ translation through the binding code. *)
-    let transformed_io_rangemap = transform_rangemap_by options iospec.rangemap pre_binding in
-    let transformed_io_validmap = transform_rangemap_by options iospec.validmap pre_binding in
+    let transformed_io_rangemap = transform_rangemap_by options RangeForward iospec.rangemap pre_binding in
+    let transformed_io_validmap = transform_rangemap_by options RangeForward iospec.validmap pre_binding in
     (* Then, use these to call the range gen.  This generates
     some GIR conditions that are going to be used later, not
     any skeleton code --- perhaps they should generate
