@@ -103,6 +103,10 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	(* END Round 1 of Tests *)
 
     (* Run post-synthesis *)
+	let () = if opts.print_synthesizer_numbers then
+		Printf.printf "Starting post synthesis (%d programs)\n" (List.length working_codes)
+	else ()
+	in
     let post_synthesis_programs = run_post_synthesis opts classmap iospec api reduced_programs working_codes in
     (* TODO --- regenerate the code and output the working ones
         in an output file!. *)
