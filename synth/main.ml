@@ -33,7 +33,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		param_constant_generation_threshold debug_skeleton_constant_gen
 		debug_skeleton_multiple_lengths_filter range_size_diff_factor
         debug_skeleton_range_filter debug_skeleton_filter
-		execution_timeout skip_test =
+		execution_timeout skip_test mse_threshold =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -50,6 +50,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         post_synthesizer = get_behavioural_syn post_synthesis_tool;
 		pre_accel_dump_function = pre_accel_dump_function;
 		execution_timeout = execution_timeout;
+		mse_threshold = mse_threshold;
 
 		param_constant_generation_threshold = param_constant_generation_threshold;
         range_size_difference_factor = range_factor_from_option range_size_diff_factor;
@@ -155,6 +156,9 @@ let param_constant_generation_threshold =
 let range_size_difference_factor =
 	let doc = "What fraction of inputs does the accelerator have to support to be useful? (int, so really 1 / support fraction) -- for out-of-context this should be really high.  For in-context, it should be quite low.  None indicates infinite range size differences supported (recommneded for out-of-context)" in
 	Arg.(value & opt (some int) (Some(3)) & info["range-size-difference-factor"] ~docv:"InputSupportFraction" ~doc)
+let mse_threshold =
+	let doc = "What is the mean-sequared error difference that is allowable between functions? (normalized by n log n)" in
+	Arg.(value & opt (float) 0.01 & info ["mean-squared-error"] ~docv:"MSE" ~doc)
 
 (* Testing configuration flags.  *)
 let number_of_tests =
@@ -305,5 +309,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	param_constant_generation_threshold $ debug_skeleton_constant_gen $
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
-	$ skip_test)
+	$ skip_test $ mse_threshold)
 let () = Term.exit @@ Term.eval (args_t, info)
