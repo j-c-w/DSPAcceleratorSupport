@@ -3,6 +3,7 @@ open Spec_definition;;
 open Spec_utils;;
 open Utils;;
 open Options;;
+open Float_compare;;
 
 type io_pair = {
     input: (string, synth_value) Hashtbl.t;
@@ -33,7 +34,7 @@ let generate_options options sketch_utils sketches =
     else () in
 	result
 
-let rec compare options v1 v2 =
+let rec compare options fcomp v1 v2 =
 	(* Assume v1_keys is the set we want to check, and
 	  v1_keys \in v1_keys *)
 	let v1_keys = Hashtbl.keys v1 in
@@ -41,12 +42,14 @@ let rec compare options v1 v2 =
 	let () = Printf.printf "V2tbl keys are: %s\n" (String.concat (Hashtbl.keys v2)) in *)
 	List.for_all v1_keys (fun mem ->
 		let () = if options.debug_post_synthesis then
-			Printf.printf "Comparing for key %s" mem
+			(* This was a bit too noisy *)
+			(* Printf.printf "Comparing for key %s\n" mem *)
+			()
 		else () in
-		compare_elts options (Hashtbl.find_exn v1 mem) (Hashtbl.find_exn v2 mem)
+		compare_elts options fcomp (Hashtbl.find_exn v1 mem) (Hashtbl.find_exn v2 mem)
 	)
 
-and compare_elts options v1 v2 =
+and compare_elts options fcomp v1 v2 =
 	let result = match v1, v2 with
 	(* TODO -- may need to make this more flexible ---
 	FFTSynth has some crappiness around dealing with
@@ -55,17 +58,17 @@ and compare_elts options v1 v2 =
     | Int16V(e1), Int16V(e2) -> e1 = e2
     | Int32V(e1), Int32V(e2) -> e1 = e2
     | Int64V(e1), Int64V(e2) -> e1 = e2
-    | Float16V(e1), Float16V(e2) -> float_equal e1 e2
-    | Float32V(e1), Float32V(e2) -> float_equal e1 e2
-    | Float64V(e1), Float64V(e2) -> float_equal e1 e2
+    | Float16V(e1), Float16V(e2) -> fcomp#compare e1 e2
+    | Float32V(e1), Float32V(e2) -> fcomp#compare e1 e2
+    | Float64V(e1), Float64V(e2) -> fcomp#compare e1 e2
     | UnitV, UnitV -> true
     | ArrayV(vs1), ArrayV(vs2) ->
 			((List.length vs1) = (List.length vs2)) &&
 			(List.for_all (List.zip_exn vs1 vs2) (fun (i1, i2) ->
-				compare_elts options i1 i2
+				compare_elts options fcomp i1 i2
 			))
     | StructV(n, vls), StructV(n2, vls2) ->
-			((String.compare n n2) = 0) && (compare options vls vls2)
+			((String.compare n n2) = 0) && (compare options fcomp vls vls2)
 	| _, _ -> false
 	in
 	let () = if options.debug_post_synthesis then
@@ -102,9 +105,10 @@ let eval options fft_manip sketches ios =
             (* TODO -- could support non-void returns? *)
             let this_state = deep_copy io.input in
 			let () = fft_manip#runner sketch this_state in
+			let fcomp = ((new fp_comp_mse options.mse_threshold) :> fp_comp) in
 			(* Order is important --- not everything in
 				'this_state' is live out *)
-			compare options io.output this_state
+			(compare options fcomp io.output this_state) && (fcomp#result options)
 		), sketch
 	) in
 	let result = List.filter_map run_results (fun (results, prog) ->
