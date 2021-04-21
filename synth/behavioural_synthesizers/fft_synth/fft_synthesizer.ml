@@ -155,9 +155,16 @@ let rec fs_fill_holes filler structure =
                 FSArrayOp(o, v)
             )
     | FSSeq(elems) ->
-            let elem_opts = List.map elems (fs_fill_holes filler) in
-            List.map (Utils.cross_product elem_opts)
-            (fun opt -> FSSeq(opt))
+			(
+            match elems with
+            | [] ->
+                    (* Preserve empty seqs. *)
+					[FSSeq([])]
+            | elems ->
+                let elem_opts = List.map elems (fs_fill_holes filler) in
+                List.map (Utils.cross_product elem_opts)
+                (fun opt -> FSSeq(opt))
+			)
     | FSStructureHole -> raise (FFTSynth "DOn't support filling structural holes")
 
 and fill_conditional_holes filler structure =
