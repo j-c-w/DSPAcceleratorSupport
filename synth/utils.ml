@@ -95,3 +95,12 @@ let rec between x y =
 		[]
 	else
 		x :: (between (x + 1) y)
+
+let log_2 i =
+	let iref = ref i in
+	let l2_value = ref 0 in
+	while (!iref > 0) do
+		iref := (!iref) lsr 1;
+		l2_value := !l2_value + 1
+	done;
+	!l2_value - 1
