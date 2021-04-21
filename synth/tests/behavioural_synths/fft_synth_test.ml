@@ -4,6 +4,8 @@ open Alcotest;;
 open Fft_synthesizer;;
 open Fft_synthesizer_definition;;
 open Spec_utils;;
+open Options;;
+open Float_compare;;
 
 exception TestFail of string
 
@@ -36,6 +38,15 @@ let test_sim () =
 	in
 	Alcotest.(check @@ float 0.1) "1.0 is 1.0" 1.0 (List.hd_exn flist)
 
+let test_compare () =
+	let inputs = Hashtbl.create (module String) in
+	let _ = Hashtbl.add inputs "v" (ArrayV([Float32V(1.05); Float32V(1.05)])) in
+	let fcomp = ((new fp_comp_mse default_options.mse_threshold)) in
+	let res = Generic_sketch_synth.compare default_options (fcomp :> fp_comp) inputs inputs in
+	let () = Alcotest.(check (bool)) "same bool" true res in
+	let () = Printf.printf "MSE is %f\n" (fcomp#mse ()) in
+	()
+
 
 let main () = 
 	[
@@ -50,5 +61,9 @@ let main () =
 		"execution-test",
 		[
 			test_case "test-sim" `Quick test_sim
+		];
+		"test-compare",
+		[
+			test_case "test-compare" `Quick test_compare
 		]
 	]
