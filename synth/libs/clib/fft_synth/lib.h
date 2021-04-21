@@ -21,5 +21,5 @@ unsigned int reverseBits(unsigned int num, unsigned int no_bits);
 		}                                            \
 	}
 
-#define ARRAY_NORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]#postind = arr[i]#postind / len; }
-#define ARRAY_DENORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]#postind = arr[i]#postind * len; }
+#define ARRAY_NORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]postind = arr[i]postind / len; }
+#define ARRAY_DENORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]postind = arr[i]postind * len; }
