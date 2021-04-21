@@ -5,19 +5,20 @@ open Run_definition;;
 open Options;;
 open Utils;;
 open Spec_definition;;
+open Float_compare;;
 
 (* Largely, we assume taht j1 and j2 have the same members
 this will sometimes crash and sometimes spuriously go true
 if they do not.  *)
-let rec compare_jsons options j1 j2 =
+let rec compare_jsons options fcomp j1 j2 =
 	(* let () = Printf.printf "JSON j1 is %s \n" (Yojson.Basic.pretty_to_string j1) in
 	let () = Printf.printf "JSON j2 is %s \n" (Yojson.Basic.pretty_to_string j2) in *)
     let j1_members = keys j1 in
     List.for_all j1_members (fun mem ->
-		compare_json_elts options (j1 |> member mem) (j2 |> member mem)
+		compare_json_elts options fcomp (j1 |> member mem) (j2 |> member mem)
 	)
 
-and compare_json_elts options e1 e2 =
+and compare_json_elts options fcomp e1 e2 =
 	let result = match (e1, e2) with
 	  | `Assoc(njson_pairs1), `Assoc(njson_pairs2) ->
 			  let sorted_p1 = List.sort njson_pairs1 (fun (s1, j1) -> fun (s2, j2) ->
@@ -29,7 +30,7 @@ and compare_json_elts options e1 e2 =
 			  match List.zip sorted_p1 sorted_p2 with
 			  | Ok(ls) ->
 					  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
-						  ((String.compare name1 name2) = 0) && (compare_json_elts options json1 json2)
+						  ((String.compare name1 name2) = 0) && (compare_json_elts options fcomp json1 json2)
 					  ) in
 					  r
 			  | Unequal_lengths -> false
@@ -37,14 +38,13 @@ and compare_json_elts options e1 e2 =
 	  | `Bool(b1), `Bool(b2) ->
 			  (Bool.compare b1 b2) = 0
 	  | `Float(f1), `Float(f2) ->
-              float_equal f1 f2
+              fcomp#compare f1 f2
 	  | `Int(i1), `Int(i2) ->
 			  i1 = i2
 	  | `List(l1), `List(l2) ->
 			  ((List.length l1) = (List.length l2)) &&
-			  (* TODO --- fix --- no except on unequal lengths, just false I think? *)
 			  List.for_all (List.zip_exn l1 l2) (fun (i1, i2) ->
-				  compare_json_elts options i1 i2
+				  compare_json_elts options fcomp i1 i2
 			  )
 	  | `Null, `Null -> true
 	  | `String(s1), `String(s2) ->
@@ -57,7 +57,7 @@ and compare_json_elts options e1 e2 =
 		let () = if options.debug_comparison then
 			Printf.printf "Comparison between %s and %s returned false!"
                 (Yojson.Basic.pretty_to_string e1)
-                (Yojson.Basic.pretty_to_string e1)
+                (Yojson.Basic.pretty_to_string e2)
 		else () in
 		result
 
@@ -65,7 +65,9 @@ let compare_outputs options f1 f2 =
     (* Open both in Yojson and parse. *)
     let f1_json = Yojson.Basic.from_file f1 in
     let f2_json = Yojson.Basic.from_file f2 in
-    compare_jsons options f1_json f2_json
+	let fcomp = ((new fp_comp_mse options.mse_threshold) :> fp_comp) in
+	let compare_result = compare_jsons options fcomp f1_json f2_json in
+	compare_result && (fcomp#result options)
 
 let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =
 	(* TODO --- perhaps a parmap here?  Need to make sure the output files don't overlap if so. *)
@@ -166,7 +168,7 @@ let find_working_code (options:options) generated_executables generated_io_tests
 		let total_count = List.length res in
 		let passed_count = List.count res (fun (result) -> result.passed) in
 		let passed = (total_count = passed_count) in
-		let () = Printf.printf "Passed cound is %d of %d tests\n" (passed_count) (total_count) in
+		let () = Printf.printf "For executable %s, passed cound is %d of %d tests\n" (execname) (passed_count) (total_count) in
 		res, passed
 	)
 
