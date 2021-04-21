@@ -147,10 +147,10 @@ let flat_skeleton_pairs_to_string skeletons =
 		"\n\nPost" ^ (flat_skeleton_type_binding_to_string post)))
 
 let flat_skeleton_pairs_and_ranges_to_string skeletons =
-	String.concat ~sep:"\n" (List.map skeletons (fun ((range, pre), post) ->
-		"Pre: " ^ (flat_skeleton_type_binding_to_string pre) ^
-		"\nPost: " ^ (flat_skeleton_type_binding_to_string post) ^
-		(match range with
+	String.concat ~sep:"\n" (List.map skeletons (fun (skeleton) ->
+		"Pre: " ^ (flat_skeleton_type_binding_to_string skeleton.pre) ^
+		"\nPost: " ^ (flat_skeleton_type_binding_to_string skeleton.post) ^
+		(match skeleton.rangecheck with
 		| None -> ""
 		| Some(range) ->
 				"\nRangeCheck: " ^ (conditional_to_string range)

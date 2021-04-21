@@ -187,10 +187,10 @@ let no_multiple_lengths options tbl binding_list =
     in
     result
 
-let no_multiple_lengths_check options ((range, pre), post) =
+let no_multiple_lengths_check options skeleton =
 	let lenvar_ass = Hashtbl.create (module String) in
-	let pre_asses = no_multiple_lengths options lenvar_ass pre in
-	let post_asses = no_multiple_lengths options lenvar_ass post in
+	let pre_asses = no_multiple_lengths options lenvar_ass skeleton.pre in
+	let post_asses = no_multiple_lengths options lenvar_ass skeleton.post in
 	pre_asses && post_asses
 
 let dim_assign_equal dimlist dimvar =
@@ -273,16 +273,16 @@ let get_dimension_assignments skel =
         )
     )
 	
-let length_assignment_check options ((range, pre), post) =
+let length_assignment_check options skeleton =
 	(* Check that dimvars have the same assignments as
 	are actually going to be performed in the code.  *)
 	let () = if options.debug_skeleton_multiple_lengths_filter then
 		Printf.printf "Starting new length assignment check\n"
 	else ()
 	in
-	let dimensions_list = (get_dimension_assignments pre) @ (get_dimension_assignments post) in
-	let pre_asses = check_assignment_compatability options pre dimensions_list in
-	let post_asses = check_assignment_compatability options post dimensions_list in
+	let dimensions_list = (get_dimension_assignments skeleton.pre) @ (get_dimension_assignments skeleton.post) in
+	let pre_asses = check_assignment_compatability options skeleton.pre dimensions_list in
+	let post_asses = check_assignment_compatability options skeleton.post dimensions_list in
 	let result = pre_asses && post_asses in
 	let () = if options.debug_skeleton_multiple_lengths_filter then
 		Printf.printf "Keeping: %b\n" result

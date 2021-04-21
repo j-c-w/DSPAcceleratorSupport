@@ -1,6 +1,7 @@
 open Core_kernel;;
 open Spec_definition;;
 open Builtin_conversion_functions;;
+open Range_definition;;
 
 (* Keep track of dimvar mappings required for
    certain loops.  We envision that this will
@@ -70,4 +71,11 @@ type flat_single_variable_binding = {
 
 type flat_skeleton_binding = {
 	flat_bindings: flat_single_variable_binding list
+}
+
+type skeleton_pairs = {
+	pre: flat_skeleton_binding;
+	post: flat_skeleton_binding;
+	rangecheck: Gir.conditional option;
+	inputmap: (string, range_set) Hashtbl.t
 }

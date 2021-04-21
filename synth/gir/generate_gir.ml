@@ -465,14 +465,14 @@ let generate_define_statemens_for options api =
     (* Generate a define for each input variable in the API *)
     List.map sorted_names (fun x -> Definition(x))
 
-let generate_gir_for options (api: apispec) ((range_check, (pre_skeleton: flat_skeleton_binding)), (post_skeleton: flat_skeleton_binding)) =
+let generate_gir_for options (api: apispec) (skeleton: skeleton_pairs) =
 	let () = if options.debug_generate_gir then
 		Printf.printf "Starting generation for new skeleton pair\n"
 	else () in
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
-	let pre_gir, pre_lenbinds, pre_required_fun_defs = generate_gir_for_binding true options pre_skeleton in
-	let post_gir, post_lenbinds, post_required_fun_defs = generate_gir_for_binding false options post_skeleton in
+	let pre_gir, pre_lenbinds, pre_required_fun_defs = generate_gir_for_binding true options skeleton.pre in
+	let post_gir, post_lenbinds, post_required_fun_defs = generate_gir_for_binding false options skeleton.post in
     (* Keep track of the variable length assignments that have been made. *)
     let merged_lenbinds = binding_lists_to_string (merge_bindings_by_name pre_lenbinds post_lenbinds) in
     let table_lenbinds = hash_table_from_list (module String) merged_lenbinds in
@@ -485,7 +485,7 @@ let generate_gir_for options (api: apispec) ((range_check, (pre_skeleton: flat_s
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    List.map res (fun (pre, post) -> (pre, post, table_lenbinds, all_fundefs, range_check))
+    List.map res (fun (pre, post) -> (pre, post, table_lenbinds, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
 
 
 let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) list) =
@@ -493,15 +493,16 @@ let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) li
 		generate_gir_for options api skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
-		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds, funs, range) ->
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds, funs, range, map) ->
 			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
 	else () in
-	List.map result (fun (pre, post, bindings, fundefs, range_checker) ->
+	List.map result (fun (pre, post, bindings, fundefs, range_checker, inputmap) ->
 		{
 			pre = pre;
             post = post;
 			lenvar_bindings = bindings;
 			fundefs = fundefs;
+			inputmap = inputmap;
 			range_checker = Option.map range_checker (fun checker ->
             {
                     condition = checker;

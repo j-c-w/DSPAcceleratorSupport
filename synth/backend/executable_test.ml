@@ -69,107 +69,110 @@ let compare_outputs options f1 f2 =
 	let compare_result = compare_jsons options fcomp f1_json f2_json in
 	compare_result && (fcomp#result options)
 
-let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =
+let check_if_code_works (options:options) execname test_no generated_io_tests correct_answer_files =
 	(* TODO --- perhaps a parmap here?  Need to make sure the output files don't overlap if so. *)
     (* This might also end up being limited by disk performance.  Perhaps using
     a ramdisk would help? *)
 	let tests_and_results = List.zip_exn generated_io_tests correct_answer_files in
+	 (* Need to keep the output files distict for
+	further analysis.  *)
+	(* We could do something like 'for_all', but we don't
+	really want to run every test for every executable ---
+	most are going to fail immediately.  *)
+	let ()  = if options.debug_test then
+		Printf.printf "Starting tests for executable %s\n" execname
+	else () in
+	let res = List.map tests_and_results (fun (testin, testout) ->
+		(* Get an output name for this test.  *)
+		let experiment_outname = testin ^ "_outtmp_" ^ (string_of_int test_no) ^ ".json" in
+		(* Also get the output name for the intermediate
+		(pre accelerator call) variable values.  *)
+		let pre_accel_variables_outname = testin ^ "_outtmp_pre_accel_" ^ (string_of_int test_no) ^ ".json" in
+		(* Run the program on this test input.  *)
+		(* TODO --- maybe we should time this out?  Less
+		clear whether we need that here than we did with
+		the user code (where we also don't timeout) *)
+		let timeout = string_of_int options.execution_timeout in
+		let cmd = "timeout " ^ timeout ^ " " ^ execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
+		let () = if options.debug_test then
+			Printf.printf "Running test command %s\n%!" cmd
+		else () in
+		let result =
+			if options.skip_test then
+				if Sys.file_exists experiment_outname then
+					(* Assume the test would pass if the output
+					file exists, and that it would fail
+					otherwise.  *)
+					0
+				else
+					1
+			else
+				Sys.command cmd in
+		let same_res = match testout with
+		| RunFailure -> 
+			(* We could be a bit smarter than this.  Anyway,
+			I'm hoping not to deal with too many failures,
+			they're more of an edge case(? famous last words). *)
+			if result <> 0 then
+				(* both are failures.  *)
+				{
+					input=testin;
+					true_output=None;
+					measured_output=None;
+					passed=true;
+				}
+			else
+				(* New run isn't a failure.  *)
+				{
+					input=testin;
+					true_output=None;
+					measured_output=Some((pre_accel_variables_outname, experiment_outname));
+					passed=false
+				}
+		| RunSuccess(outf) ->
+				if result = 0 then
+					{
+						input=testin;
+						true_output=Some(outf);
+						measured_output=Some((pre_accel_variables_outname, experiment_outname));
+						passed=(compare_outputs options experiment_outname outf)
+					}
+				else
+					(* Run of accelerator failed --- this probably
+					shouldn't have happened.  *)
+					let () = Printf.printf "Warning: Accelerator failed on input (input file %s): accelerator bounds should be specified for better performance. \n" (testin) in
+					(* Say this was a non-match.  *)
+					{
+						input=testin;
+						true_output=Some(outf);
+						measured_output=None;
+						passed=false
+					}
+		in
+		let () =
+			if options.dump_test_results then
+				let () = Printf.printf "Executbale %s and test %s had result %b\n" (execname) (same_res.input) (same_res.passed) in
+				()
+			else ()
+		in
+		same_res
+		) in
+	(* Glue together the results.  *)
+	let total_count = List.length res in
+	let passed_count = List.count res (fun (result) -> result.passed) in
+	let passed = (total_count = passed_count) in
+	let () = Printf.printf "For executable %s, passed cound is %d of %d tests\n" (execname) (passed_count) (total_count) in
+	res, passed
+
+let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =
 	let () = if options.debug_test then
 		let () = Printf.printf "Number of tests is %d\n" (List.length generated_executables) in
 		() else () in
-	 (* Need to keep the output files distict for
-	further analysis.  *)
-	let executable_number = ref 0 in
-	List.map generated_executables (fun execname ->
-		(* We could do something like 'for_all', but we don't
-		really want to run every test for every executable ---
-		most are going to fail immediately.  *)
-        let ()  = if options.debug_test then
-            Printf.printf "Starting tests for executable %s\n" execname
-        else () in
-		let test_no = !executable_number in
-		let () = executable_number := !executable_number + 1 in
-		let res = List.map tests_and_results (fun (testin, testout) ->
-			(* Get an output name for this test.  *)
-			let experiment_outname = testin ^ "_outtmp_" ^ (string_of_int test_no) ^ ".json" in
-			(* Also get the output name for the intermediate
-			(pre accelerator call) variable values.  *)
-			let pre_accel_variables_outname = testin ^ "_outtmp_pre_accel_" ^ (string_of_int test_no) ^ ".json" in
-			(* Run the program on this test input.  *)
-			(* TODO --- maybe we should time this out?  Less
-			clear whether we need that here than we did with
-			the user code (where we also don't timeout) *)
-			let timeout = string_of_int options.execution_timeout in
-			let cmd = "timeout " ^ timeout ^ " " ^ execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
-			let () = if options.debug_test then
-				Printf.printf "Running test command %s\n%!" cmd
-			else () in
-			let result =
-				if options.skip_test then
-					if Sys.file_exists experiment_outname then
-						(* Assume the test would pass if the output
-						file exists, and that it would fail
-						otherwise.  *)
-						0
-					else
-						1
-				else
-					Sys.command cmd in
-			let same_res = match testout with
-			| RunFailure -> 
-				(* We could be a bit smarter than this.  Anyway,
-				I'm hoping not to deal with too many failures,
-				they're more of an edge case(? famous last words). *)
-                if result <> 0 then
-					(* both are failures.  *)
-					{
-						input=testin;
-						true_output=None;
-						measured_output=None;
-						passed=true;
-					}
-                else
-					(* New run isn't a failure.  *)
-					{
-						input=testin;
-						true_output=None;
-						measured_output=Some((pre_accel_variables_outname, experiment_outname));
-						passed=false
-					}
-			| RunSuccess(outf) ->
-					if result = 0 then
-						{
-							input=testin;
-							true_output=Some(outf);
-							measured_output=Some((pre_accel_variables_outname, experiment_outname));
-							passed=(compare_outputs options experiment_outname outf)
-						}
-					else
-						(* Run of accelerator failed --- this probably
-						shouldn't have happened.  *)
-						let () = Printf.printf "Warning: Accelerator failed on input (input file %s): accelerator bounds should be specified for better performance. \n" (testin) in
-						(* Say this was a non-match.  *)
-						{
-							input=testin;
-							true_output=Some(outf);
-							measured_output=None;
-							passed=false
-						}
-			in
-			let () =
-				if options.dump_test_results then
-					let () = Printf.printf "Executbale %s and test %s had result %b\n" (execname) (same_res.input) (same_res.passed) in
-					()
-				else ()
-			in
-            same_res
-		) in
-		(* Glue together the results.  *)
-		let total_count = List.length res in
-		let passed_count = List.count res (fun (result) -> result.passed) in
-		let passed = (total_count = passed_count) in
-		let () = Printf.printf "For executable %s, passed cound is %d of %d tests\n" (execname) (passed_count) (total_count) in
-		res, passed
+	let groups = List.zip_exn generated_executables (List.zip_exn generated_io_tests correct_answer_files) in
+	let test_no = ref 0 in
+	List.map groups (fun (executable, (inps, outps)) ->
+		test_no := !test_no + 1;
+		check_if_code_works options executable !test_no inps outps
 	)
 
 let print_working_code options (apispec: apispec) working_list =

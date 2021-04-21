@@ -354,3 +354,30 @@ let range_size_to_string n =
     match n with
     | Finite(x) -> string_of_int x
     | Infinite -> "Inf"
+
+let rec range_item_to_string i =
+    match i with
+    | RangeInteger(i) -> (string_of_int i)
+    | RangeFloat(f) -> (string_of_float f)
+    | RangeBool(b) -> (string_of_bool b)
+    | RangeArray(t, vs) ->
+            "[" ^ (String.concat ~sep:", " (List.map vs range_item_to_string)) ^ "]"
+
+let range_range_to_string rrange =
+	match rrange with
+	| RangeRange(f, t) ->
+            (range_item_to_string f) ^ " to " ^ (range_item_to_string t)
+    | RangeItem(i) ->
+            (range_item_to_string i)
+
+let range_set_to_string rset =
+	match rset with
+	| RangeSet(elems) ->
+			"{" ^ (String.concat ~sep:", " (Array.to_list (Array.map elems range_range_to_string))) ^ "}"
+
+let range_map_to_string rangemap =
+	let keys = Hashtbl.keys rangemap in
+	String.concat ~sep:"\n" (List.map keys (fun key ->
+		let range = Hashtbl.find_exn rangemap key in
+		"For key " ^ key ^ ": have range " ^ (range_set_to_string range)
+	))

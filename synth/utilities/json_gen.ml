@@ -27,6 +27,7 @@ let main iospec_file classspec_file output_file =
 	let _ = ignore(List.map (iospec.livein @ iospec.liveout) (fun v ->
 		Hashtbl.set lenvartbl v EmptyDimension
 	)) in
+	let emptymaptbl = Hashtbl.create (module String) in
     (* Most of these values aren't used since we don't gen
     the whole program, just the main.  *)
     let base_program = {
@@ -41,7 +42,8 @@ let main iospec_file classspec_file output_file =
         generated_funname = "TODO";
         api_funname = "TODO";
         lenvar_bindings = lenvartbl;
-        fundefs = []
+		fundefs = [];
+		inputmap = emptymaptbl;
     } in
 	(* Generate the JSON wrapper: *)
 	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec false base_program in

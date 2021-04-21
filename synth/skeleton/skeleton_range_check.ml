@@ -196,3 +196,35 @@ let generate_range_check_skeleton options classmap iospec apispec pre_binding =
 
 let generate_range_checks_skeleton options classmap iospec apispec pre_bindings =
     List.map pre_bindings (generate_range_check_skeleton options classmap iospec apispec)
+
+let generate_input_ranges_skeleton options rangemap validmap binding =
+	let transformed_io_validmap = transform_rangemap_by options RangeBackward validmap binding in
+
+	(* Compute the intersection of the valid map and the
+	rangemap, which is what the inputs should actually
+	be generated from.  *)
+	let keys = Hashtbl.keys transformed_io_validmap in
+	let inputmap = Hashtbl.create (module String) in
+	let _ = List.map keys (fun key ->
+		let transformed_range = Hashtbl.find_exn transformed_io_validmap key in
+		let user_range = Hashtbl.find rangemap key in
+		let input_range = match user_range with
+		| None -> transformed_range
+		| Some(r) -> range_set_intersection r transformed_range
+		in
+		let _ = Hashtbl.set inputmap key input_range in
+		()
+	) in
+	let () =
+		if options.debug_input_map_generation then
+			let () = Printf.printf "For pre skeleton %s\n" (flat_skeleton_type_binding_to_string binding) in
+			let () = Printf.printf "Generated input map %s\n" (range_map_to_string inputmap) in
+			()
+		else ()
+	in
+	inputmap
+
+(* Given some pre-mapping, and some api value restrictions, generate
+the range of inputs that we should be testing with.  *)
+let generate_input_ranges options rangemap validmap pre_bindings =
+	List.map pre_bindings (generate_input_ranges_skeleton options rangemap validmap)

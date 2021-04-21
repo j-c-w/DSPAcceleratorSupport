@@ -1,6 +1,5 @@
 open Core_kernel;;
 open Spec_definition;;
-open Skeleton_definition;;
 
 (* NOTE: In GIR everything must be assigned to at most once.
 This can be in a loop, etc. but must be once to allow

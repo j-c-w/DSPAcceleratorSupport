@@ -71,6 +71,11 @@ let range_intersection r1 r2 =
 		new_item
 	)
 
+let range_set_intersection r1 r2 =
+    match r1, r2 with
+    | RangeSet(r1), RangeSet(r2) ->
+            RangeSet(range_intersection r1 r2)
+
 let positive_check_for vname range_set =
 	let conds = Array.map range_set (fun range_elem ->
 		match range_elem with

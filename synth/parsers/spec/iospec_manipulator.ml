@@ -9,7 +9,7 @@ exception SparsityException of string
 let generate_results_for (opts: options) (iospec: iospec) inp_files =
 	(* Perhaps this should be parallelized? *)
 	let progexec = iospec.execcmd in
-	let results = List.map inp_files (fun infile ->
+	let results = Parmap.parmap (fun infile ->
         let outfile = infile ^ "_result.json" in
 		let timeout = (string_of_int opts.execution_timeout) in
         let runcmd = "timeout " ^ timeout ^ " " ^ progexec ^ " " ^ infile ^ " " ^ outfile in
@@ -27,7 +27,7 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
             RunFailure
         else
             RunSuccess(outfile)
-	)
+	) (Parmap.L inp_files)
 	in
 	let success_count = List.count results (fun r -> match r with
 		| RunFailure -> false
@@ -40,8 +40,10 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
 		None
 
 let compute_default_results opts iospec inp_files =
-	let results = generate_results_for opts iospec inp_files in
-	match results with
-	| Some(r) -> r
-	| None ->
-			raise (SparsityException "Can't find any working inputs to user code: likely too sparse (try more inputs?)")
+	List.map inp_files (fun inp_file_set ->
+		let results = generate_results_for opts iospec inp_file_set in
+		match results with
+		| Some(r) -> r
+		| None ->
+				raise (SparsityException "Can't find any working inputs to user code: likely too sparse (try more inputs?)")
+	)

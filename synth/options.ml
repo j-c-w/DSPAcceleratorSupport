@@ -98,6 +98,7 @@ type options = {
 	debug_skeleton_multiple_lengths_filter: bool;
     debug_skeleton_range_filter: bool;
 	debug_skeleton_filter: bool;
+	debug_input_map_generation: bool;
 
 	(* Post Synthesis type debug.  *)
 	debug_post_synthesis: bool;
@@ -174,6 +175,7 @@ let default_options = {
 	debug_skeleton_multiple_lengths_filter = false;
     debug_skeleton_range_filter = false;
     debug_skeleton_filter = false;
+	debug_input_map_generation = false;
 
     (* Post synthesis passes debug.  *)
     debug_post_synthesis = false;

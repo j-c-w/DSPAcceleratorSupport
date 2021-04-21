@@ -6,6 +6,7 @@ open Yojson;;
 open Synthtype_topology;;
 open Utils;;
 open Range;;
+open Program;;
 
 let _ = Random.init 0
 
@@ -184,8 +185,8 @@ and io_test_to_string names values =
     ) in
     "{" ^ (String.concat ~sep:",\n" vals_list) ^ "}"
 
-let write_io_tests (options: options) names values =
-    let target_folder = options.execution_folder ^ "/" ^ "io" in
+let write_io_tests (options: options) program_number names values =
+    let target_folder = options.execution_folder ^ "/" ^ "io/" ^ program_number ^ "/" in
     (* Make the folder.  *)
     let res = Sys.command ("mkdir -p " ^ target_folder) in
     let () = assert (res = 0) in
@@ -203,7 +204,7 @@ let wrap_nrefs nms =
         Name(nm)
     )
 
-let generate_io_tests options classmap (iospec: iospec) =
+let generate_io_tests_for_program options classmap (iospec: iospec) program_number (program: program) =
 	let () =
 		if options.debug_generate_io_tests then
 			Printf.printf "Starting to generate IO tests\n"
@@ -216,7 +217,13 @@ let generate_io_tests options classmap (iospec: iospec) =
 		if options.debug_generate_io_tests then
 			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)
 		else () in
-	let values = generate_io_values num_tests iospec.rangemap toposorted_values iospec.typemap classmap in
+	let values = generate_io_values num_tests program.inputmap toposorted_values iospec.typemap classmap in
 	(* Now, convert those to YoJSON values to be written out.  *)
-	let json_files = write_io_tests options iospec.livein values in
+	let json_files = write_io_tests options program_number iospec.livein values in
 	json_files
+
+let generate_io_tests options classmap (iospec: iospec) programs =
+	let numbers = generate_file_numbers (List.length programs) in
+	Parmap.parmap (fun (number, program) ->
+		generate_io_tests_for_program options classmap iospec number program)
+        (Parmap.L (List.zip_exn numbers programs))

@@ -92,9 +92,9 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 		Printf.printf "Number of codes built is %d\n" (List.length code_files)
 	else () in
 	(* Generate some I/O tests.  *)
-	let io_tests = generate_io_tests opts classmap iospec in
+	let io_tests = generate_io_tests opts classmap iospec reduced_programs in
 	let () = if opts.print_synthesizer_numbers then
-		Printf.printf "Number of IO tests generated is %d%!\n" (List.length io_tests)
+		Printf.printf "Number of IO tests generated is %d%!\n" (List.length (List.hd_exn io_tests))
 	else () in
 	(* Generate the 'correct' responses for the IO tests *)
 	let real_response_files = compute_default_results opts iospec io_tests in

@@ -123,6 +123,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 		user_funname = iospec.funname;
 		api_funname = apispec.funname;
 		generated_funname = iospec.funname ^ "_accel";
+		inputmap = girpair.inputmap;
     }
 
 (* Given a set of pre/post pairs, fill thsee out into whole programs

@@ -33,7 +33,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		param_constant_generation_threshold debug_skeleton_constant_gen
 		debug_skeleton_multiple_lengths_filter range_size_diff_factor
         debug_skeleton_range_filter debug_skeleton_filter
-		execution_timeout skip_test mse_threshold =
+		execution_timeout skip_test mse_threshold
+        debug_input_map_generation =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -94,6 +95,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_skeleton_multiple_lengths_filter = debug_skeleton_multiple_lengths_filter;
         debug_skeleton_range_filter = debug_skeleton_range_filter;
 		debug_skeleton_filter = debug_skeleton_filter;
+        debug_input_map_generation = debug_input_map_generation;
 
 		debug_range_check = debug_range_check;
 
@@ -240,6 +242,9 @@ let debug_skeleton_range_filter =
 let debug_skeleton_filter =
 	let doc = "Debug the skeleton filter" in
 	Arg.(value & flag & info ["debug-skeleton-filter"] ~docv:"DebugSkeletonFIlter" ~doc)
+let debug_input_map_generation =
+    let doc = "Debug skeleton input map generation" in
+    Arg.(value & flag & info ["debug-input-map-generation"] ~docv:"DebugInputMapGeneration" ~doc)
 
 (* Debug range passes *)
 let debug_range_check =
@@ -309,5 +314,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	param_constant_generation_threshold $ debug_skeleton_constant_gen $
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
-	$ skip_test $ mse_threshold)
+	$ skip_test $ mse_threshold $ debug_input_map_generation)
 let () = Term.exit @@ Term.eval (args_t, info)
