@@ -16,7 +16,7 @@ let run_post_synthesis options classmap iospec apispec programs io_files =
 			{
                 prog with
 				post_behavioural = None
-			}, false
+			}, true
         else
             let post_program = synthesize_post options classmap iospec apispec prog iopairs in
             let passed = Option.is_some post_program in
