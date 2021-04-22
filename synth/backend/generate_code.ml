@@ -432,6 +432,7 @@ let otherimports = String.concat ~sep:"\n" [
     "#include<fstream>"; "#include<iomanip>";
 	"#include<clib/synthesizer.h>";
     "#include<chrono>";
+	"#include<iostream>";
     "char *output_file; ";
 	"char *pre_accel_dump_file; // optional dump file. ";
     "using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
