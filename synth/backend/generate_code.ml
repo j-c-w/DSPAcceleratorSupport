@@ -431,6 +431,7 @@ let otherimports = String.concat ~sep:"\n" [
     "#include<vector>"; "#include<nlohmann/json.hpp>";
     "#include<fstream>"; "#include<iomanip>";
 	"#include<clib/synthesizer.h>";
+    "#include<chrono>";
     "char *output_file; ";
 	"char *pre_accel_dump_file; // optional dump file. ";
     "using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
@@ -475,7 +476,25 @@ let cxx_main_function options classmap (iospec: iospec) dump_intermediates (prog
 	let load_json =      "    json " ^ json_var_name ^ " = json::parse(ifs);" in
 	let parse_args, argnames = generate_input_assigns classmap program.lenvar_bindings iospec.funargs iospec.livein iospec.typemap json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
+	let pre_timing_code =
+		if options.generate_timing_code then
+            "std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();"
+        else
+            ""
+    in
 	let call_func = program.generated_funname ^ "(" ^ argnames ^ ");" in
+    let post_timing_code =
+        if options.generate_timing_code then
+            "std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();"
+        else
+            ""
+    in
+    let timing_print_code =
+        if options.generate_timing_code then
+            "std::cout << \"Time: \" << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;"
+        else
+			""
+    in
 	let output_writing_function =
 		generate_dump_function options classmap program "output_file" iospec.funargs iospec.liveout iospec.typemap "write_output"
 	in
@@ -484,7 +503,8 @@ let cxx_main_function options classmap (iospec: iospec) dump_intermediates (prog
 	in
 	let tail = "}" in
     String.concat ~sep:"\n" [output_writing_function; ""; header; argreader; resdump; pre_accel_dump; load_file; load_json; parse_args;
-	call_func; output_write_call; tail]
+    pre_timing_code; call_func; post_timing_code; timing_print_code;
+    output_write_call; tail]
 
 let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec) dump_intermediates program =
     (* C++ only allows for single return values.  *)

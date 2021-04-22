@@ -34,7 +34,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_skeleton_multiple_lengths_filter range_size_diff_factor
         debug_skeleton_range_filter debug_skeleton_filter
 		execution_timeout skip_test mse_threshold
-        debug_input_map_generation =
+        debug_input_map_generation generate_timing_code =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -51,10 +51,11 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
         post_synthesizer = get_behavioural_syn post_synthesis_tool;
 		pre_accel_dump_function = pre_accel_dump_function;
 		execution_timeout = execution_timeout;
-		mse_threshold = mse_threshold;
+        generate_timing_code = generate_timing_code;
 
 		param_constant_generation_threshold = param_constant_generation_threshold;
         range_size_difference_factor = range_factor_from_option range_size_diff_factor;
+		mse_threshold = mse_threshold;
 
         number_of_tests = number_of_tests;
 		all_tests = all_tests;
@@ -150,6 +151,9 @@ let pre_accel_dump_function =
 let execution_timeout =
     let doc = "Timeout for running the user code (seconds). " in
     Arg.(value & opt int 5 & info["execution-timeout"] ~docv:"ExecutionTimeout" ~doc)
+let generate_timing_code =
+	let doc = "Generate wrappers to enable timing code" in
+	Arg.(value & flag & info ["generate-timing-code"] ~docv:"GenerateTimingCode" ~doc)
 
 (* Generation paramter flags *)
 let param_constant_generation_threshold =
@@ -314,5 +318,6 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	param_constant_generation_threshold $ debug_skeleton_constant_gen $
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
-	$ skip_test $ mse_threshold $ debug_input_map_generation)
+	$ skip_test $ mse_threshold $ debug_input_map_generation $
+    generate_timing_code)
 let () = Term.exit @@ Term.eval (args_t, info)

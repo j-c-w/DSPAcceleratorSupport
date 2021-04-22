@@ -46,6 +46,7 @@ type options = {
 	post_synthesizer: behavioural_synthesizer;
 	pre_accel_dump_function: string;
     execution_timeout: int;
+	generate_timing_code: bool;
 
 	(* Generation Parameters.  *)
 	param_constant_generation_threshold: int;
@@ -124,6 +125,7 @@ let default_options = {
 	intermediate results.  *)
 	pre_accel_dump_function = "pre_accel_dump_function";
     execution_timeout = 5;
+    generate_timing_code = false;
 
     param_constant_generation_threshold = 4;
 	range_size_difference_factor = Finite(3);

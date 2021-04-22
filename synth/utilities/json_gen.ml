@@ -21,8 +21,9 @@ this this produces some code that goes around that as a wrapper.
 let main iospec_file classspec_file output_file =
     (* Yes, this is a terrible hack I am 100% going to regret
     because I have no clear understanding why it needs both.  *)
+    let options = { default_options with generate_timing_code = true } in
 	let classspec = load_classmap classspec_file in
-    let iospec = load_iospec default_options classspec iospec_file in
+    let iospec = load_iospec options classspec iospec_file in
     let lenvartbl = Hashtbl.create (module String) in
 	let _ = ignore(List.map (iospec.livein @ iospec.liveout) (fun v ->
 		Hashtbl.set lenvartbl v EmptyDimension
@@ -46,7 +47,7 @@ let main iospec_file classspec_file output_file =
 		inputmap = emptymaptbl;
     } in
 	(* Generate the JSON wrapper: *)
-	let code = otherimports ^ "\n" ^ cxx_main_function default_options classspec iospec false base_program in
+	let code = otherimports ^ "\n" ^ cxx_main_function options classspec iospec false base_program in
 	let () = assert (Filename.check_suffix output_file ".cpp") in
 	Out_channel.write_all output_file ~data:code
 
