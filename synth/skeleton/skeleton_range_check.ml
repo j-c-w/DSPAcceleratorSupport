@@ -129,7 +129,9 @@ let transform_rangemap_by options forward_range map bindings =
     let () = ignore(List.map bindings.flat_bindings (fun flat_binding ->
         let inputs_count = List.length flat_binding.fromvars_index_nesting in
         let () = if options.debug_range_check then
-            let () = Printf.printf "Creating range check for var %s\n" (index_nesting_to_string flat_binding.tovar_index_nesting) in
+            let () = Printf.printf "Creating range check for var '%s'\n" (index_nesting_to_string flat_binding.tovar_index_nesting) in
+			let () = Printf.printf "Input bindmap has variables '%s'\n" (String.concat ~sep:"', '" (Hashtbl.keys map)) in
+			let () = Printf.printf "Input is in the hash map: %b\n" (Hashtbl.mem map (index_nesting_to_string flat_binding.tovar_index_nesting)) in
             let () = Printf.printf "Has %d inputs\n" (inputs_count) in
             ()
         else () in
@@ -151,7 +153,11 @@ let transform_rangemap_by options forward_range map bindings =
                     let value_set: range_set option = range_from_synth_value c in
                     value_set
                 | AssignVariable(fvar_nest) ->
-                    let valuesets: range_set option = Hashtbl.find map (index_nesting_to_string fvar_nest) in
+                    let valuesets: range_set option =
+						match forward_range with
+						| RangeForward -> Hashtbl.find map (index_nesting_to_string fvar_nest)
+						| RangeBackward -> Hashtbl.find map (index_nesting_to_string flat_binding.tovar_index_nesting)
+					in
                     valuesets
             ) in
             (* Convert the input ranges to output values if they
@@ -162,10 +168,24 @@ let transform_rangemap_by options forward_range map bindings =
 					execute_conversion_on_range forward_range flat_binding.conversion_function ranges
 				in
                 let () =
-                    Hashtbl.set result_tbl (index_nesting_to_string flat_binding.tovar_index_nesting) result_range
+					match forward_range with
+					| RangeForward ->
+							Hashtbl.set result_tbl (index_nesting_to_string flat_binding.tovar_index_nesting) result_range
+					| RangeBackward ->
+							(* Not currently supporting many-to-one assignments here --- unclear range effects.  *)
+							match flat_binding.fromvars_index_nesting with
+								| [] -> () (* This is something that ust has to be defined, not assigned to.  *)
+								| [(AssignConstant(_))] -> () (* No range reduction to specify on a constant.  *)
+								| [(AssignVariable(fvar_nest))] ->
+										Hashtbl.set result_tbl (index_nesting_to_string fvar_nest) result_range
+								| x :: xs ->
+										raise (RangeCheckException "Many to one assignments not implemented")
                 in
                 ()
             else
+				let () = if options.debug_range_check then
+					Printf.printf "No range found for variable %s\n" (index_nesting_to_string flat_binding.tovar_index_nesting)
+				else () in
                 (* If any of the inputs to this var have undefined
                    rangemaps, then we can't do anything here.  *)
             ()
@@ -198,8 +218,21 @@ let generate_range_checks_skeleton options classmap iospec apispec pre_bindings 
     List.map pre_bindings (generate_range_check_skeleton options classmap iospec apispec)
 
 let generate_input_ranges_skeleton options rangemap validmap binding =
+	let () =
+		if options.debug_input_map_generation then
+			let () = Printf.printf "Starting to generate input range restrictions...\n" in
+			let () = Printf.printf "Have rangemap keys %s and validmap keys %s\n"
+				(String.concat ~sep:"," (Hashtbl.keys rangemap)) (String.concat ~sep:", " (Hashtbl.keys validmap))
+			in
+			()
+		else ()
+	in
 	let transformed_io_validmap = transform_rangemap_by options RangeBackward validmap binding in
-
+	let () =
+		if options.debug_input_map_generation then
+			let () = Printf.printf "Have transformed io validmap keys %s\n" (String.concat ~sep:", " (Hashtbl.keys transformed_io_validmap)) in
+			() else ()
+	in
 	(* Compute the intersection of the valid map and the
 	rangemap, which is what the inputs should actually
 	be generated from.  *)
