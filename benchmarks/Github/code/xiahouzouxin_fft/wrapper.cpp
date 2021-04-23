@@ -3,6 +3,8 @@
 #include<fstream>
 #include<iomanip>
 #include<clib/synthesizer.h>
+#include<chrono>
+#include<iostream>
 extern "C" {
 #include "self_contained_code.c"
 }
@@ -42,6 +44,9 @@ x_vec.push_back(x_inner);
 }
 COMPLEX *x = &x_vec[0];
 int N = input_json["N"];
+std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 fft(x, N);
+std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
 write_output(x, N);
 }
