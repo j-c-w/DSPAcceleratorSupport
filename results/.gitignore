@@ -1,0 +1,6 @@
+*/*/inputs/*.json
+*/*/accelerated_*
+*/*/original
+*/*/*_results
+**/perf.data*
+output.eps
