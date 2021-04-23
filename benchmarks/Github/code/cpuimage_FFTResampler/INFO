@@ -2,5 +2,5 @@ Source: https://github.com/cpuimage/FFTResampler
 Commit: 0a9720b
 License: MIT
 MainFile: Out-Of-Context Supported
-FFTFunction: stb_fft.h:stb_radix_2_dit
+FFTFunction: stb_fft.h:STB_FFT
 Notes: Many acceleratable functions there -- used 2 as example.
