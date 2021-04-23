@@ -10,6 +10,6 @@
 	},
 	"required_includes": ["../../benchmarks/Github/code/xiahouzouxin_fft/self_contained_code.c"],
 	"range": {
-		"N": "set(power_of_two)"
+		"N": "set(power_of_two(5))"
 	}
 }
