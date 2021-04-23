@@ -1,0 +1,10 @@
+{
+	"cmplx": {
+		"type": "struct",
+		"symbols": ["real", "imag"],
+		"typemap": {
+			"real": "float32",
+			"imag": "float32"
+		}
+	}
+}
