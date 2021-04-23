@@ -2,8 +2,8 @@ https://github.com/FFTW/fftw3 --- Unsupported. Code too complex for me to find t
 https://github.com/xiahouzuoxin/fft --- Valid
 https://github.com/simonwunderlich/FFT_eval --- NotFFT. Just a visualizer, doesn't execute any FFTs
 https://github.com/mborgerding/kissfft --- Valid. (Using the simple API.  Otherwise, may be valid in context.)
-https://github.com/alexbw/iPhoneFFT --- Unsupported, but Valid-in-context Unlikely to be able to support out-of-context, and provides no tests that could be used as in-context references. (input sparsity).
-https://github.com/stg/SYLT-FFT --- Valid.  IntegerFFT, so may have speedup/accuracy issues
+https://github.com/alexbw/iPhoneFFT --- Not Valid --- I think this is in objective-C, but Valid-in-context Unlikely to be able to support out-of-context, and provides no tests that could be used as in-context references. (input sparsity).
+https://github.com/stg/SYLT-FFT --- Unsupported.  IntegerFFT, so may also have speedup/accuracy issues
 https://github.com/Lauszus/fftw3-android --- NotFFT. (Just an FFTW wrapper).
 https://github.com/jeremyfix/FFTConvolution --- Unsupported 2DFFT (For 2D) -- a wrapper around FFTW, but provides enough context for compilation.  
 https://github.com/cpuimage/FFTResampler --- Valid.
