@@ -16,12 +16,13 @@ mkShell {
 		# Deps for tests
 		fftw
 		# Deps for helper scripts
-		python38 python38Packages.numpy
+		python38 python38Packages.numpy python38Packages.matplotlib
 	];
 	# Enable ocaml stack traces.
 	OCAMLRUNPARAM = "b";
 	SHELL_NAME = "FFTSynth";
 	shellHook = ''
-			raco pkg install rosette
+			# Don't use rosette
+			# raco pkg install rosette
 		'';
 }
