@@ -11,6 +11,7 @@ open Program;;
 let _ = Random.init 0
 
 exception TypeException of string
+exception GenerationFailure
 
 let rec generate_file_numbers upto =
 	if upto = 1 then
@@ -53,7 +54,7 @@ let generate_array_from_range rangemap namestring =
 
 
 (* TODO --- Could do with making this a bit more deterministic. *)
-let rec generate_inputs_for rangemap values_so_far name_string t structure_metadata =
+let rec generate_inputs_for options rangemap values_so_far name_string t structure_metadata =
     match t with
     (* TODO -- Support negative values.  *)
 	| Bool -> BoolV(generate_bool_within_range rangemap name_string)
@@ -116,7 +117,14 @@ let rec generate_inputs_for rangemap values_so_far name_string t structure_metad
 				be OK, since there should only be one possible
 				array length variable. :) *)
 				let arrlen = max_of_int_list arrlen_value_wrappers in
-				ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for rangemap values_so_far name_string subtype structure_metadata))
+				if arrlen < options.array_length_threshold then
+					ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for options rangemap values_so_far name_string subtype structure_metadata))
+				else
+					(* Don't want to try and generate arrays that are too big, because
+					it just makes synthesis take forever, espc with
+					slower computers.  *)
+                    (* let () = Printf.printf "Arrlen is %d, maxlen is %d" (arrlen) (options.array_length_threshold) in *)
+					raise (GenerationFailure)
     | Struct(name) ->
             let metadata = Hashtbl.find structure_metadata name in
             (* Get the strcuture metadata *)
@@ -129,29 +137,42 @@ let rec generate_inputs_for rangemap values_so_far name_string t structure_metad
               metadata.  *)
             let valuetbl = Hashtbl.create (module String) in
             (* TODO -- maybe need to do something to the values so far in here? *)
-            let member_datas = List.map members (fun member -> (generate_inputs_for rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap member) structure_metadata, member)) in
+            let member_datas = List.map members (fun member -> (generate_inputs_for options rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap member) structure_metadata, member)) in
             (* Now, put those generated values in a map.  *)
             ignore(List.map member_datas (fun (data, m) -> Hashtbl.add valuetbl m data));
             StructV(name, valuetbl)
 
-let rec generate_io_values_worker rangemap generated_vs vs typmap classmap =
+let rec generate_io_values_worker options rangemap generated_vs vs typmap classmap =
 	match vs with
 	| [] -> ()
 	| x :: xs ->
 			let name_string = name_reference_to_string x in
 			let typx = Hashtbl.find_exn typmap name_string in
-			let inps = generate_inputs_for rangemap generated_vs name_string typx classmap in
-			let res = Hashtbl.add generated_vs (name_reference_to_string x) inps in
+            let inputs = generate_inputs_for options rangemap generated_vs name_string typx classmap in
+			let res = Hashtbl.add generated_vs (name_reference_to_string x) inputs in
             let () = assert (match res with | `Ok -> true | _ -> false) in
-			(generate_io_values_worker rangemap generated_vs xs typmap classmap)
+			(generate_io_values_worker options rangemap generated_vs xs typmap classmap)
 
-let rec generate_io_values num_tests rangemap livein typemap classmap =
+let rec generate_io_values options num_tests rangemap livein typemap classmap =
 	match num_tests with
 	| 0 -> []
 	| n ->
-		let mapping = Hashtbl.create (module String) in
-		let () = (generate_io_values_worker rangemap mapping livein typemap classmap) in
-		mapping :: (generate_io_values (num_tests - 1) rangemap livein typemap classmap)
+        let inputs = ref None in
+        let () = while (Option.is_none !inputs) do
+            (* This can fail if it happens to generate arrays that
+            are too long to test successfully.  *)
+            let () = inputs := (try
+                let mapping = Hashtbl.create (module String) in
+                let () = (generate_io_values_worker options rangemap mapping livein typemap classmap) in
+                (* let () = Printf.printf "Generation success\n" in *)
+                (Some(mapping))
+            with GenerationFailure -> 
+                (* let () = Printf.printf "Generation failure\n" in *)
+                None
+            )
+            in ()
+        done in
+		(Option.value_exn !inputs) :: (generate_io_values options (num_tests - 1) rangemap livein typemap classmap)
 
 let rec value_to_string value =
     let str_value = match value with
@@ -217,7 +238,7 @@ let generate_io_tests_for_program options classmap (iospec: iospec) program_numb
 		if options.debug_generate_io_tests then
 			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)
 		else () in
-	let values = generate_io_values num_tests program.inputmap toposorted_values iospec.typemap classmap in
+	let values = generate_io_values options num_tests program.inputmap toposorted_values iospec.typemap classmap in
 	(* Now, convert those to YoJSON values to be written out.  *)
 	let json_files = write_io_tests options program_number iospec.livein values in
 	json_files

@@ -52,6 +52,7 @@ type options = {
 	param_constant_generation_threshold: int;
 	range_size_difference_factor: range_size_t;
 	mse_threshold: float; (* Similarity threshold for generation. *)
+	array_length_threshold: int; (* How big can arrays be? *)
 
 	(* Testing configuration *)
 	number_of_tests: int;
@@ -130,6 +131,7 @@ let default_options = {
     param_constant_generation_threshold = 4;
 	range_size_difference_factor = Finite(3);
     mse_threshold = 0.01;
+	array_length_threshold = 10000;
 
 	(* Testing configuration *)
 	number_of_tests = 100;

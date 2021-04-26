@@ -34,7 +34,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_skeleton_multiple_lengths_filter range_size_diff_factor
         debug_skeleton_range_filter debug_skeleton_filter
 		execution_timeout skip_test mse_threshold
-        debug_input_map_generation generate_timing_code =
+        debug_input_map_generation generate_timing_code array_length_threshold =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -56,6 +56,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		param_constant_generation_threshold = param_constant_generation_threshold;
         range_size_difference_factor = range_factor_from_option range_size_diff_factor;
 		mse_threshold = mse_threshold;
+        array_length_threshold = array_length_threshold;
 
         number_of_tests = number_of_tests;
 		all_tests = all_tests;
@@ -165,6 +166,9 @@ let range_size_difference_factor =
 let mse_threshold =
 	let doc = "What is the mean-sequared error difference that is allowable between functions? (normalized by n log n)" in
 	Arg.(value & opt (float) 0.01 & info ["mean-squared-error"] ~docv:"MSE" ~doc)
+let array_length_threshold =
+    let doc = "What is the size of array that we can generate?" in
+    Arg.(value & opt (int) 10000 & info["array-length-threshold"] ~docv:"ArrayLengthThreshold" ~doc)
 
 (* Testing configuration flags.  *)
 let number_of_tests =
@@ -319,5 +323,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
-    generate_timing_code)
+    generate_timing_code $ array_length_threshold)
 let () = Term.exit @@ Term.eval (args_t, info)
