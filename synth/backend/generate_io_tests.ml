@@ -29,6 +29,15 @@ let generate_int_within_range rangemap namestring =
             | RInt(v) -> v
             | _ -> raise (TypeException "Unexpected non-int result to int query")
 
+let generate_uint_within_range rangemap namestring =
+	match Hashtbl.find rangemap namestring with
+	| None ->
+			Random.int (1000)
+	| Some(range) ->
+			match random_value_in_range range with
+			| RInt(v) -> v
+			| _ -> raise (TypeException "Unexepcted non-int result to int query")
+
 let generate_bool_within_range rangemap namestring =
 	match Hashtbl.find rangemap namestring with
 	| None -> (Random.int (1)) = 1
@@ -61,6 +70,9 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
     | Int16 -> Int16V(generate_int_within_range rangemap name_string)
     | Int32 -> Int32V(generate_int_within_range rangemap name_string)
     | Int64 -> Int64V(generate_int_within_range rangemap name_string)
+	| UInt16 -> UInt16V(generate_uint_within_range rangemap name_string)
+	| UInt32 -> UInt32V(generate_uint_within_range rangemap name_string)
+	| UInt64 -> UInt64V(generate_uint_within_range rangemap name_string)
     | Float16 -> Float16V(generate_float_within_range rangemap name_string)
     | Float32 -> Float32V(generate_float_within_range rangemap name_string)
     | Float64 -> Float64V(generate_float_within_range rangemap name_string)
@@ -94,6 +106,9 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 							| Int16V(v) -> v
 							| Int32V(v) -> v
 							| Int64V(v) -> v
+							| UInt16V(v) -> v
+							| UInt32V(v) -> v
+							| UInt64V(v) -> v
 							| _ ->
 									(* probably we could handle this --- just need to have a think
 									about what it means. *)
@@ -180,6 +195,9 @@ let rec value_to_string value =
     | Int16V(v) -> string_of_int v
     | Int32V(v) -> string_of_int v
     | Int64V(v) -> string_of_int v
+	| UInt16V(v) -> string_of_int v
+	| UInt32V(v) -> string_of_int v
+	| UInt64V(v) -> string_of_int v
 	(* JSON does not support formats of the form 1., so
 	we need to append a 0 to make it valid :) *)
     | Float16V(v) -> (string_of_float v) ^ "0"

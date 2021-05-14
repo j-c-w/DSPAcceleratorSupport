@@ -6,6 +6,9 @@
 %token INT16
 %token INT32
 %token INT64
+%token UINT16
+%token UINT32
+%token UINT64
 %token FLOAT16
 %token FLOAT32
 %token FLOAT64
@@ -35,6 +38,9 @@ tsub:
  | INT16 { Int16 }
  | INT32 { Int32 }
  | INT64 { Int64 }
+ | UINT16 { UInt16 }
+ | UINT32 { UInt32 }
+ | UINT64 { UInt64 }
  | FLOAT16 { Float16 }
  | FLOAT32 { Float32 }
  | FLOAT64 { Float64 }

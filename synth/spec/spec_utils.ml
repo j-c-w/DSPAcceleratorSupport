@@ -87,6 +87,9 @@ let rec synth_type_to_string t =
     | Int16 -> "int16"
     | Int32 -> "int32"
     | Int64 -> "int64"
+	| UInt16 -> "uint16"
+	| UInt32 -> "uint32"
+	| UInt64 -> "uint64"
     | Float16 -> "float16"
     | Float32 -> "float32"
     | Float64 -> "float64"
@@ -102,6 +105,9 @@ let rec synth_type_equal s1 s2 =
 	| Int16, Int16 -> true
 	| Int32, Int32 -> true
 	| Int64, Int64 -> true
+	| UInt16, UInt16 -> true
+	| UInt32, UInt32 -> true
+	| UInt64, UInt64 -> true
 	| Float16, Float16 -> true
 	| Float32, Float32 -> true
 	| Float64, Float64 -> true
@@ -122,6 +128,9 @@ let rec synth_value_to_string value =
     | Int16V(v) -> string_of_int v
     | Int32V(v) -> string_of_int v
     | Int64V(v) -> string_of_int v
+	| UInt16V(v) -> string_of_int v
+	| UInt32V(v) -> string_of_int v
+	| UInt64V(v) -> string_of_int v
     | Float16V(v) -> string_of_float v
     | Float32V(v) -> string_of_float v
     | Float64V(v) -> string_of_float v
@@ -144,6 +153,9 @@ let rec synth_value_equal c1 c2 =
 	| Int16V(v1), Int16V(v2) -> v1 = v2
 	| Int32V(v1), Int32V(v2) -> v1 = v2
 	| Int64V(v1), Int64V(v2) -> v1 = v2
+	| UInt16V(v1), UInt16V(v2) -> v1 = v2
+	| UInt32V(v1), UInt32V(v2) -> v1 = v2
+	| UInt64V(v1), UInt64V(v2) -> v1 = v2
 	| Float16V(v1), Float16V(v2) -> Utils.float_equal v1 v2
 	| Float32V(v1), Float32V(v2) -> Utils.float_equal v1 v2
 	| Float64V(v1), Float64V(v2) -> Utils.float_equal v1 v2
@@ -263,6 +275,9 @@ let is_integer_type typ =
 	| Int16 -> true
 	| Int32 -> true
 	| Int64 -> true
+	| UInt16 -> true
+	| UInt32 -> true
+	| UInt64 -> true
 	| _ -> false
 
 (* Given a typename of the format x.y.z, determine the type
@@ -298,6 +313,9 @@ let int_from_value v =
 	| Int16V(v) -> Some(v)
 	| Int32V(v) -> Some(v)
 	| Int64V(v) -> Some(v)
+	| UInt16V(v) -> Some(v)
+	| UInt32V(v) -> Some(v)
+	| UInt64V(v) -> Some(v)
 	| _ -> None
 
 let array_from_value v =
@@ -317,6 +335,9 @@ let is_int_value v =
 	| Int16V(_) -> true
 	| Int32V(_) -> true
 	| Int64V(_) -> true
+	| UInt16V(_) -> true
+	| UInt32V(_) -> true
+	| UInt64V(_) -> true
 	| _ -> false
 
 let is_array_value v =

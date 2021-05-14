@@ -58,6 +58,9 @@ and compare_elts options fcomp v1 v2 =
     | Int16V(e1), Int16V(e2) -> e1 = e2
     | Int32V(e1), Int32V(e2) -> e1 = e2
     | Int64V(e1), Int64V(e2) -> e1 = e2
+	| UInt16V(e1), UInt16V(e2) -> e1 = e2
+	| UInt32V(e1), UInt32V(e2) -> e1 = e2
+	| UInt64V(e1), UInt64V(e2) -> e1 = e2
     | Float16V(e1), Float16V(e2) -> fcomp#compare e1 e2
     | Float32V(e1), Float32V(e2) -> fcomp#compare e1 e2
     | Float64V(e1), Float64V(e2) -> fcomp#compare e1 e2

@@ -284,6 +284,9 @@ let rec synth_type_to_range_type stype =
 	| Int16 -> RangeIntegerType
 	| Int32 -> RangeIntegerType
 	| Int64 -> RangeIntegerType
+	| UInt16 -> RangeIntegerType
+	| UInt32 -> RangeIntegerType
+	| UInt64 -> RangeIntegerType
 	| Float16 -> RangeFloatType
 	| Float32 -> RangeFloatType
 	| Float64 -> RangeFloatType
@@ -299,6 +302,9 @@ let rec item_from_synth_value svalue =
 		| Int16V(v) -> Some(RangeInteger(v))
 		| Int32V(v) -> Some(RangeInteger(v))
 		| Int64V(v) -> Some(RangeInteger(v))
+		| UInt16V(v) -> Some(RangeInteger(v))
+		| UInt32V(v) -> Some(RangeInteger(v))
+		| UInt64V(v) -> Some(RangeInteger(v))
 		| Float16V(v) -> Some(RangeFloat(v))
 		| Float32V(v) -> Some(RangeFloat(v))
 		| Float64V(v) -> Some(RangeFloat(v))

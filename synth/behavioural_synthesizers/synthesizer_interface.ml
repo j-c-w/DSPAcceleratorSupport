@@ -29,6 +29,9 @@ let configuration_parameters_for (iospec: iospec) (apispec: apispec) =
 		| Int16 -> true
 		| Int32 -> true
 		| Int64 -> true
+		| UInt16 -> true
+		| UInt32 -> true
+		| UInt64 -> true
 		(* I think this should be domain-specific, or
 		perhaps range specific?  E.g. in the FFT domain,
 		individual floats are highly likely to be configuration

@@ -67,6 +67,9 @@ let rec eval_variable var valuemap =
 			| Int16V(v) -> v
 			| Int32V(v) -> v
 			| Int64V(v) -> v
+			| UInt16V(v) -> v
+			| UInt32V(v) -> v
+			| UInt64V(v) -> v
 			| _ -> raise (EvaluationException "Invalid index type! (non-int)")
 			in
 			let arry = eval_variable vref valuemap in

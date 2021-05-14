@@ -18,6 +18,7 @@ type name_reference =
 type synth_type =
 	| Bool
 	| Int16 | Int32 | Int64
+	| UInt16 | UInt32 | UInt64
 	| Float16 | Float32 | Float64
 	| Array of synth_type * dimension_type
 	| Unit
@@ -39,6 +40,9 @@ type synth_value =
     | Int16V of int
     | Int32V of int
     | Int64V of int
+	| UInt16V of int
+	| UInt32V of int
+	| UInt64V of int
     | Float16V of float
     | Float32V of float
     | Float64V of float
