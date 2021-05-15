@@ -1,0 +1,7 @@
+Following is a list of benchmarks from the search list that were deemed suitable.  See SEARCH_LIST for more details on why they are included.
+xiahouzouxin_fft: None
+mborgerding_kissfft: None
+cpuimage_FFTResampler: None
+fakufaku_esp32-fft: In-Context Data, struct inference (2N array length)
+JodiTheTigger_meow_fft: In-Context Data, Null Arrays, Pointer Support
+jtfell_c-fft: None

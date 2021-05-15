@@ -1,0 +1,13 @@
+{
+	"livein": ["data", "in"],
+	"liveout": ["out"],
+	"execcmd": "../benchmarks/Github/code/JodiTheTigger_meow_fft/exec",
+	"funname": "meow_fft",
+	"funargs": ["data", "in", "out"],
+	"typemap": {
+		"data": "array(Meow_FFT_Workset#1)",
+		"in": "array(Meow_FFT_Complex)",
+		"out": "array(Meow_FFT_Complex)"
+	},
+	"required_includes": ["../../benchmarks/Github/code/JodiTheTigger_meow_fft/self_contained_code.c"]
+}

@@ -1,0 +1,38 @@
+{
+	"Meow_FFT_Complex": {
+		"type": "struct",
+		"symbols": ["r", "j"],
+		"typemap": {
+			"r": "float32",
+			"j": "float32"
+		}
+	},
+	"Complex": {
+		"type": "struct",
+		"symbols": ["r", "j"],
+		"typemap": {
+			"r": "float32",
+			"j": "float32"
+		}
+	},
+	"Meow_Fft_Stages": {
+		"type": "struct",
+		"symbols": ["count", "radix", "remainder", "offsets"],
+		"typemap": {
+			"count": "uint32",
+			"radix": "array(uint32)",
+			"remainder": "array(uint32)",
+			"offsets": "array(uint32)"
+		}
+	},
+	"Meow_FFT_Workset": {
+		"type": "struct",
+		"symbols": ["N", "wn", "wn_ordered", "stages"],
+		"typemap": {
+			"N": "int32",
+			"wn": "array(Meow_FFT_Complex)",
+			"wn_ordered": "array(Meow_FFT_Complex)",
+			"stages": "Meow_Fft_Stages"
+		}
+	}
+}
