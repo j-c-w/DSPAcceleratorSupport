@@ -465,8 +465,8 @@ class fft_synth_manipulator hole_opts =
     end
 
 (* Now, run a generic sketch-based synthesis from these sketches. *)
-let fft_synth options classmap typemap variables (gir_program: program) iopairs: post_behavioural_program option =
-    let bool_variables, array_variables, int_variables, float_variables = split_variables classmap typemap variables in
+let fft_synth options typemap variables (gir_program: program) iopairs: post_behavioural_program option =
+    let bool_variables, array_variables, int_variables, float_variables = split_variables typemap.classmap typemap.variable_map variables in
     let hole_opts = hole_options options bool_variables array_variables int_variables float_variables in
     let fft_manip = ((new fft_synth_manipulator hole_opts) :> (fs_structure Generic_sketch_synth.synth_manipulator)) in
     let prog_opts = Generic_sketch_synth.generate_options options fft_manip fs_sketches in
@@ -476,5 +476,5 @@ let fft_synth options classmap typemap variables (gir_program: program) iopairs:
 	| x :: xs ->
 			Some({
 				includes = (fft_synth_includes options);
-				program = (generate_gir_program options classmap typemap gir_program.lenvar_bindings x)
+				program = (generate_gir_program options typemap x)
 			})

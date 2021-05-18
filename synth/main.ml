@@ -11,10 +11,10 @@ let () = Printexc.record_backtrace true;;
 let main options classspec_file iospec_file api_file  =
 	let () = Printf.printf "Loading specifications...\n" in
 	let classspec = load_classmap classspec_file in
-    let iospec = load_iospec options classspec iospec_file in
-    let api = load_target_api options classspec api_file in
+    let iospec, iotypemap = load_iospec options classspec iospec_file in
+    let api, apitypemap = load_target_api options classspec api_file in
 	let () = Printf.printf "Synthesizing...\n" in
-    let _ = run_synthesis options classspec iospec api in
+    let _ = run_synthesis options classspec iotypemap iospec apitypemap api in
 	()
 
 let optswrapper classspec_file iospec_file api_file dump_skeletons

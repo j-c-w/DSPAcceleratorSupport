@@ -104,3 +104,8 @@ let log_2 i =
 		l2_value := !l2_value + 1
 	done;
 	!l2_value - 1
+
+let double_map l f =
+	List.map l (fun e ->
+		List.map e f
+	)

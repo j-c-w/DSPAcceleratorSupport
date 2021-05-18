@@ -56,6 +56,9 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
     | Int16 -> "short"
     | Int32 -> "int"
     | Int64 -> "long int"
+	| UInt16 -> "unsigned short"
+	| UInt32 -> "unsigned int"
+	| UInt64 -> "unsigned long int"
     | Float16 -> "float16?(unsupported)"
     | Float32 -> "float"
     | Float64 -> "double"
@@ -69,7 +72,7 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
 (* e.g. H(..., v) -> v *)
 let cxx_dimtype_to_name dimtype =
     match dimtype with
-    | Dimension(x :: []) ->
+    | Dimension(x) ->
             (dimension_value_to_string x)
             (* Think this can be achieved in the gen_json call.
                Just return a TODO note, since that's what
@@ -77,24 +80,20 @@ let cxx_dimtype_to_name dimtype =
                called in the synthesis pipeline, then it'll
                error later anyway.  *)
 	| EmptyDimension -> "TOFILL"
-    | _ -> let () = Printf.printf "Ref is %s\n" (dimension_type_to_string dimtype) in
-	raise (CXXGenerationException "Pretty sure this can't happen?")
 
 let rec cxx_dimtype_to_definition dimtype =
     match dimtype with
-            | Dimension(x :: []) -> "[" ^ (dimension_value_to_string x) ^ "]"
+            | Dimension(x) -> "[" ^ (dimension_value_to_string x) ^ "]"
 			| EmptyDimension -> "TOFILL"
-            | _ -> raise (CXXGenerationException "Expected individual array types to be selected by the generate pass")
 
-let rec cxx_definition_synth_type_to_string_prefix_postfix dimmap_lookup typ name =
+let rec cxx_definition_synth_type_to_string_prefix_postfix typ name =
     match typ with
-    | Array(stype, _) ->
+    | Array(stype, dimtype) ->
 			(* This isn;t going to work for multi-dimensional arrays, but I suppose
 			that s OK.  The C memory model doesn't strictly support those
 			anyway, so we may be able to get away without this here.  *)
-			let dimtype = Hashtbl.find_exn dimmap_lookup name in
             let postfix = cxx_dimtype_to_definition dimtype in
-            let prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix dimmap_lookup stype name in
+            let prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix stype name in
             prefix, postfix ^ sub_postfix
     | othertyp ->
             (* If it's another type, then use the simple type generator *)
@@ -110,23 +109,23 @@ let trim x =
 
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
-let rec cxx_definition_synth_type_to_string dimmap_lookup typ name =
-    let (prefix, postfix) = cxx_definition_synth_type_to_string_prefix_postfix dimmap_lookup typ name in
+let rec cxx_definition_synth_type_to_string typ name =
+    let (prefix, postfix) = cxx_definition_synth_type_to_string_prefix_postfix typ name in
     (* Prefix is like the type name, 'name' is the variable name,
        postfix is array markings like [n], and then we need
        to add a semi colon. *)
     prefix ^ " " ^ name ^ postfix ^ ";"
 
-let cxx_names_to_type_definition (typemap: (string, synth_type) Hashtbl.t) names =
-    List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap name)) ^ " " ^ name)
+let cxx_names_to_type_definition variable_map names =
+    List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn variable_map name)) ^ " " ^ name)
 
-let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) (binds: (string, dimension_type) Hashtbl.t) gir =
+let rec cxx_generate_from_gir (typemap: typemap) gir =
     match gir with
     | Definition(nref) ->
-            let defntype = (Hashtbl.find_exn typemap (cxx_gir_name_to_string nref)) in
-            cxx_definition_synth_type_to_string binds defntype (cxx_gir_name_to_string nref)
+            let defntype = (Hashtbl.find_exn typemap.variable_map (cxx_gir_name_to_string nref)) in
+            cxx_definition_synth_type_to_string defntype (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
-            String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap binds))
+            String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
     | Assignment(fromv, tov) ->
 			let pre_from_code, fromv_name = cxx_generate_from_lvalue typemap fromv in
 			let pre_to_code, tov_name = cxx_generate_from_rvalue typemap tov in
@@ -137,15 +136,15 @@ let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) (binds: 
             let pre_loopmax_code, loopmax_name = (cxx_generate_from_variable_reference typemap loopmax) in
 			(trim pre_loopmax_code) ^
             "for (int " ^ indvar_name ^ " = 0; " ^ indvar_name ^ " < " ^ loopmax_name ^ "; " ^ indvar_name ^ "++) {\n\t\t" ^
-            (cxx_generate_from_gir typemap binds gir) ^
+            (cxx_generate_from_gir typemap gir) ^
             "\n\t}"
     | Expression(expression) ->
 			let pre_code, expr_code = (cxx_generate_from_expression typemap expression) in
 			String.concat [(trim pre_code); expr_code]
 	| IfCond(cond, iftrue, iffalse) ->
-			let pre_cond_code, cond_code = cxx_generate_from_conditional typemap binds cond in
-			let true_code = cxx_generate_from_gir typemap binds iftrue in
-			let false_code = cxx_generate_from_gir typemap binds iffalse in
+			let pre_cond_code, cond_code = cxx_generate_from_conditional typemap cond in
+			let true_code = cxx_generate_from_gir typemap iftrue in
+			let false_code = cxx_generate_from_gir typemap iffalse in
 			(trim pre_cond_code ^ "\n") ^
 			"if (" ^ cond_code ^ ") {\n" ^
 			true_code ^ "\n} else {\n" ^
@@ -164,7 +163,11 @@ let rec cxx_generate_from_gir (typemap: (string, synth_type) Hashtbl.t) (binds: 
 			let args_def = String.concat ~sep:", " (cxx_names_to_type_definition fun_typtable args_strings) in
 			(* Suppose we probably shouldn't just pass the old lenvar bindings
 				into this one.. *)
-			let body_code = cxx_generate_from_gir fun_typtable binds body in
+			let fun_typemap = {
+				variable_map = fun_typtable;
+				classmap = typemap.classmap
+			} in
+			let body_code = cxx_generate_from_gir fun_typemap body in
 			String.concat [
 				funtyp_name; " "; (cxx_gir_name_to_string name);
 				" ("; args_def; ") {\n"; body_code;
@@ -218,7 +221,7 @@ and cxx_generate_from_expression typemap expr =
 			(* We need a default value for this thing, so just pick
 			the first one from the map.  *)
 			let first_source, default_value = List.hd_exn value_pairs_list in
-			let deftyp = cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap (gir_name_to_string vfrom)) in
+			let deftyp = cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap.variable_map (gir_name_to_string vfrom)) in
 			(* TODO --- Should we crash when a value outside the rnage
 			is presented?  Clearly that doesn't make sense from an impl
 			perspective (or does it?) but it certianly makes sense from
@@ -244,7 +247,7 @@ and cxx_generate_from_vlist typemap vlist =
     | VariableList(nrefs) ->
 		let pre_code, refs = List.unzip (List.map nrefs (cxx_generate_from_variable_reference typemap)) in
         (String.concat ~sep:"\n" pre_code, String.concat ~sep:", " refs)
-and cxx_generate_from_conditional typemap binds cond =
+and cxx_generate_from_conditional typemap cond =
 	match cond with
 	| Check(vref, comparator) ->
 			(* Unary comparators are represented
@@ -263,13 +266,13 @@ and cxx_generate_from_conditional typemap binds cond =
 			vref1_ref ^
 			", " ^ vref2_ref ^ ")"
 	| CondOr(c1, c2) ->
-			let c1_pre, c1_code = cxx_generate_from_conditional typemap binds c1 in
-			let c2_pre, c2_code = cxx_generate_from_conditional typemap binds c2 in
+			let c1_pre, c1_code = cxx_generate_from_conditional typemap c1 in
+			let c2_pre, c2_code = cxx_generate_from_conditional typemap c2 in
 			c1_pre ^ "\n" ^ c2_pre, "(" ^ c1_code ^ ") || (" ^
 			c2_code ^ ")"
 	| CondAnd(c1, c2) ->
-			let c1_pre, c1_code = cxx_generate_from_conditional typemap binds c1 in
-			let c2_pre, c2_code = cxx_generate_from_conditional typemap binds c2 in
+			let c1_pre, c1_code = cxx_generate_from_conditional typemap c1 in
+			let c2_pre, c2_code = cxx_generate_from_conditional typemap c2 in
 			c1_pre ^ "\n" ^ c2_pre,
 			"(" ^ c1_code ^
 			") && (" ^ c2_code ^ ")"
@@ -297,7 +300,7 @@ let rec generate_empty_assign_to assname typ =
 			let type_sig = cxx_type_signature_synth_type_to_string typ in
             type_sig ^ " " ^ assname ^ ";"
 
-let rec generate_assign_to classmap assname fieldname typ json_ref =
+let rec generate_assign_to typemap assname fieldname typ json_ref =
 	let json_ref =
 		match fieldname with
 		(* Some refs, e.g. after arrays are actually impllicit.  *)
@@ -310,7 +313,7 @@ let rec generate_assign_to classmap assname fieldname typ json_ref =
 			let vecname = assname ^ "_vec" in
 			let resdef = "std::vector<" ^ artypstr ^ "> " ^ vecname ^ ";" in
 			let loop_header = "for (auto& elem : " ^ json_ref ^ ") {" in
-			let recursed_code = generate_assign_to classmap (assname ^ "_inner") None artyp "elem" in
+			let recursed_code = generate_assign_to typemap (assname ^ "_inner") None artyp "elem" in
             let in_loop_assign =
                 vecname ^ ".push_back(" ^ assname ^ "_inner);" in
 			let end_loop = "}" in
@@ -323,7 +326,7 @@ let rec generate_assign_to classmap assname fieldname typ json_ref =
 	| Struct(sname) ->
 			(* Get the members we need to fill, and
 			   then get the values.  *)
-			let structmeta = Hashtbl.find_exn classmap sname in
+			let structmeta = Hashtbl.find_exn typemap.classmap sname in
 			let struct_typemap = get_class_typemap structmeta in
 			let members = get_class_fields structmeta in
 			(* Pair those members with their types *)
@@ -331,7 +334,7 @@ let rec generate_assign_to classmap assname fieldname typ json_ref =
 				mem, (Hashtbl.find_exn struct_typemap mem)) in
 			(* Recurse to get the values *)
 			let members_assigns =
-				List.map memtypes (fun (mem, memtyp) -> generate_assign_to classmap (assname ^ mem) (Some(mem)) memtyp json_ref) in
+				List.map memtypes (fun (mem, memtyp) -> generate_assign_to typemap (assname ^ mem) (Some(mem)) memtyp json_ref) in
 			let memass_names = List.map members (fun m -> (assname ^ m)) in
 			(* Now, build the struct *)
 			let class_assign = if is_class structmeta then
@@ -353,21 +356,21 @@ let rec generate_assign_to classmap assname fieldname typ json_ref =
 those IO values from a JSON file and puts them into values.
 Returns boht the code, and a list of function args to apply.
 *)
-let rec generate_input_assigns classmap lenvar_bindings inps livein typemap json_ref =
+let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
 	let asses = List.map livein (fun inp ->
 		(* THis hsould be easy -- if it's not an array, then
 			just load the value -- if it is an array, then
 			do the complicated ararys stuff and recurse. *)
-		let typ = Hashtbl.find_exn typemap inp in
-		generate_assign_to classmap inp (Some(inp)) typ json_ref
+		let typ = Hashtbl.find_exn typemap.variable_map inp in
+		generate_assign_to typemap inp (Some(inp)) typ json_ref
 	) in
 	(* There are some variables that are 'dead' in, i.e. the
 	need to be allocated (e.g. output arrays), but they don't
 	need to be filled.  Call those 'deadin' values. *)
 	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) inps livein in
     let deadin_defs = List.map deadin (fun inp ->
-        let typ = Hashtbl.find_exn typemap inp in
-		cxx_definition_synth_type_to_string lenvar_bindings typ inp
+        let typ = Hashtbl.find_exn typemap.variable_map inp in
+		cxx_definition_synth_type_to_string typ inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)
@@ -376,9 +379,9 @@ let rec generate_input_assigns classmap lenvar_bindings inps livein typemap json
 
 (* Given a list of the liveout vars, produce an asssignment
 that produces the output JSON.*)
-let rec generate_output_assigns options classmap lenvar_assigns types outvars outprefix outjson =
+let rec generate_output_assigns options typemap types outvars outprefix outjson =
 	let asses = List.map (List.zip_exn outvars types) (fun (out, typ) ->
-		let defcode, vname = (generate_output_assign options classmap lenvar_assigns typ out outprefix) in
+		let defcode, vname = (generate_output_assign options typemap typ out outprefix) in
 		(* Defcode is the code to define any intermediate values needed. *)
 		defcode ^ "\n" ^
 		outjson ^ "[\"" ^ out ^ "\"] = " ^ vname ^ ";"
@@ -388,17 +391,16 @@ let rec generate_output_assigns options classmap lenvar_assigns types outvars ou
 (* note that this is a slightly confusing definition, because we are
 trying to input from the 'out' variable into the json, not assign
 to it.  *)
-and generate_output_assign options classmap lenvar_assigns typ out out_prefix =
+and generate_output_assign options typemap typ out out_prefix =
 	let () = if options.debug_generate_code then
 		Printf.printf "Generating outupt for %s\n" (out)
 	else () in
 	match typ with
-	| Array(artyp, _) ->
+	| Array(artyp, adim) ->
 		(* Needs to go back to a std::vector-based type *)
 		let artypname = cxx_vectors_type_signature_synth_type_to_string artyp in
 		let outtmp = generate_out_tmp () in
         let ivar = generate_ivar_tmp() in
-		let adim = Hashtbl.find_exn lenvar_assigns out in
 		let length = cxx_dimtype_to_name adim in
 		let vecres = "std::vector<json> " ^ outtmp ^ ";" in
 		(* TODO--- need to actually properly handle multi-dimensions here.  *)
@@ -407,7 +409,7 @@ and generate_output_assign options classmap lenvar_assigns typ out out_prefix =
 		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ length ^ "; " ^ ivar ^ "++) {" in
 		let newout = generate_out_tmp() in
 		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ out ^ "[" ^ ivar ^ "];" in
-		let assbody, assresvar = generate_output_assign options classmap lenvar_assigns artyp newout out_prefix in
+		let assbody, assresvar = generate_output_assign options typemap artyp newout out_prefix in
 		(* Add to the array. *)
 		let inloopassign = outtmp ^ ".push_back(" ^ assresvar ^ ");" in
 		let loop_end = "}" in
@@ -417,13 +419,13 @@ and generate_output_assign options classmap lenvar_assigns typ out out_prefix =
 	| Struct(n) ->
 		let json_tmp = generate_out_tmp () in
 		let defn = "json " ^ json_tmp ^ ";" in
-		let structdefn = Hashtbl.find_exn classmap n in
+		let structdefn = Hashtbl.find_exn typemap.classmap n in
 		let sub_assigns = List.map (get_class_fields structdefn) (fun a -> a) in
 		(* Need the unprefixed assigns so we can get their types from the typemap.  *)
 		let unprefixed_assigns = get_class_fields structdefn in
 		let sub_typemap = get_class_typemap structdefn in
 		let sub_types = List.map unprefixed_assigns (fun ass -> Hashtbl.find_exn sub_typemap ass) in
-		let asscode = generate_output_assigns options classmap lenvar_assigns sub_types sub_assigns (out ^ ".") json_tmp in
+		let asscode = generate_output_assigns options typemap sub_types sub_assigns (out ^ ".") json_tmp in
 		String.concat ~sep:"\n" [defn; asscode], json_tmp
 	| _ ->
 		(* We can literally just put the variable name.  *)
@@ -445,12 +447,12 @@ let otherimports = String.concat ~sep:"\n" [
 the variable filename.  argnames must be a superset of vnames,
 and should contain auxiliary things that don't need to be dumped,
 e.g. length parameters.  *)
-let generate_dump_function options classmap (program: program) filename argnames vnames typemap funname =
-	let header = "void " ^ funname ^ "(" ^ (String.concat ~sep:", " (cxx_names_to_type_definition typemap argnames)) ^ ") {\n" in
+let generate_dump_function options (typemap: typemap) (program: program) filename argnames vnames funname =
+	let header = "void " ^ funname ^ "(" ^ (String.concat ~sep:", " (cxx_names_to_type_definition typemap.variable_map argnames)) ^ ") {\n" in
 	let json_out_name = "output_json" in
 	let write_json_def = "    json " ^ json_out_name ^ ";" in
-	let types = List.map vnames (fun i -> Hashtbl.find_exn typemap i) in
-	let gen_results = generate_output_assigns options classmap program.lenvar_bindings types vnames "" json_out_name in
+	let types = List.map vnames (fun i -> Hashtbl.find_exn typemap.variable_map i) in
+	let gen_results = generate_output_assigns options typemap types vnames "" json_out_name in
 	let ofstream_create = "std::ofstream out_str(" ^ filename ^ "); " in
 	let ofstream_write = "out_str << std::setw(4) << " ^ json_out_name ^ " << std::endl;" in
 	let tail = "}" in
@@ -462,7 +464,7 @@ let generate_dump_function options classmap (program: program) filename argnames
 thing --- it should respect the specification for taking in
 as args the input JSON file, and putting the outputs of the function
 in the output JSON file.  *)
-let cxx_main_function options classmap (iospec: iospec) dump_intermediates (program: program) =
+let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermediates (program: program) =
 	let json_var_name = "input_json" in
 	let header = "int main(int argc, char **argv) {" in
 	let argreader =      "    char *inpname = argv[1]; " in
@@ -478,7 +480,7 @@ let cxx_main_function options classmap (iospec: iospec) dump_intermediates (prog
 	in
 	let load_file =      "    std::ifstream ifs(inpname); " in
 	let load_json =      "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns classmap program.lenvar_bindings iospec.funargs iospec.livein iospec.typemap json_var_name in
+	let parse_args, argnames = generate_input_assigns typemap iospec.funargs iospec.livein json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
@@ -500,7 +502,7 @@ let cxx_main_function options classmap (iospec: iospec) dump_intermediates (prog
 			""
     in
 	let output_writing_function =
-		generate_dump_function options classmap program "output_file" iospec.funargs iospec.liveout iospec.typemap "write_output"
+		generate_dump_function options typemap program "output_file" iospec.funargs iospec.liveout "write_output"
 	in
 	let output_write_call =
         "write_output(" ^ (String.concat ~sep:", " iospec.funargs) ^ ");"
@@ -510,18 +512,18 @@ let cxx_main_function options classmap (iospec: iospec) dump_intermediates (prog
     pre_timing_code; call_func; post_timing_code; timing_print_code;
     output_write_call; tail]
 
-let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec) dump_intermediates program =
+let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_intermediates program =
     (* C++ only allows for single return values.  *)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
     let (function_type, outv) =
         match program.returnvar with
         | None -> "void", ""
-        | Some(x) -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap x), x
+        | Some(x) -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap.variable_map x), x
     in
 	let intermediate_dump_function =
 		if dump_intermediates then
-			[generate_dump_function options classmap program "pre_accel_dump_file" apispec.livein apispec.livein apispec.typemap options.pre_accel_dump_function]
+			[generate_dump_function options program.typemap program "pre_accel_dump_file" apispec.livein apispec.livein options.pre_accel_dump_function]
 		else []
 	in
 	(* Generate the required helper functions.  *)
@@ -529,13 +531,13 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
 		(* Note that the typemap and lenvar bindings aren't
 		(/shouldn't be) used in this call anyway, they're replaced
 		by the ones in the program unit. *)
-		(List.map program.fundefs (cxx_generate_from_gir program.typemap program.lenvar_bindings))
+		(List.map program.fundefs (cxx_generate_from_gir program.typemap))
 		@ (intermediate_dump_function)
 	) in
     (* Generate the function header *)
     let function_header =
         function_type ^ " " ^ program.generated_funname ^ "(" ^
-        (String.concat ~sep:"," (cxx_names_to_type_definition program.typemap program.in_variables)) ^
+        (String.concat ~sep:"," (cxx_names_to_type_definition program.typemap.variable_map program.in_variables)) ^
         ") {" 
     in
     (* Generate the actual program --- need to include e.g. any range programs
@@ -543,7 +545,7 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
 	let program_gir = generate_single_gir_body_from options apispec dump_intermediates program in
 	(* TODO -- probabloy need to augment the typemap and lenvar bindings with
 	those from the post-behaviour/range checker.  *)
-    let program_string = cxx_generate_from_gir program.typemap program.lenvar_bindings program_gir in
+    let program_string = cxx_generate_from_gir program.typemap program_gir in
 	let program_includes =
 		String.concat ~sep:"\n" (generate_includes_list_from program) in
 	let ioimports = cxx_generate_imports iospec.required_includes in
@@ -551,16 +553,16 @@ let generate_cxx (options: options) classmap (apispec: apispec) (iospec: iospec)
     (* And generate the return statement *)
     let function_return =
         "return " ^ outv ^ "; }" in
-	let main_func = cxx_main_function options classmap iospec dump_intermediates program in
+	let main_func = cxx_main_function options program.typemap iospec dump_intermediates program in
     (* Generate the whole program.  *)
 	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_return; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)
 
-let generate_code (options: options) classmap apispec (iospec: iospec) dump_intermediates (programs: program list) =
+let generate_code (options: options) apispec (iospec: iospec) dump_intermediates (programs: program list) =
 	let codes = match options.target with
-	| CXX -> List.map programs (generate_cxx options classmap apispec iospec dump_intermediates)
+	| CXX -> List.map programs (generate_cxx options apispec iospec dump_intermediates)
 	in
 	let () =
 		if options.dump_generate_program then

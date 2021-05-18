@@ -127,7 +127,7 @@ let rec dimensions_overlap x y =
 	match x, y with
 	| EmptyDimension, _ -> []
 	| _, EmptyDimension -> []
-	| Dimension(nrefs), Dimension(nrefs2) -> dim_has_overlap nrefs nrefs2
+	| Dimension(nrefs), Dimension(nrefs2) -> dim_has_overlap [nrefs] [nrefs2]
 
 let add_name_nr name ty =
 	match ty with
@@ -201,8 +201,8 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
 	| Float32 -> SType(SFloat(name_from_opt inpname))
 	| Float64 -> SType(SFloat(name_from_opt inpname))
 
-let skeleton_type_lookup classmap (typemap: (string, synth_type) Hashtbl.t) names =
-    List.map names (fun name -> generate_typesets classmap (Hashtbl.find_exn typemap name) (Some(name)))
+let skeleton_type_lookup typemap names =
+    List.map names (fun name -> generate_typesets typemap.classmap (Hashtbl.find_exn typemap.variable_map name) (Some(name)))
 
 let rec repeat n item =
     match n with
@@ -458,7 +458,7 @@ let rec define_bindings_for valid_dimvars vs =
         | SArray(_, _, EmptyDimension) ->
                 raise (SkeletonGenerationException "Can't have empty dim")
 		| SArray(arnam, _, Dimension(dms)) ->
-                let dimvar_bindings = dim_has_overlap dms valid_dimvars in
+                let dimvar_bindings = dim_has_overlap [dms] valid_dimvars in
 				[{
 					(* May have to properly
 					deal with array childer. *)
@@ -503,7 +503,7 @@ let get_dimvars_used typeset =
             List.map typeset (fun typ ->
                 match typ with
                 | SArray(_, _, EmptyDimension) -> []
-                | SArray(_, _, Dimension(vs)) -> vs
+                | SArray(_, _, Dimension(vs)) -> [vs]
                 | _ -> []
             )
         )in
@@ -533,7 +533,7 @@ let assign_and_define_bindings options constant_options_map typesets_in typesets
 
 (* The algorithm should produce bindings from the inputs
    the outputs. *)
-let binding_skeleton options classmap constant_options_map typesets_in typesets_out typesets_define =
+let binding_skeleton options typemap constant_options_map typesets_in typesets_out typesets_define =
 	let possible_bindings_list = assign_and_define_bindings options constant_options_map typesets_in typesets_out typesets_define in
 	(* Verify that there is exactly one variable per list, and that
 	   there is not more than one list per variable.  *)
@@ -563,14 +563,14 @@ let binding_skeleton options classmap constant_options_map typesets_in typesets_
 (* Given the input classmap, IOSpec, and APISpec, generate
    the pre- and post-skeletons.  Pair them, and do some
    filtering to check for sanity.  *)
-let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (apispec: apispec) =
+let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) =
     (* Get the types of the varios input variables.  *)
-    let livein_types = skeleton_type_lookup classmap iospec.typemap iospec.livein in
-    let livein_api_types = skeleton_type_lookup classmap apispec.typemap apispec.livein in
-    let liveout_api_types = skeleton_type_lookup classmap apispec.typemap apispec.liveout in
-    let liveout_types = skeleton_type_lookup classmap iospec.typemap iospec.liveout in
+    let livein_types = skeleton_type_lookup typemap iospec.livein in
+    let livein_api_types = skeleton_type_lookup typemap apispec.livein in
+    let liveout_api_types = skeleton_type_lookup typemap apispec.liveout in
+    let liveout_types = skeleton_type_lookup typemap iospec.liveout in
     (* Get the types that are not livein, but are function args.  *)
-    let define_only_api_types = skeleton_type_lookup classmap apispec.typemap (set_difference (fun a -> fun b -> (String.compare a b) = 0) apispec.funargs apispec.livein) in
+    let define_only_api_types = skeleton_type_lookup typemap (set_difference (fun a -> fun b -> (String.compare a b) = 0) apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the pre-binds.  *)
     let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types livein_api_types in
     (* Get constants that we should try for the post-binds
@@ -580,8 +580,8 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
        on success. *)
     let post_constant_options_map = Hashtbl.create (module String) in
     (* Now use these to create skeletons.  *)
-	let pre_skeletons: skeleton_type_binding list = binding_skeleton options classmap constant_options_map livein_types livein_api_types define_only_api_types in
-    let post_skeletons = binding_skeleton options classmap post_constant_options_map liveout_api_types liveout_types [] in
+	let pre_skeletons: skeleton_type_binding list = binding_skeleton options typemap constant_options_map livein_types livein_api_types define_only_api_types in
+    let post_skeletons = binding_skeleton options typemap post_constant_options_map liveout_api_types liveout_types [] in
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
@@ -589,7 +589,7 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
 	let range_checked_pre_skeletons = rangecheck_skeletons options flattened_pre_skeletons iospec.rangemap apispec.validmap in
 	let range_checked_post_skeletons = rangecheck_skeletons options flattened_post_skeletons apispec.validmap iospec.rangemap in
 	(* Compute the range checks *)
-	let range_progs = generate_range_checks_skeleton options classmap iospec apispec range_checked_pre_skeletons in
+	let range_progs = generate_range_checks_skeleton options typemap iospec apispec range_checked_pre_skeletons in
 	(* Generate the range maps that can be used for input generation.  *)
 	let input_maps = generate_input_ranges options iospec.rangemap apispec.validmap range_checked_pre_skeletons in
     (* Do skeleton pairing *)
@@ -601,12 +601,13 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
             pre = pre;
             post = post;
             rangecheck = rangecheck;
-            inputmap = inputmap
+			inputmap = inputmap;
+			typemap = typemap;
         }
     ) in
     (* Do joint filtering *)
     let sensible_skeleton_pairs = List.filter skeleton_pair_objects (skeleton_pair_check options) in
-	let () = if options.print_synthesizer_numbers || options.debug_generate_skeletons then
+	let () = if options.debug_generate_skeletons then
         (Printf.printf "Number of types (livein IO=%d, livein API=%d, liveout API=%d, liveout IO=%d)\n"
             (List.length livein_types) (List.length livein_api_types)
             (List.length liveout_api_types) (List.length liveout_types);
@@ -635,5 +636,12 @@ let generate_skeleton_pairs options (classmap: (string, structure_metadata) Hash
 	else
 		();
 	(* Assert that all the pairs are valid structures, e.g. assigning once etc. *)
-	let () = verify_skeleton_pairs options classmap iospec apispec sensible_skeleton_pairs in
+	let () = verify_skeleton_pairs options typemap iospec apispec sensible_skeleton_pairs in
     sensible_skeleton_pairs
+
+let generate_all_skeleton_pairs opts typemaps iospec apispec =
+	List.concat (
+		List.map typemaps (fun typemap ->
+			generate_skeleton_pairs opts typemap iospec apispec
+		)
+	)

@@ -46,6 +46,6 @@ tsub:
  | FLOAT64 { Float64 }
  | UNIT { Unit }
  | ARRAY; LPAREN; tsub; RPAREN { Array($3, EmptyDimension) };
- | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, Dimension([DimConstant($5)])) };
- | ARRAY; LPAREN; tsub; HASH; IDENT; RPAREN { Array($3, Dimension([DimVariable(Name($5))])) }
+ | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, Dimension(DimConstant($5))) };
+ | ARRAY; LPAREN; tsub; HASH; IDENT; RPAREN { Array($3, Dimension(DimVariable(Name($5)))) }
  | IDENT {Struct($1)}

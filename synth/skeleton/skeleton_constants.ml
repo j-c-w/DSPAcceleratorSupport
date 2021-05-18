@@ -40,12 +40,10 @@ let rec dimconsts_from_types typ =
 			(* Consts used to define this array.  *)
 			let this_consts = match lenvar with
 			| EmptyDimension -> []
-			| Dimension(dimlist) ->
-					List.filter_map dimlist (fun dim ->
-						match dim with
-						| DimVariable(_) -> None
-						| DimConstant(c) -> Some(Int64V(c))
-					)
+			| Dimension(dim) ->
+					match dim with
+						| DimVariable(_) -> []
+						| DimConstant(c) -> [Int64V(c)]
 			in
 			subconsts @ this_consts
 

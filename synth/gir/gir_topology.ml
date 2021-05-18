@@ -173,22 +173,23 @@ let rec get_uses_defining_type typ =
     | Array(subtyp, dim) ->
             let this_dim = match dim with
             | Dimension(nm) ->
-                    List.filter_map nm (fun n -> match n with
-					| DimVariable(AnonymousName) -> raise (TopologicalSortException "No anon names in the typemap!")
-					| DimVariable(Name(n)) -> Some(UDName(Name(n)))
-					| DimVariable(StructName(ns)) -> raise (TopologicalSortException "Congratualations, you hit the case
-					that means you need to do a f*ck of a lot of work fixing the typemaps so that
-					they are actually sane and are recursive rather than the weird implicit
-					'.' that they use now.  Enjoy!")
-					| DimConstant(_) -> None
+					(
+                    match nm with
+						| DimVariable(AnonymousName) -> raise (TopologicalSortException "No anon names in the typemap!")
+						| DimVariable(Name(n)) -> [UDName(Name(n))]
+						| DimVariable(StructName(ns)) -> raise (TopologicalSortException "Congratualations, you hit the case
+						that means you need to do a f*ck of a lot of work fixing the typemaps so that
+						they are actually sane and are recursive rather than the weird implicit
+						'.' that they use now.  Enjoy!")
+						| DimConstant(_) -> []
 					)
-            | _ -> raise (TopologicalSortException "Don't think this is possible?") in
+            | EmptyDimension -> raise (TopologicalSortException "Don't think this is possible?") in
             this_dim @ (get_uses_defining_type subtyp)
     | _ -> []
 
 let get_uses_defining_variable typemap name =
     (* Compute the variables that get used when defining this.  *)
-    get_uses_defining_type (Hashtbl.find_exn typemap (gir_name_to_string name))
+    get_uses_defining_type (Hashtbl.find_exn typemap.variable_map (gir_name_to_string name))
 
 
 let rec compute_use_def_assign_for_node typemap gir =

@@ -38,17 +38,6 @@ let rec add_index_variables_to_typemap typemap gir =
 			()
     | Return(_) -> ()
 
-let add_all_types_to frommap tomap =
-    ignore(Hashtbl.iter_keys frommap (fun (apitypekey: string) ->
-        ignore(Hashtbl.add tomap apitypekey (Hashtbl.find_exn frommap apitypekey))))
-
-let build_typemap_for (apispec: apispec) (iospec: iospec) gir =
-    let newtbl: (string, synth_type) Hashtbl.t =
-        Hashtbl.create (module String) in
-    let () = add_all_types_to apispec.typemap newtbl in
-    let () = add_all_types_to iospec.typemap newtbl in
-    newtbl
-
 let rec member x ys =
 	match ys with
 	| [] -> false
@@ -87,13 +76,11 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 		Sequence([girpair.pre;
 			Assignment(resref, Expression(funcall));
 			girpair.post]) in
-    let unified_typemap =
-        build_typemap_for apispec iospec body in
 	(* Run scheduling on pre and post so things are computed
 	   before they are used.  *)
-	let scheduled_pre = topological_program_sort opts unified_typemap ~predefed:iospec.livein ~preassigned:iospec.livein girpair.pre in
+	let scheduled_pre = topological_program_sort opts girpair.typemap ~predefed:iospec.livein ~preassigned:iospec.livein girpair.pre in
 	(* May need to fiddle with the preassigned /defined with function return values.  *)
-	let scheduled_post = topological_program_sort opts unified_typemap ~predefed:(iospec.liveout @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) ~preassigned:(apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) girpair.post in
+	let scheduled_post = topological_program_sort opts girpair.typemap ~predefed:(iospec.liveout @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) ~preassigned:(apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) girpair.post in
 	(* Finally rebuild the body.  *)
 	let final_body = match rettype with
 	| None ->
@@ -106,7 +93,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 			scheduled_post]) in
 	(* Need to add the index variables to the typemap.  *)
 	let () =
-		add_index_variables_to_typemap unified_typemap body in
+		add_index_variables_to_typemap girpair.typemap.variable_map body in
 	(* Clean out unrequired fundefs *)
 	let required_fundefs =
 		remove_unused_fundefs final_body girpair.fundefs in
@@ -117,8 +104,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 		range_checker = girpair.range_checker;
         post_behavioural = None;
         returnvar = iospec.returnvar;
-        typemap = unified_typemap;
-		lenvar_bindings = girpair.lenvar_bindings;
+        typemap = girpair.typemap;
 		fundefs = required_fundefs;
 		user_funname = iospec.funname;
 		api_funname = apispec.funname;
@@ -128,7 +114,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 
 (* Given a set of pre/post pairs, fill thsee out into whole programs
    that can be turned into C code.  *)
-let generate_programs (opts: options) classmap (iospec: iospec) (api: apispec)
+let generate_programs (opts: options) (iospec: iospec) (api: apispec)
 	(conversion_functions: gir_pair list)  =
 		let result_programs = List.map conversion_functions (generate_program_for opts api iospec) in
 		let () = if opts.dump_generate_program then

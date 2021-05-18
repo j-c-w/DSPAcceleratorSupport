@@ -17,27 +17,29 @@ let generate_ind_name () =
 let fft_generate_gir_from_dimension (x: dimension_type) =
     match x with
     | EmptyDimension -> raise (CXXHoleError "Dimension too empty")
-    | Dimension([x]) ->
+    | Dimension(x) ->
 			(
 			match x with
 			| DimVariable(x) -> Variable(Name(name_reference_to_string x))
 			| DimConstant(c) -> Constant(Int64V(c))
 			)
-    | Dimension(_) -> raise (CXXHoleError "Dimension too full")
 
-let rec generate_gir_program options classmap typemap lenvar_bindings fft_behaviour =
+let rec generate_gir_program options typemap fft_behaviour =
 	match fft_behaviour with
 	| FSConditional(body, cond) ->
 			let cond = generate_gir_condition cond in
-			let body = generate_gir_program options classmap typemap lenvar_bindings body in
+			let body = generate_gir_program options typemap body in
 			IfCond(cond, body, EmptyGIR)
 	| FSArrayOp(operator, onvar) ->
 			let vname = generate_gir_variable onvar in
-			let loop_length = Hashtbl.find_exn lenvar_bindings (variable_reference_to_string vname) in
-            let vtype = Hashtbl.find_exn typemap (variable_reference_to_string vname) in
+            let vtype = Hashtbl.find_exn typemap.variable_map (variable_reference_to_string vname) in
             (* vnames split by stuff that has to come before/after each index -- probably
                should be a list rather than a tuple with options to support nested
                arrays.  *)
+			let loop_length = match vtype with
+			| Array(_, lvar) -> lvar
+			| _ -> raise (GenerationError "Can't have loop over non-array type")
+			in
             let vnames = match vtype with
                 | Array(Float16, _) -> [(vname, None)]
                 | Array(Float32, _) -> [(vname, None)]
@@ -53,8 +55,8 @@ let rec generate_gir_program options classmap typemap lenvar_bindings fft_behavi
                         (* For everything else, we need to do one
                         loop for each subcomponent of the array. *)
                         | FSNormalize | FSDenormalize ->
-                            let variables = get_class_fields (Hashtbl.find_exn classmap name) in
-                            let struct_typmap = get_class_typemap (Hashtbl.find_exn classmap name) in
+                            let variables = get_class_fields (Hashtbl.find_exn typemap.classmap name) in
+                            let struct_typmap = get_class_typemap (Hashtbl.find_exn typemap.classmap name) in
                             List.map (variables) (fun key ->
                             let typ = Hashtbl.find_exn struct_typmap key in
                             match typ with
@@ -106,7 +108,7 @@ let rec generate_gir_program options classmap typemap lenvar_bindings fft_behavi
             Sequence(calls)
     | FSSeq(elems) ->
 			Sequence(
-				List.map elems (generate_gir_program options classmap typemap lenvar_bindings)
+				List.map elems (generate_gir_program options typemap)
 			)
 	| FSStructureHole -> raise (CXXHoleError "Has a hole")
 

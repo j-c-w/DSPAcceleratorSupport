@@ -23,11 +23,11 @@ let main iospec_file classspec_file output_file =
     because I have no clear understanding why it needs both.  *)
     let options = { default_options with generate_timing_code = true } in
 	let classspec = load_classmap classspec_file in
-    let iospec = load_iospec options classspec iospec_file in
-    let lenvartbl = Hashtbl.create (module String) in
-	let _ = ignore(List.map (iospec.livein @ iospec.liveout) (fun v ->
-		Hashtbl.set lenvartbl v EmptyDimension
-	)) in
+    let iospec, iotypemap = load_iospec options classspec iospec_file in
+	let typemap = {
+		variable_map = iotypemap;
+		classmap = classspec
+	} in
 	let emptymaptbl = Hashtbl.create (module String) in
     (* Most of these values aren't used since we don't gen
     the whole program, just the main.  *)
@@ -35,19 +35,18 @@ let main iospec_file classspec_file output_file =
         in_variables = iospec.livein;
         gir = EmptyGIR;
         out_variables = iospec.liveout;
+		typemap = typemap;
         range_checker = None;
         post_behavioural = None;
-        typemap = iospec.typemap;
         returnvar = None;
         user_funname = "TODO";
         generated_funname = "TODO";
         api_funname = "TODO";
-        lenvar_bindings = lenvartbl;
 		fundefs = [];
 		inputmap = emptymaptbl;
     } in
 	(* Generate the JSON wrapper: *)
-	let code = otherimports ^ "\n" ^ cxx_main_function options classspec iospec false base_program in
+	let code = otherimports ^ "\n" ^ cxx_main_function options typemap iospec false base_program in
 	let () = assert (Filename.check_suffix output_file ".cpp") in
 	Out_channel.write_all output_file ~data:code
 

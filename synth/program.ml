@@ -21,13 +21,12 @@ type program = {
     out_variables: string list;
 	range_checker: range_program option;
 	post_behavioural: post_behavioural_program option;
-    typemap: (string, synth_type) Hashtbl.t;
+	typemap: typemap;
 	inputmap: (string, range_set) Hashtbl.t;
 	returnvar: string option;
 	user_funname: string;
 	generated_funname: string;
 	api_funname: string;
-	lenvar_bindings: (string, dimension_type) Hashtbl.t;
 	fundefs: gir list
 }
 
@@ -36,10 +35,8 @@ type gir_pair = {
 	post: gir;
 	(* Which input ranges are good to test this? *)
 	inputmap: (string, range_set) Hashtbl.t;
-	(* Which lenvar assignments are being used by this
-	   for each array type? *)
-	lenvar_bindings: (string, dimension_type) Hashtbl.t;
 	(* What helper functions are required? *)
 	fundefs: gir list;
 	range_checker: range_program option;
+	typemap: typemap;
 }

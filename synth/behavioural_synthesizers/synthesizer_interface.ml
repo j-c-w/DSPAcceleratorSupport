@@ -20,10 +20,10 @@ to get heuristics for probably.  It's IOspec due
 to ease of access to parameters--- for the APISpec,
 we need to make sure the parameters appear in the output
 Json files.  *)
-let configuration_parameters_for (iospec: iospec) (apispec: apispec) =
+let configuration_parameters_for typemap (iospec: iospec) (apispec: apispec) =
 	let deadout = Utils.set_difference (Utils.string_equal) iospec.livein iospec.liveout in
 	let config_deadout = List.filter deadout (fun deadvar ->
-		let typ = Hashtbl.find_exn iospec.typemap deadvar in
+		let typ = Hashtbl.find_exn typemap.variable_map deadvar in
 		match typ with
 		| Bool -> true
 		| Int16 -> true
@@ -52,21 +52,6 @@ let configuration_parameters_for (iospec: iospec) (apispec: apispec) =
 		| Fun(_, _) -> false
 	) in
 	config_deadout
-
-let create_unified_typemap h1 h2 =
-    let result = Hashtbl.create (module String) in
-    let _ = List.map (Hashtbl.keys h1) (fun key ->
-        Hashtbl.add result key (Hashtbl.find_exn h1 key)
-    ) in
-    let _ = List.map (Hashtbl.keys h2) (fun key ->
-        let res = Hashtbl.add result key (Hashtbl.find_exn h2 key) in
-        match res with
-        | `Ok -> ()
-        (* This isn't a fundmental error, more a lazy cannae be fucked to deal with this
-        right now.  *)
-        | `Duplicate -> raise (PostSynthesizerException "Error: name clash between IO and API")
-    ) in
-    result
 
 (* The iofiles are pairs of files, where one represents the inputs
    and the other represents the outputs.  We need to get
@@ -118,7 +103,7 @@ let post_synthesis_io_pairs options apispec iospec iofiles program configuration
 			None
 	) in result
 
-let synthesize_post (options: options) classmap (iospec: iospec) (apispec: apispec) (program: program) io_files =
+let synthesize_post (options: options) typemap (iospec: iospec) (apispec: apispec) (program: program) io_files =
 	(* This synthesizes a program based on the IO files,
 	   and the io/apispecs that tries to bridge
 	   the gap between the finished outputs and
@@ -153,7 +138,7 @@ let synthesize_post (options: options) classmap (iospec: iospec) (apispec: apisp
     to get values for the APISpec inputs here.  *)
 	(* TODO -- need to fix issue when there is a name clash
 	between input code and real code.  *)
-	let configuration_parameters = configuration_parameters_for iospec apispec in
+	let configuration_parameters = configuration_parameters_for typemap iospec apispec in
     let () = if options.debug_post_synthesis then
         Printf.printf "Configuration parameters detected is: %s\n" (
             String.concat ~sep:", " (configuration_parameters)
@@ -167,7 +152,6 @@ let synthesize_post (options: options) classmap (iospec: iospec) (apispec: apisp
     (* TODO _-- REALLy need to handle name clashes --- perhaps
        by prefixing things? *)
     let names = List.map (configuration_parameters @ iospec.liveout) (fun n -> Name(n)) in
-    let unified_typemap = create_unified_typemap iospec.typemap apispec.typemap in
 	(* The synthesizer NEEDS to result in a function definition
 	of that type, and a way to convert that function into
 	a string for each of the backends (or into GIR).
@@ -178,4 +162,4 @@ let synthesize_post (options: options) classmap (iospec: iospec) (apispec: apisp
     else () in
 	match options.post_synthesizer with
 	| NoSynthesizer -> None
-	| FFTSynth -> fft_synth options classmap unified_typemap names program io_pairs
+	| FFTSynth -> fft_synth options typemap names program io_pairs

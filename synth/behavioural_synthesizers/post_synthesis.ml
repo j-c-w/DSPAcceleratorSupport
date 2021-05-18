@@ -5,7 +5,7 @@ open Options;;
 open Gir_utils;;
 
 (* Expect one set of IO pairs for each program to consider.  *)
-let run_post_synthesis options classmap iospec apispec programs io_files =
+let run_post_synthesis options iospec apispec programs io_files =
     let prog_io_pairs = List.zip_exn programs io_files in
     List.map prog_io_pairs (fun ((prog: program), (iopairs, passed)) ->
         if passed then
@@ -18,7 +18,7 @@ let run_post_synthesis options classmap iospec apispec programs io_files =
 				post_behavioural = None
 			}, true
         else
-            let post_program = synthesize_post options classmap iospec apispec prog iopairs in
+            let post_program = synthesize_post options prog.typemap iospec apispec prog iopairs in
             let passed = Option.is_some post_program in
             let () = if options.dump_behavioural_synth then
                 Printf.printf "Behavioural synth used is %s\n" (

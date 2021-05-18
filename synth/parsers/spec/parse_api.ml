@@ -6,7 +6,7 @@ open Parse_type;;
 open Parse_typemap;;
 open Parse_range;;
 
-let load_target_api options classmap filename: apispec =
+let load_target_api options classmap filename =
 	let json = Yojson.Basic.from_file filename in
 	let livein = List.map (json |> member "livein" |> to_list) to_string in
 	let execcmd = json |> member "execcmd" |> to_string in
@@ -25,14 +25,14 @@ let load_target_api options classmap filename: apispec =
     | `Null -> []
     | other -> List.map (other |> to_list) to_string in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
-	{
+	let apispec: apispec = {
 		livein = livein;
 		liveout=liveout;
 		execcmd=execcmd;
-		typemap=typemap;
 		funname = funname;
 		funargs = funargs;
 		required_includes = required_includes;
         compiler_flags = compiler_flags;
 		validmap = valid_tbl;
-	};;
+	} in
+	apispec, typemap;;

@@ -19,7 +19,7 @@ let extract_typemap typemap vars =
 	ignore(List.map typepairs (fun (var, t)  -> Hashtbl.add tbl var t));
 	tbl;;
 
-let load_iospec options classmap filename: iospec =
+let load_iospec options classmap filename =
 	let json = Yojson.Basic.from_file filename in
 	let livein = List.map (json |> member "livein" |> to_list) (fun j -> j |> to_string) in
 	let liveout = List.map (json |> member "liveout" |> to_list) (fun j -> j |> to_string) in
@@ -39,7 +39,6 @@ let load_iospec options classmap filename: iospec =
 		livein=livein;
 		liveout=liveout;
 		execcmd=execcmd;
-		typemap=typemap;
 		funname=funname;
 		funargs=funargs;
 		compiler_flags=compiler_flags;
@@ -53,4 +52,4 @@ let load_iospec options classmap filename: iospec =
 		if options.debug_load then
 			Printf.printf "Loaded iospec is %s" (iospec_to_string iospec)
 		else () in
-	iospec
+	iospec, typemap

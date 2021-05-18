@@ -30,7 +30,7 @@ and dimension_type =
 	(* This should be assigned in the assign_dimensions pass##
 	or can be specified by the .  *)
     | EmptyDimension
-	| Dimension of dimension_value list
+	| Dimension of dimension_value
 and dimension_value =
 	| DimVariable of name_reference
 	| DimConstant of int
@@ -67,7 +67,6 @@ type iospec = {
     funargs: string list;
 	execcmd: string;
 	required_includes: string list;
-	typemap: (string, synth_type) Hashtbl.t;
 	rangemap: (string, range_set) Hashtbl.t;
 	validmap: (string, range_set) Hashtbl.t;
 	(* Which consts appear in the user code -- indexed
@@ -84,7 +83,6 @@ type apispec = {
 	funargs: string list;
 	required_includes: string list;
     compiler_flags: string list;
-	typemap: (string, synth_type) Hashtbl.t;
 	validmap: (string, range_set) Hashtbl.t
 }
 
@@ -102,3 +100,9 @@ type structtype = {
 type structure_metadata =
 	| ClassMetadata of classtype
 	| StructMetadata of structtype
+
+type typemap = {
+	variable_map: (string, synth_type) Hashtbl.t;
+	classmap: (string, structure_metadata) Hashtbl.t;
+}
+

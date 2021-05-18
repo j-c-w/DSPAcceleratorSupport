@@ -19,7 +19,7 @@ let dep_list_to_string dlist =
 		List.map dlist dep_to_string
 	)
 
-let rec get_dependencies_for classmap typ =
+let rec get_dependencies_for typemap typ =
 	match typ with
 	| Bool -> []
 	| Int16 -> []
@@ -33,37 +33,23 @@ let rec get_dependencies_for classmap typ =
 	| Float64 -> []
 	| Array(tp, dims) ->
 			let this_deps = match dims with
-			| Dimension([x]) -> (match x with
+			| Dimension(x) -> (match x with
 				| DimVariable(v) -> [v]
 				| DimConstant(_) -> []
 			)
-			(* This is a stupid hack that is 100% going to cause
-			problems with unwanted cyclic dependencies in the future.
-			Really, before the typemap is used for this, it needs
-			to be cleaned so that it only represents the selected
-			dimension types.  Right now, it shows all the dimension
-			types.  Anywa, this isn't incorrect, I just
-			expect it to cause some bugs with this algorithm
-			not terminating when dimension variable assignments
-			become more complex.  *)
-			| Dimension(x :: xs) -> List.filter_map (x :: xs) (fun v ->
-					match v with
-					| DimVariable(vname) -> Some(vname)
-					| DimConstant(_) -> None
-			)
 			| _ -> raise (STopologyException "Unhandled")
 			in
-			this_deps @ (get_dependencies_for classmap tp)
+			this_deps @ (get_dependencies_for typemap tp)
 	| Struct(sname) ->
 			(* TODO -- we could do a topo sort of the individual
 			fields, but that would only help for very weird
 			and IMO unlikely topo chains.  *)
-			let metadata = Hashtbl.find_exn classmap sname in
+			let metadata = Hashtbl.find_exn typemap.classmap sname in
 			let subs = get_class_fields metadata in
 			let stypedef = get_class_typemap metadata in
 			let subtyps = List.map subs (Hashtbl.find_exn stypedef) in
 			List.concat (
-				List.map subtyps (get_dependencies_for classmap)
+				List.map subtyps (get_dependencies_for typemap)
 			)
 	| Unit ->
 			[]
@@ -75,12 +61,12 @@ let rec get_dependencies_for classmap typ =
 			*)
 			[]
 
-let compute_use_defs classmap names typmap =
+let compute_use_defs typemap names =
 	List.map names (fun n ->
-		let typ = Hashtbl.find_exn typmap (name_reference_to_string n) in
+		let typ = Hashtbl.find_exn typemap.variable_map (name_reference_to_string n) in
 		{
 			name = n;
-			dependencies = (get_dependencies_for classmap typ)
+			dependencies = (get_dependencies_for typemap typ)
 		}
 	)
 
@@ -121,8 +107,8 @@ let rec synth_khan options vars s sorted =
 			let still_has_deps, no_more_deps = split_deps remaining_vars in
 			synth_khan options still_has_deps (ss @ no_more_deps) (n :: sorted)
 
-let synthtype_toposort options classmap snames typemap =
-	let deps = compute_use_defs classmap snames typemap in
+let synthtype_toposort options typemap snames =
+	let deps = compute_use_defs typemap snames in
 	let rest, stack = split_deps deps in
 	let topo_sorted = synth_khan options rest stack [] in
 	List.rev (List.map topo_sorted (fun t -> t.name))

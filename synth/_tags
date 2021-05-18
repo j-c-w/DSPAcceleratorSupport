@@ -1,7 +1,7 @@
 <skeleton>: include
 <backend>: include
 <builtin>: include
-<dimensions>:include
+<expand_types>:include
 <spec>: include
 <gir>: include
 <behavioural_synthesizers>: include

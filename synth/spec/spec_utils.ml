@@ -60,7 +60,7 @@ let rec dimension_type_to_string dim =
     match dim with
     | EmptyDimension -> "No dimensions set!"
     | Dimension(nrefs) ->
-            (String.concat ~sep:", " (List.map nrefs dimension_value_to_string))
+            (dimension_value_to_string nrefs)
 
 let empty_dimension dim = match dim with
 	| EmptyDimension -> true
@@ -73,12 +73,8 @@ let dimension_type_list_to_string dims =
 
 let dimension_type_equal d1 d2 = match d1, d2 with
     | EmptyDimension, EmptyDimension -> true
-    | Dimension(nlist1), Dimension(nlist2) -> (
-            match List.zip nlist1 nlist2 with
-            | Ok(l) ->
-                    List.for_all l (fun (a, b) -> dimension_value_equal a b)
-            | Unequal_lengths -> false
-	)
+    | Dimension(a), Dimension(b) ->
+		dimension_value_equal a b
 	| _ -> false
 
 let rec synth_type_to_string t =
@@ -206,14 +202,12 @@ let iospec_to_string (iospec: iospec) =
     "Livein: " ^ (String.concat ~sep:", " iospec.livein) ^
     "\nLiveout: " ^ (String.concat ~sep:", " iospec.liveout) ^
     "\nexeccmd: " ^ iospec.execcmd ^
-	"\ntypemap: " ^ (type_hash_table_to_string iospec.typemap) ^
 	"\n"
 
 let apispec_to_string (apispec: apispec) =
     "Livein: " ^ (String.concat ~sep:", " apispec.livein) ^
     "\nLiveout: " ^ (String.concat ~sep:", " apispec.liveout) ^
     "\nexeccmd: " ^ apispec.execcmd ^
-	"\ntypemap: " ^ (type_hash_table_to_string apispec.typemap) ^
 	"\n"
 
 let get_class_typemap smeta =
@@ -344,3 +338,46 @@ let is_array_value v =
 	match v with
 	| ArrayV(_) -> true
 	| _ -> false
+
+let table_clone t =
+	let newtbl = Hashtbl.create (module String) in
+	let keys = Hashtbl.keys t in
+	let _ = List.map keys (fun key ->
+		Hashtbl.add newtbl key (Hashtbl.find_exn t key)
+	) in
+	newtbl
+
+(* Typemap utils.  *)
+let clone_typemap (t: (string, synth_type) Hashtbl.t) =
+    table_clone t
+
+let clone_classmap (t: (string, structure_metadata) Hashtbl.t) =
+    table_clone t
+
+let merge_maps (t1: (string, synth_type) Hashtbl.t) (t2: (string, synth_type) Hashtbl.t) =
+	let newtbl = Hashtbl.create (module String) in
+	let k1 = Hashtbl.keys t1 in
+	let k2 = Hashtbl.keys t2 in
+
+	let _ = List.map k1 (fun key ->
+		Hashtbl.add newtbl key (Hashtbl.find_exn t1 key)
+	) in
+	let _ = List.map k2 (fun key ->
+		let result = Hashtbl.add newtbl key (Hashtbl.find_exn t2 key) in
+		match result with
+		| `Ok -> ()
+		| `Duplicate -> raise (SpecException "Can't merge tables with duplicate keys")
+	) in
+	newtbl
+
+let clear_map (t: ('a, 'b) Hashtbl.t) =
+	let keys = Hashtbl.keys t in
+	let _ = List.map keys (fun key ->
+		Hashtbl.remove t key
+	) in
+	()
+
+let update_structure_metadata_typemap metadata newtypemap =
+    match metadata with
+    | StructMetadata(stype) -> StructMetadata({stype with typemap = newtypemap})
+    | ClassMetadata(ctype) -> ClassMetadata({ctype with typemap = newtypemap})

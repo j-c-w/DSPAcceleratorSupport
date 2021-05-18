@@ -1,6 +1,6 @@
 open Core_kernel;;
 open Spec_definition;;
-open Assign_dimensions;;
+open Expand_typemaps;;
 open Generate_gir;;
 open Generate_programs;;
 open Generate_code;;
@@ -34,23 +34,20 @@ let reduce_programs (opts:options) programs =
     in
     filtered_programs
 
-let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec: iospec) (api: apispec) =
+let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec_typemap) (iospec: iospec) (apispec_typemap) (api: apispec) =
 	(* Assign possible dimension equalities between vector types.  *)
 	(* This updates the type ref tables in place, so no reassigns needed.  *)
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Starting synthesis!%!\n"
 	else () in
-	let _ = assign_dimensions opts classmap iospec.typemap (iospec.livein @ iospec.liveout) in
-	(* We currently also do the same for the API, although it is plenty
-	   possible to ask the accelerator designer to specify this for the API.
-	   Bit more scalable if we dont :) *)
-	let _ = assign_dimensions opts classmap api.typemap (api.livein @ api.liveout) in
+	let unified_type_maps = generate_unified_typemaps opts classmap iospec iospec_typemap api apispec_typemap in
 	let () = if opts.print_synthesizer_numbers then
 		let () = Printf.printf "Generated the dimensions%!\n" in
+		let () = Printf.printf "Have %d possible annotated typemaps\n" (List.length unified_type_maps) in
 		()
 	else () in
     (* Generate the possible skeletons to consider *)
-    let skeleton_pairs = generate_skeleton_pairs opts classmap iospec api in
+    let skeleton_pairs = generate_all_skeleton_pairs opts unified_type_maps iospec api in
 	let () = if opts.dump_skeletons then
 		Printf.printf "%s%s\n" "Skeletons are%! " (flat_skeleton_pairs_and_ranges_to_string skeleton_pairs)
 	else
@@ -64,12 +61,12 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 		we have structs that are exactly the same type.  *)
 	(* Do some internal simulation on the pairs? *)
 	(* Generate the actual conversion functions between the code pairs *)
-	let conversion_functions = generate_gir opts classmap iospec api skeleton_pairs in
+	let conversion_functions = generate_gir opts iospec api skeleton_pairs in
     let () = if opts.print_synthesizer_numbers then
         Printf.printf "Number of conversion pairs generated is %d%!\n" (List.length conversion_functions)
     else () in
 	(* Generate program from the pre/post convsersion function pairs. *)
-	let programs = generate_programs opts classmap iospec api conversion_functions in
+	let programs = generate_programs opts iospec api conversion_functions in
     let () = if opts.print_synthesizer_numbers then
         Printf.printf "Number of programs from these pairs is %d%!\n" (List.length programs)
     else () in
@@ -79,7 +76,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	(* Generate some code.  *)
 	(* START ROUND 1 Of Tests *)
     (* True means dump intermediates  --- needed for later synthesis rounds.  *)
-	let generated_code = generate_code opts classmap api iospec true reduced_programs in
+	let generated_code = generate_code opts api iospec true reduced_programs in
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Number of codes generated is %d%!\n" (List.length generated_code)
 	else () in
@@ -92,7 +89,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 		Printf.printf "Number of codes built is %d\n" (List.length code_files)
 	else () in
 	(* Generate some I/O tests.  *)
-	let io_tests = generate_io_tests opts classmap iospec reduced_programs in
+	let io_tests = generate_io_tests opts iospec reduced_programs in
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Number of IO tests generated is %d%!\n" (List.length (List.hd_exn io_tests))
 	else () in
@@ -107,14 +104,14 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 		Printf.printf "Starting post synthesis (%d programs)\n" (List.length working_codes)
 	else ()
 	in
-    let post_synthesis_programs = run_post_synthesis opts classmap iospec api reduced_programs working_codes in
+    let post_synthesis_programs = run_post_synthesis opts iospec api reduced_programs working_codes in
     (* TODO --- regenerate the code and output the working ones
         in an output file!. *)
     let working_programs = List.filter_map post_synthesis_programs (fun (p, passing) -> if passing then Some(p) else None) in
 	(* Do some opts? *)
     (* Do not dump intermediates in the final result! *)
 	let () = Printf.printf "=================================\n" in
-	let working_programs_code = generate_code opts classmap api iospec false working_programs in
+	let working_programs_code = generate_code opts api iospec false working_programs in
     let () = print_working_code opts api working_programs_code in
     let () = Printf.printf "Done!\n" in
     ()

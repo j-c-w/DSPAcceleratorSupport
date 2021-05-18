@@ -214,17 +214,14 @@ let rec define_name_of index_points =
 	(* Pretty sure it should always hit ^^^ *)
 	| None :: xs -> define_name_of xs
 
-let get_unwarpped_dim_dependency (dimension_value): gir_name option =
+(* Either empty or singleton --- used to concat elsewhere *)
+let get_unwarpped_dim_dependency (dimension_value): gir_name list =
     match dimension_value with
     | DimVariable(vnam) -> (match vnam with
-        | Name(n) -> Some(Name(n))
+        | Name(n) -> [Name(n)]
         | _ -> raise (GenerateGIRException "Can't convert anything that isn't a name!")
         )
-    | DimConstant(c) -> None
-
-
-let get_unwrapped_dim_dependencies nrefs =
-    List.filter_map nrefs get_unwarpped_dim_dependency
+	| DimConstant(c) -> []
 
 let rec get_bindings_by_name tvars dims =
 	(* let () = Printf.printf "Getting bindings for %s under dims %s\n" (name_reference_list_to_string tvars) (dimvar_mapping_list_to_string dims) in *)
@@ -240,8 +237,8 @@ let rec get_bindings_by_name tvars dims =
             (*  Needs to only havea s inle entry -- keeping it like this
             because I think we may want more complex types in the
             future here.  *)
-            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension([DimVariable(f)])
-			| DimvarOneDimension(ConstantMatch(f)) -> Dimension([DimConstant(f)])
+            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension(DimVariable(f))
+			| DimvarOneDimension(ConstantMatch(f)) -> Dimension(DimConstant(f))
             in
             let subdims = get_bindings_by_name tvars dims in
             (* Need to put the tvar name on the front of all
@@ -258,28 +255,6 @@ let rec get_bindings_by_name tvars dims =
 		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
 	))) in *)
 	result
-
-let merge_bindings_by_name binds1 binds2 =
-	(* let () = Printf.printf "B1 is is %s\n" (String.concat ~sep:", " (List.map binds1 (fun (f, t) ->
-		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
-	))) in
-	let () = Printf.printf "B2 is is %s\n" (String.concat ~sep:", " (List.map binds2 (fun (f, t) ->
-		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
-	))) in *)
-	let result = remove_duplicates (fun (n1, dv1) -> fun (n2, dv2) ->
-        let eq = name_reference_equal n1 n2 in
-        let () = if eq then assert (dimension_type_equal dv1 dv2) else () in
-        eq
-    ) (binds1 @ binds2) in
-	(* let () = Printf.printf "result is %s\n" (String.concat ~sep:", " (List.map result (fun (f, t) ->
-		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
-	))) in *)
-	result
-
-let binding_lists_to_string bs =
-    List.map bs (fun (from, tom) ->
-        (name_reference_to_string from, tom)
-    )
 
 let generate_conversion_function conv = match conv with
     | IdentityConversion ->
@@ -386,17 +361,10 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 		assigns_with_defines, conversion_function
 	)
 	)in
-    (* Get the length variable bindings *)
-    let len_bindings = List.concat (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
-        get_bindings_by_name single_variable_binding.tovar_index_nesting single_variable_binding.valid_dimensions
-    )) in
 	(* We now have a expression list list, where we need one element
 	   from each sublist in sequence to form complete assignment
 	   tree.  *)
 	let () = if options.debug_generate_gir then
-		let () = Printf.printf "Len bindings are %s\n" (String.concat ~sep:", " (List.map len_bindings (fun (f, t) ->
-			(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
-		))) in
 		let () = Printf.printf "Have the following expression options before cross product: %s\n"
 			(gir_list_list_to_string expression_options) in
 		let () = Printf.printf "This amounts to %d lists\n" (List.length expression_options) in
@@ -410,12 +378,12 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 	(* Do a quick cleanup --- e.g. making sure that there are no double
 	defines, which this approach is prone to generating.  *)
 	let cleaned_code_options = List.map code_options gir_double_define_clean in
-	cleaned_code_options, len_bindings, required_fun_defs
+	cleaned_code_options, required_fun_defs
 
 let rec all_dimvars_from dimtype =
 	match dimtype with
 			| EmptyDimension -> []
-			| Dimension(nms) -> get_unwrapped_dim_dependencies nms
+			| Dimension(nms) -> get_unwarpped_dim_dependency nms
 
 let rec type_topo_dependencies (nam, typ) =
 	match typ with
@@ -455,27 +423,25 @@ let rec toposort names =
 			(toposort befores) @ (nm :: (toposort afters))
 
 
-let generate_define_statemens_for options api =
+let generate_define_statemens_for options typemap api =
 	(* Need to make sure that types that are dependent on each
 	   other are presented in the right order.  *)
-	let names = List.map api.livein (fun n -> (Name(n), Hashtbl.find_exn api.typemap n)) in
+	let names = List.map api.livein (fun n -> (Name(n), Hashtbl.find_exn typemap.variable_map n)) in
 	let sorted_names = toposort (List.map names type_topo_dependencies) in
 	(* let () = Printf.printf "Names %s\n" (String.concat((List.map names (fun (n, s) -> (match n with Name(x) -> x) ^ (synth_type_to_string s))))) in *)
 	(* let () = Printf.printf "Sorte names %s\n" (String.concat ~sep:", " (List.map sorted_names name_reference_to_string)) in *)
     (* Generate a define for each input variable in the API *)
     List.map sorted_names (fun x -> Definition(x))
 
-let generate_gir_for options (api: apispec) (skeleton: skeleton_pairs) =
+let generate_gir_for options (skeleton: skeleton_pairs) =
 	let () = if options.debug_generate_gir then
 		Printf.printf "Starting generation for new skeleton pair\n"
 	else () in
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
-	let pre_gir, pre_lenbinds, pre_required_fun_defs = generate_gir_for_binding true options skeleton.pre in
-	let post_gir, post_lenbinds, post_required_fun_defs = generate_gir_for_binding false options skeleton.post in
+	let pre_gir, pre_required_fun_defs = generate_gir_for_binding true options skeleton.pre in
+	let post_gir, post_required_fun_defs = generate_gir_for_binding false options skeleton.post in
     (* Keep track of the variable length assignments that have been made. *)
-    let merged_lenbinds = binding_lists_to_string (merge_bindings_by_name pre_lenbinds post_lenbinds) in
-    let table_lenbinds = hash_table_from_list (module String) merged_lenbinds in
 	let all_fundefs = pre_required_fun_defs @ post_required_fun_defs in
 	let res = List.cartesian_product pre_gir post_gir in
 	let () = if options.debug_generate_gir then
@@ -485,22 +451,22 @@ let generate_gir_for options (api: apispec) (skeleton: skeleton_pairs) =
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    List.map res (fun (pre, post) -> (pre, post, table_lenbinds, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
+    List.map res (fun (pre, post) -> (pre, post, skeleton.typemap, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
 
 
-let generate_gir (options:options) classmap iospec api skeletons: ((gir_pair) list) =
+let generate_gir (options:options) iospec api skeletons: ((gir_pair) list) =
 	let result = List.concat ((List.map skeletons (fun skel ->
-		generate_gir_for options api skel))) in
+		generate_gir_for options skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
-		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, binds, funs, range, map) ->
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, typemap, funs, range, map) ->
 			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
 	else () in
-	List.map result (fun (pre, post, bindings, fundefs, range_checker, inputmap) ->
+	List.map result (fun (pre, post, typemap, fundefs, range_checker, inputmap) ->
 		{
 			pre = pre;
             post = post;
-			lenvar_bindings = bindings;
+			typemap = typemap;
 			fundefs = fundefs;
 			inputmap = inputmap;
 			range_checker = Option.map range_checker (fun checker ->

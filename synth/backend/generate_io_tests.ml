@@ -91,7 +91,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 				(* If the name wasn't specified, then we should
 				generate an array.  *)
 				let dimvar_names = match dimvar with
-				| Dimension(dms) -> dms
+				| Dimension(dms) -> [dms]
 				| EmptyDimension ->
 						raise (TypeException "Can't have empty dimensions!")
 				in
@@ -157,18 +157,18 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
             ignore(List.map member_datas (fun (data, m) -> Hashtbl.add valuetbl m data));
             StructV(name, valuetbl)
 
-let rec generate_io_values_worker options rangemap generated_vs vs typmap classmap =
+let rec generate_io_values_worker options rangemap generated_vs vs typemap =
 	match vs with
 	| [] -> ()
 	| x :: xs ->
 			let name_string = name_reference_to_string x in
-			let typx = Hashtbl.find_exn typmap name_string in
-            let inputs = generate_inputs_for options rangemap generated_vs name_string typx classmap in
+			let typx = Hashtbl.find_exn typemap.variable_map name_string in
+            let inputs = generate_inputs_for options rangemap generated_vs name_string typx typemap.classmap in
 			let res = Hashtbl.add generated_vs (name_reference_to_string x) inputs in
             let () = assert (match res with | `Ok -> true | _ -> false) in
-			(generate_io_values_worker options rangemap generated_vs xs typmap classmap)
+			(generate_io_values_worker options rangemap generated_vs xs typemap)
 
-let rec generate_io_values options num_tests rangemap livein typemap classmap =
+let rec generate_io_values options num_tests rangemap livein typemap =
 	match num_tests with
 	| 0 -> []
 	| n ->
@@ -178,7 +178,7 @@ let rec generate_io_values options num_tests rangemap livein typemap classmap =
             are too long to test successfully.  *)
             let () = inputs := (try
                 let mapping = Hashtbl.create (module String) in
-                let () = (generate_io_values_worker options rangemap mapping livein typemap classmap) in
+                let () = (generate_io_values_worker options rangemap mapping livein typemap) in
                 (* let () = Printf.printf "Generation success\n" in *)
                 (Some(mapping))
             with GenerationFailure -> 
@@ -187,7 +187,7 @@ let rec generate_io_values options num_tests rangemap livein typemap classmap =
             )
             in ()
         done in
-		(Option.value_exn !inputs) :: (generate_io_values options (num_tests - 1) rangemap livein typemap classmap)
+		(Option.value_exn !inputs) :: (generate_io_values options (num_tests - 1) rangemap livein typemap)
 
 let rec value_to_string value =
     let str_value = match value with
@@ -243,7 +243,7 @@ let wrap_nrefs nms =
         Name(nm)
     )
 
-let generate_io_tests_for_program options classmap (iospec: iospec) program_number (program: program) =
+let generate_io_tests_for_program options (iospec: iospec) program_number (program: program) =
 	let () =
 		if options.debug_generate_io_tests then
 			Printf.printf "Starting to generate IO tests\n"
@@ -251,18 +251,18 @@ let generate_io_tests_for_program options classmap (iospec: iospec) program_numb
 	(* generate the values for each input. *)
 	let num_tests = options.number_of_tests in
     let livein_namerefs = wrap_nrefs iospec.livein in
-	let toposorted_values = synthtype_toposort options classmap livein_namerefs iospec.typemap in
+	let toposorted_values = synthtype_toposort options program.typemap livein_namerefs in
 	let () =
 		if options.debug_generate_io_tests then
 			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)
 		else () in
-	let values = generate_io_values options num_tests program.inputmap toposorted_values iospec.typemap classmap in
+	let values = generate_io_values options num_tests program.inputmap toposorted_values program.typemap in
 	(* Now, convert those to YoJSON values to be written out.  *)
 	let json_files = write_io_tests options program_number iospec.livein values in
 	json_files
 
-let generate_io_tests options classmap (iospec: iospec) programs =
+let generate_io_tests options (iospec: iospec) programs =
 	let numbers = generate_file_numbers (List.length programs) in
 	Parmap.parmap (fun (number, program) ->
-		generate_io_tests_for_program options classmap iospec number program)
+		generate_io_tests_for_program options iospec number program)
         (Parmap.L (List.zip_exn numbers programs))

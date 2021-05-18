@@ -130,20 +130,20 @@ let rec get_names typemap classmap x =
 	)
 	)
 
-let verify_pre classmap (iospec: iospec) (apispec: apispec) pre_binding_list =
-    let () = check_all_defined (get_names apispec.typemap classmap apispec.livein) pre_binding_list in
+let verify_pre typemap (iospec: iospec) (apispec: apispec) pre_binding_list =
+    let () = check_all_defined (get_names typemap.variable_map typemap.classmap apispec.livein) pre_binding_list in
 	let () = check_not_double_defined pre_binding_list in
     ()
 
-let verify_post classmap (iospec: iospec) (apispec: apispec) post_binding_list =
-    let () = check_all_defined (get_names iospec.typemap classmap iospec.liveout) post_binding_list in
+let verify_post typemap (iospec: iospec) (apispec: apispec) post_binding_list =
+    let () = check_all_defined (get_names typemap.variable_map typemap.classmap iospec.liveout) post_binding_list in
 	let () = check_not_double_defined post_binding_list in
     ()
 
-let verify_skeleton_pairs options classmap (iospec: iospec) (apispec: apispec) pairs =
+let verify_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) pairs =
     ignore(List.map pairs (fun (skeleton: skeleton_pairs) ->
-        let () = verify_pre classmap iospec apispec skeleton.pre in
-        let () = verify_post classmap iospec apispec skeleton.post in
+        let () = verify_pre typemap iospec apispec skeleton.pre in
+        let () = verify_post typemap iospec apispec skeleton.post in
         ()
     )
     )
