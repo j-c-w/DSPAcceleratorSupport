@@ -1,4 +1,12 @@
 {
+	"cmplx": {
+		"type": "struct",
+		"symbols": ["real", "imag"],
+		"typemap": {
+			"real": "float32",
+			"imag": "float32"
+		}
+	},
 	"COMPLEX": {
 		"type": "struct",
 		"symbols": ["real", "imag"],
@@ -37,14 +45,14 @@
 		}
 	},
 
-	"_complex_double_": {
+	"_complex_float_": {
 		"notes": "Internal compiler representation of std::complex<double>",
 		"type": "class",
 		"symbols": ["re", "im"],
 		"functions": [],
 		"typemap": {
-			"re": "float64",
-			"im": "float64"
+			"re": "float32",
+			"im": "float32"
 		}
 	},
 
