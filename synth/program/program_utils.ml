@@ -56,8 +56,11 @@ let insert_conditional_call options gir (program: program) =
 	it is called /every/ time.  *)
 (* Various backend passes rely on this, and I'm imagining that any
 pre-behavioural synthesis will also rely on this. *)
-let insert_dump_intermediates_call apispec callname gir program =
-	let inserted = ref false in
+(* It should really be a bit of a better pass --- it's not a full
+analysis despite the fact that would be easy to write.
+It's more of a 'special cases that the mid end generates' kind
+of thing.  *)
+let rec insert_around_call callname program gir pre_addition post_addition =
 	let result = match gir with
 	| Sequence(elems) ->
 			Sequence(List.concat(
@@ -67,24 +70,48 @@ let insert_dump_intermediates_call apispec callname gir program =
 							(* TODO --- need to handle assignments
 							for non-void accelerator functions.  *)
 							if (String.compare n program.api_funname) = 0 then
-								let () = inserted := true in
 								(* This is the right call --- insert right
 								before. *)
-								Expression(FunctionCall(FunctionRef(Name(callname)),
-									VariableList(
-										List.map apispec.livein (fun n ->
-											Variable(Name(n))
-										)
-									)
-								)) :: [fcall]
+								[pre_addition; fcall; post_addition]
 							else
 								[fcall]
+						| IfCond(cond, ift, iff) ->
+								(* OK -- so this should really
+								be a proper implementation because
+								this is a complete disaster.
+								Anyway...  Just ignore the hard
+								cases that the internals don't currently
+								generate (e.g. the cond) *)
+								let new_ift = match ift with
+								| Sequence(_) -> insert_around_call callname program ift pre_addition post_addition
+								| other -> insert_around_call callname program (Sequence([ift])) pre_addition post_addition
+								in
+								let new_iff = match iff with
+								| Sequence(_) -> insert_around_call callname program iff pre_addition post_addition
+								| other -> insert_around_call callname program (Sequence([iff])) pre_addition post_addition
+								in
+								[IfCond(cond, new_ift, new_iff)]
 						| other -> [other]
 			)))
 	| _ -> raise (ProgramException "Expected outer structure to be a sequence!")
 	in
-	let () = assert(!inserted) in
 	result
+
+let insert_dump_intermediates_call apispec callname gir program =
+	let addition = Expression(FunctionCall(FunctionRef(Name(callname)),
+									VariableList(
+										List.map apispec.livein (fun n ->
+											Variable(Name(n))
+											)
+										)
+									))
+	in
+	insert_around_call callname program gir addition EmptyGIR
+
+let insert_wrapper_timing_code callname gir program =
+	let pre_add = Expression(FunctionCall(FunctionRef(Name("StartAcceleratorTimer")), VariableList([]))) in
+	let post_add = Expression(FunctionCall(FunctionRef(Name("StopAcceleratorTimer")), VariableList([]))) in
+	insert_around_call callname program gir pre_add post_add
 
 let generate_single_gir_body_from options apispec dump_intermediates program =
     (* Merge all the components into a single GIR representation for
@@ -112,7 +139,14 @@ let generate_single_gir_body_from options apispec dump_intermediates program =
 		else
 			post_behavioural_addition
 	in
-    insert_conditional_call options intermediate_dump_addition program
+	let range_checked = insert_conditional_call options intermediate_dump_addition program in
+	let wrapper_timing_addition =
+		if options.generate_timing_code then
+			insert_wrapper_timing_code apispec range_checked program
+		else
+			range_checked
+	in
+	wrapper_timing_addition
 
 let generate_includes_list_from program =
 	match program.post_behavioural with

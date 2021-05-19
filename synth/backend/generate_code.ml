@@ -29,6 +29,22 @@ let generate_generic_tmp () =
 	let () = output_variable_count := !output_variable_count + 1 in
 	"temp_" ^ (string_of_int !output_variable_count)
 
+let accelerator_timer_functions = "
+
+std::chrono::steady_clock::time_point AcceleratorStart;
+long long AcceleratorTotalNanos = 0;
+void StartAcceleratorTimer() {
+	AcceleratorStart = std::chrono::steady_clock::now();
+}
+
+void StopAcceleratorTimer() {
+	AcceleratorTotalNanos +=
+		std::chrono::duration_cast<std::chrono::nanoseconds>(
+			std::chrono::steady_clock::now() - AcceleratorStart
+		).count();
+}
+"
+
 
 (* Type signatures use pointer formatting.  *)
 let rec cxx_type_signature_synth_type_to_string typ =
@@ -497,7 +513,8 @@ let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermedi
     in
     let timing_print_code =
         if options.generate_timing_code then
-            "std::cout << \"Time: \" << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;"
+            "std::cout << \"Time: \" << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+std::cout << \"AccTime: \" << AcceleratorTotalNanos << std::endl;"
         else
 			""
     in
@@ -526,6 +543,12 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 			[generate_dump_function options program.typemap program "pre_accel_dump_file" apispec.livein apispec.livein options.pre_accel_dump_function]
 		else []
 	in
+	let timing_functions =
+		if options.generate_timing_code then
+			[accelerator_timer_functions]
+		else
+			[]
+	in
 	(* Generate the required helper functions.  *)
 	let helper_funcs = String.concat ~sep:"\n" (
 		(* Note that the typemap and lenvar bindings aren't
@@ -533,6 +556,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 		by the ones in the program unit. *)
 		(List.map program.fundefs (cxx_generate_from_gir program.typemap))
 		@ (intermediate_dump_function)
+		@ (timing_functions)
 	) in
     (* Generate the function header *)
     let function_header =
