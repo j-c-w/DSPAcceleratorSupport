@@ -25,7 +25,7 @@ let valid_lenvar tbl name =
 
 let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_type list=
     (* Only apply to dimensioned types, e.g. arrays.  *)
-    match name with
+	let result = match name with
     | Array(artyp, existing_dims) ->
             (* Recurse and compute any existing dims for any multi
                dimensional arrays.  *)
@@ -48,6 +48,10 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
                    technically sit below this level,
                    e.g. class members/functions. *)
                 let possible_len_vars = List.filter all_vars_at_level (valid_lenvar typemap) in
+				let () =
+					if (List.length possible_len_vars) = 0 then
+						raise (AssignDimensionsException "Can't find any plausible dimensions for variable")
+					else () in
 				let () = if opts.debug_assign_dimensions then
 					let () = Printf.printf "%s" ("Found " ^ (string_of_int (List.length possible_len_vars)) ^ " vars\n") in
 					let () = Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," (List.map all_vars_at_level name_reference_to_string))) in
@@ -68,9 +72,33 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 				Printf.printf "%s" "Was not an array... \n"
 			else () in
 			[othertype]
+	in
+	let () = assert ((List.length result) > 0) in
+	result
 
-let wrap_names nms =
-    List.map nms (fun nm -> Name(nm))
+(* If there is a struct being passed, then we need to handle
+   each of the subarguments of the struct.  *)
+let rec expand_and_wrap_names typemap nms =
+	List.concat (
+		List.map nms (fun nm ->
+			let typ = Hashtbl.find_exn typemap.variable_map nm in
+			match typ with
+			| Struct(struct_name) ->
+					let struct_info = Hashtbl.find_exn typemap.classmap struct_name in
+					(* Recurse and get all the submembers *)
+					let subtypmap = {typemap with variable_map = (get_class_typemap struct_info)} in
+					let members =
+						expand_and_wrap_names subtypmap (get_class_fields struct_info)
+					in
+					(* We need to prepend this struct's name.  *)
+					List.map members (fun mem ->
+						name_reference_concat (Name(struct_name)) mem
+					)
+			| other ->
+					(* All other types can just be themselves.  *)
+					[Name(nm)]
+		)
+	)
 
 (* Returns a list of types with dimensions assigned to them. *)
 let assign_dimensions_to_type opts typemap inptypes typename =
@@ -80,6 +108,7 @@ let assign_dimensions_to_type opts typemap inptypes typename =
 	else () in
     let typ = debug_find_exn typemap typename in
     let restyp = find_possible_dimensions opts typemap inptypes typ in
+	let () = assert (List.length restyp > 0) in
 	(typename, restyp)
 
 let create_all_typemaps tps =
@@ -134,7 +163,11 @@ let assign_dimensions (options: options) typemap inps =
 	() else ()
 	in
     (* First, do all the inps, or the top level types.  *)
-    let top_level_wrapped_names = wrap_names inps in
+    let top_level_wrapped_names = expand_and_wrap_names typemap inps in
+	let () = if options.debug_assign_dimensions then
+		let () = Printf.printf "Have the following top level names to choose dimensions from: %s \n"
+			(name_reference_list_to_string top_level_wrapped_names)
+		in () else () in
 	let res_typemaps = List.map inps (assign_dimensions_to_type options typemap.variable_map top_level_wrapped_names) in
     (* Also preserve the other elements.  *)
     let other_elements = carry_other_elements typemap.variable_map inps in
@@ -150,7 +183,8 @@ let assign_dimensions (options: options) typemap inps =
         let metadata = debug_find_exn typemap.classmap cname in
         let cls_typemap = get_class_typemap metadata in
         let cls_members = get_class_members metadata in
-        let wrapped_cls_members = wrap_names cls_members in
+		let sub_typemap = { typemap with variable_map = cls_typemap } in
+        let wrapped_cls_members = expand_and_wrap_names sub_typemap cls_members in
 		let tps_with_dims = List.map cls_members (assign_dimensions_to_type options cls_typemap wrapped_cls_members) in
 
 		let () = if options.debug_assign_dimensions then
@@ -175,6 +209,9 @@ let assign_dimensions (options: options) typemap inps =
 	typemaps.  *)
 	let result_classmaps = create_all_classmaps res_classmaps in
 	let result_typemaps = create_all_typemaps (res_typemaps @ other_elements) in
+	let () = if options.debug_assign_dimensions then
+		Printf.printf "Number of result classmaps is %d, result typemaps is %d\n" (List.length result_classmaps) (List.length result_typemaps)
+	else () in
 	List.map (List.cartesian_product result_classmaps result_typemaps) (fun (cmap, tmap) ->
 		{
 			variable_map = tmap;
