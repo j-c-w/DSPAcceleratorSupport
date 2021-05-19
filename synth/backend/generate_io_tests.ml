@@ -263,6 +263,6 @@ let generate_io_tests_for_program options (iospec: iospec) program_number (progr
 
 let generate_io_tests options (iospec: iospec) programs =
 	let numbers = generate_file_numbers (List.length programs) in
-	Parmap.parmap (fun (number, program) ->
+	Utils.parmap options (fun (number, program) ->
 		generate_io_tests_for_program options iospec number program)
-        (Parmap.L (List.zip_exn numbers programs))
+        (List.zip_exn numbers programs)

@@ -1,4 +1,5 @@
 open Core_kernel;;
+open Options;;
 
 exception UtilException of string
 
@@ -109,3 +110,10 @@ let double_map l f =
 	List.map l (fun e ->
 		List.map e f
 	)
+
+(* Parmap is hard to trace errors through.  *)
+let parmap options f l =
+	if options.use_parmap then
+		Parmap.parmap f (Parmap.L l)
+	else
+		List.map l f

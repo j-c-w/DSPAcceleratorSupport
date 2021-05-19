@@ -9,7 +9,7 @@ exception SparsityException of string
 let generate_results_for (opts: options) (iospec: iospec) inp_files =
 	(* Perhaps this should be parallelized? *)
 	let progexec = iospec.execcmd in
-	let results = Parmap.parmap (fun infile ->
+	let results = Utils.parmap opts (fun infile ->
         let outfile = infile ^ "_result.json" in
 		let timeout = (string_of_int opts.execution_timeout) in
         let runcmd = "timeout " ^ timeout ^ " " ^ progexec ^ " " ^ infile ^ " " ^ outfile in
@@ -27,7 +27,7 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
             RunFailure
         else
             RunSuccess(outfile)
-	) (Parmap.L inp_files)
+	) inp_files
 	in
 	let success_count = List.count results (fun r -> match r with
 		| RunFailure -> false

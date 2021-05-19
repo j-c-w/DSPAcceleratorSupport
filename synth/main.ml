@@ -34,7 +34,8 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		debug_skeleton_multiple_lengths_filter range_size_diff_factor
         debug_skeleton_range_filter debug_skeleton_filter
 		execution_timeout skip_test mse_threshold
-        debug_input_map_generation generate_timing_code array_length_threshold =
+        debug_input_map_generation generate_timing_code
+		array_length_threshold no_parmap =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -64,6 +65,7 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 		skip_build = skip_build;
 		stop_before_build = stop_before_build;
 		skip_test = skip_test;
+		use_parmap = not no_parmap;
 		
 		only_test = only_test;
 
@@ -186,6 +188,9 @@ let all_tests =
 let print_synth_option_numbers =
 	let doc = "Print number of options the synthesizer has at each stage" in
 	Arg.(value & flag & info ["print-synthesizer-numbers"] ~docv:"PrintSkeletonNumbers" ~doc)
+let no_parmap =
+	let doc = "Don't use Parmap" in
+	Arg.(value & flag & info ["no-parmap"] ~docv:"NoParmap" ~doc)
 
 (* Debug flags to be used with care. *)
 let skip_build =
@@ -323,5 +328,5 @@ let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skele
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
-    generate_timing_code $ array_length_threshold)
+    generate_timing_code $ array_length_threshold $ no_parmap)
 let () = Term.exit @@ Term.eval (args_t, info)

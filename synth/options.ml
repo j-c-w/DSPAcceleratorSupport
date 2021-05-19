@@ -64,6 +64,7 @@ type options = {
 	skip_build: bool;
 	stop_before_build: bool;
 	skip_test: bool;
+	use_parmap: bool;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions: bool;
@@ -143,6 +144,7 @@ let default_options = {
 	skip_build = false;
 	stop_before_build = false;
 	skip_test = false;
+	use_parmap = true;
 
 	(* IR Dumps *)
 	dump_assigned_dimensions = false;

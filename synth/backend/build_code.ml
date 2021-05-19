@@ -31,7 +31,9 @@ let build_code (opts: options) (iospec: iospec) (apispec: apispec) (code: string
         (* Don't use too many cores --- just thrashing the system with GCC
             instances seems like the wrong approach.  *)
         let () = Printf.printf "Starting Build!\n" in
-        let results, exec_names = List.unzip (Parmap.parmap ~ncores:2 (fun (program_code, program_filename) ->
+        let results, exec_names = List.unzip (
+			Utils.parmap opts
+			(fun (program_code, program_filename) ->
             (* Write the thing to a file *)
             let filename = target_file ^ "/" ^ program_filename ^ extension in
             let outname = target_file ^ "/" ^ program_filename ^ "_exec" in
@@ -44,7 +46,7 @@ let build_code (opts: options) (iospec: iospec) (apispec: apispec) (code: string
             (* then build the file *)
             let result = Sys.command cmd in
             result, outname
-        ) (Parmap.L (List.zip_exn code file_numbers))) in
+        ) (List.zip_exn code file_numbers)) in
         let () = ignore(
             List.map results (fun r ->
                 assert (r = 0)
