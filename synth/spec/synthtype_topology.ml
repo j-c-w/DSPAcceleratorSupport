@@ -11,8 +11,8 @@ type synth_type_use_def = {
 }
 
 let dep_to_string deps =
-	"var " ^ (name_reference_to_string deps.name) ^ " with deps " ^
-	(name_reference_list_to_string deps.dependencies)
+	"var (" ^ (name_reference_to_string deps.name) ^ ") with deps (" ^
+	(name_reference_list_to_string deps.dependencies) ^ ")"
 
 let dep_list_to_string dlist =
 	String.concat ~sep:"\n" (
@@ -89,6 +89,7 @@ let filter_deps name deps =
 
 let rec synth_khan options vars s sorted =
 	let () = if options.debug_synth_topology then
+		let () = Printf.printf "==== Iteration ====\n" in
 		let () = Printf.printf "Have a list of %s left\n" (dep_list_to_string vars) in
 		let () = Printf.printf "Have a list of %s done\n" (dep_list_to_string sorted) in
 		()
@@ -108,6 +109,11 @@ let rec synth_khan options vars s sorted =
 			synth_khan options still_has_deps (ss @ no_more_deps) (n :: sorted)
 
 let synthtype_toposort options typemap snames =
+	let () = if options.debug_synth_topology then
+		let () = Printf.printf "Starting new synthtype topology sort" in
+		()
+	else ()
+	in
 	let deps = compute_use_defs typemap snames in
 	let rest, stack = split_deps deps in
 	let topo_sorted = synth_khan options rest stack [] in

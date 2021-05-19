@@ -115,13 +115,29 @@ let create_all_classmaps tps =
 		classtbl
 	)
 
+let carry_other_elements oldtbl expanded_elements =
+    let tblkeys = Hashtbl.keys oldtbl in
+    List.filter_map tblkeys (fun key ->
+        if List.mem expanded_elements key Utils.string_equal then
+            None
+        else
+            Some(key, [Hashtbl.find_exn oldtbl key])
+    )
+
+
 (* Assign dimensions to all array types.
    inps is the set of variables to choose
    types from. *)
 let assign_dimensions (options: options) typemap inps =
+	let () = if options.debug_assign_dimensions then
+		let () = Printf.printf "Starting to assign dimensions\n" in
+	() else ()
+	in
     (* First, do all the inps, or the top level types.  *)
     let top_level_wrapped_names = wrap_names inps in
 	let res_typemaps = List.map inps (assign_dimensions_to_type options typemap.variable_map top_level_wrapped_names) in
+    (* Also preserve the other elements.  *)
+    let other_elements = carry_other_elements typemap.variable_map inps in
     let () = if options.debug_assign_dimensions then
         let () = Printf.printf "Executed top level assigns!\n" in
         let () = Printf.printf "Names assigned to were %s\n" (String.concat ~sep:", " inps) in
@@ -158,7 +174,7 @@ let assign_dimensions (options: options) typemap inps =
 	(* Now, create the product-based list of possible
 	typemaps.  *)
 	let result_classmaps = create_all_classmaps res_classmaps in
-	let result_typemaps = create_all_typemaps res_typemaps in
+	let result_typemaps = create_all_typemaps (res_typemaps @ other_elements) in
 	List.map (List.cartesian_product result_classmaps result_typemaps) (fun (cmap, tmap) ->
 		{
 			variable_map = tmap;

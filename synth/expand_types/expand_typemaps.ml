@@ -27,13 +27,15 @@ open Spec_utils;;
 let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (apispec: apispec) apispec_typemap =
 	let unified_map = merge_maps iospec_typemap apispec_typemap in
 	let cloned_classmap = clone_classmap classmap in
-	let variables = iospec.livein @ iospec.liveout @ apispec.livein @ apispec.liveout in
 	let full_typemap = {
 		variable_map = unified_map;
 		classmap = cloned_classmap;
 	} in
 	(* Do the dimension assignments.  *)
-	let dimensions = assign_dimensions options full_typemap variables in
+	let iospec_dimensions = assign_dimensions options full_typemap (iospec.livein @ iospec.liveout) in
+	let apispec_dimensions = List.concat (
+		List.map iospec_dimensions (fun iospec_dim -> assign_dimensions options iospec_dim (apispec.livein @ apispec.liveout))
+	) in
 
 	(* Do the structure inference *)
 	(* let struct_inferred = *)
@@ -49,4 +51,4 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 	let () = clear_map apispec_typemap in
 	let () = clear_map classmap in
 
-	dimensions
+	apispec_dimensions
