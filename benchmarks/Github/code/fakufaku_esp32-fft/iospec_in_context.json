@@ -14,5 +14,6 @@
 	"range": {
 		"n": "1024"
 		"TOFILL": "twiddle factors"
-	}
+	},
+	"classmap": {}
 }

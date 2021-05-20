@@ -3,7 +3,7 @@
 	"liveout": ["api_out"],
 	"functionargs": ["api_in", "api_out", "interface_len", "dir"],
 	"execcmd": "../../../benchmarks/Accelerators/FFTW/FFTW",
-	"functionname": "fftw_example_api",
+	"functionname": "fftwf_example_api",
 	"typemap": {
 		"api_in": "array(_complex_float_)",
 		"api_out": "array(_complex_float_)",
@@ -15,5 +15,17 @@
 		"dir": "set(-1, 1)",
 		"interface_len": "set(power_of_two(10))"
 	},
-	"compiler_flags": ["-lfftw3"]
+	"compiler_flags": ["-lfftw3", "-lfftw3f"],
+	"classmap": {
+		"_complex_float_": {
+			"notes": "Internal compiler representation of std::complex<double>",
+			"type": "class",
+			"symbols": ["re", "im"],
+			"functions": [],
+			"typemap": {
+				"re": "float32",
+				"im": "float32"
+			}
+		}
+	}
 }

@@ -8,5 +8,15 @@
 		"x": "array(complex)",
 		"N": "int32"
 	},
-	"required_includes": ["../../benchmarks/Github/code/jtfell_c-fft/self_contained_code.c"]
+	"required_includes": ["../../benchmarks/Github/code/jtfell_c-fft/self_contained_code.c"],
+	"classmap": {
+		"complex": {
+			"type": "struct",
+			"symbols": ["re", "im"],
+			"typemap": {
+				"re": "float64",
+				"im": "float64"
+			}
+		}
+	}
 }
