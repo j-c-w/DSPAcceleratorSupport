@@ -73,6 +73,76 @@ let use_def_to_string ud =
 let use_def_list_to_string udl =
 	String.concat ~sep:"\n" (List.map udl use_def_to_string)
 
+(* Arrays are implicit in the assignment notation, so we
+	just get rid of the arrays  (lining those up
+	is the job of the skeleton pass).  *)
+let rec unwrap_arrays ty =
+	match ty with
+	| Array(subty, dim) ->
+			unwrap_arrays subty
+	| other -> other
+
+let rec get_ud_type typemap ud_name =
+	let result = match ud_name with
+	| UDName(gname) ->
+			let restype = Hashtbl.find_exn typemap.variable_map (gir_name_to_string gname) in
+			restype
+	| UDNameNest(hd, tl) ->
+			let headtype = get_ud_type typemap hd in
+			(* Arrays are kind of implicit in this and should
+			be looked /through/.  *)
+			match unwrap_arrays headtype with
+			| Struct(sname) ->
+					let classstruct = Hashtbl.find_exn typemap.classmap sname in
+					let thistypemap = get_class_typemap classstruct in
+					Hashtbl.find_exn thistypemap (gir_name_to_string tl)
+			| _ ->
+					let () = Printf.printf "For name %s\n" (ud_name_to_string hd) in
+					let () = Printf.printf "Had type %s\n" (synth_type_to_string headtype) in
+					raise (TopologicalSortException "Can't have nested non-struct")
+	in
+	result
+
+(* This is a stupid quadratic approach (whoops).  Hopefully doesn't
+burn too much time in here. *)
+let rec expand_use_def_name typemap ud_name =
+	(* let () = Printf.printf "Unwrapping %s\n" (ud_name_to_string ud_name) in *)
+	let ud_name_type = get_ud_type typemap ud_name in
+	(* let () = Printf.printf "Type is %s\n" (synth_type_to_string ud_name_type) in *)
+	let result = match unwrap_arrays ud_name_type with
+	| Struct(sname) ->
+			(* let () = Printf.printf "Name has Struct type %s\n" sname in *)
+			let classdata = Hashtbl.find_exn typemap.classmap sname in
+			let cmembers = get_class_fields classdata in
+			(* Expand this into each of the class members: *)
+			let expanded = List.map cmembers (fun mem ->
+				UDNameNest(ud_name, Name(mem))
+			) in
+			(* The quadratic part --- do a recursion.  *)
+			List.concat (
+				List.map expanded (expand_use_def_name typemap)
+			)
+
+	| _ ->
+			(* Everything else is already expanded.  *)
+			[ud_name]
+	in
+	(* let () = Printf.printf "Into %s\n" (ud_name_list_to_string result) in *)
+	result
+
+
+(* Go through and expand e.g. complex: {x, y} to complex.x and complex.y *)
+(* i.e. cannonicalize for ease of scheduling.  *)
+let expand_use_defs typemap (uds: use_def_info list): use_def_info list =
+	List.map uds (fun ud ->
+		{
+			uses = List.concat (List.map ud.uses (expand_use_def_name typemap));
+			defs = List.concat (List.map ud.defs (expand_use_def_name typemap));
+			assigns = List.concat (List.map ud.assigns (expand_use_def_name typemap));
+			gir = ud.gir;
+		}
+	)
+
 let ud_name_from_gir n =
 	UDName(n)
 
@@ -242,8 +312,9 @@ let rec compute_use_def_assign_for_node typemap gir =
 			gir = gir;
 		}
 	| Return(v) ->
+		let sub_use_defs = compute_use_def_assign_for_expr v in
 		{
-			uses = [UDName(v)];
+			uses = sub_use_defs.uses;
 			defs = [];
 			assigns = [];
 			gir = gir;
@@ -401,8 +472,11 @@ let rec topological_gir_sort (options: options) typemap gir predefed preassed =
 	 | Sequence(girs) ->
 		(* Get the uses/defs for each node. *)
 		let use_defs = List.map girs (compute_use_def_assign_for_node typemap) in
+		(* Expand the use-defs to avoid getting hung up on
+		   returning e.g. whole classes.  *)
+		let elementary_use_defs = expand_use_defs typemap use_defs in
 		(* Do a topo sort on the use/defs *)
-		let sorted_use_defs = topo_sort options use_defs predefed preassed in
+		let sorted_use_defs = topo_sort options elementary_use_defs predefed preassed in
 		(* Then recreate the sequence in the right order.  *)
 		Sequence(sorted_use_defs)
 	 | _ -> raise (TopologicalSortException "Can't topo sort a non-sequence") in
