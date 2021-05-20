@@ -285,13 +285,13 @@ let generate_conversion_function conv = match conv with
 						LVariable(Variable(returnvar)),
 						Expression(GIRMap(argname, to_from_list_synths))
 					);
-					Return(returnvar)
+					Return(VariableReference(Variable(returnvar)))
                 ]
                 ),
                 typelookup
             ), fname
 
-let generate_gir_for_binding define_before_assign (options: options) (skeleton: flat_skeleton_binding) =
+let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return (options: options) (skeleton: flat_skeleton_binding) =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
 	   x = cos(y) or x = sin(y) or x = y. 
@@ -356,9 +356,23 @@ let generate_gir_for_binding define_before_assign (options: options) (skeleton: 
 					[define]
 			else
 				assignment_statements in
+		let returnstatement =
+			if insert_return then
+				match iospec.returnvar with
+				| [] -> EmptyGIR
+				| [x] ->
+						Return(VariableReference(Variable(Name(x))))
+				| _ ->
+						(* We should really suppor this at this point -- but since C/C++ is the
+						only supported backend right now, we dont really need
+						to yet. *)
+						raise (GenerateGIRException "Multireturn functions not currently supported")
+			else
+				EmptyGIR
+		in
 		(* Also return the conversion functions needed for this
 			assign. *)
-		assigns_with_defines, conversion_function
+		assigns_with_defines @ [returnstatement], conversion_function
 	)
 	)in
 	(* We now have a expression list list, where we need one element
@@ -423,24 +437,26 @@ let rec toposort names =
 			(toposort befores) @ (nm :: (toposort afters))
 
 
-let generate_define_statemens_for options typemap api =
+let generate_define_statemens_for options typemap (iospec: iospec) api =
 	(* Need to make sure that types that are dependent on each
 	   other are presented in the right order.  *)
-	let names = List.map api.livein (fun n -> (Name(n), Hashtbl.find_exn typemap.variable_map n)) in
+	(* Compute any defines that are needed for the returnvars. *)
+	let unpassed_returnvars = Utils.set_difference Utils.string_equal iospec.returnvar iospec.funargs in
+	let names = List.map (api.livein @ unpassed_returnvars) (fun n -> (Name(n), Hashtbl.find_exn typemap.variable_map n)) in
 	let sorted_names = toposort (List.map names type_topo_dependencies) in
 	(* let () = Printf.printf "Names %s\n" (String.concat((List.map names (fun (n, s) -> (match n with Name(x) -> x) ^ (synth_type_to_string s))))) in *)
 	(* let () = Printf.printf "Sorte names %s\n" (String.concat ~sep:", " (List.map sorted_names name_reference_to_string)) in *)
     (* Generate a define for each input variable in the API *)
-    List.map sorted_names (fun x -> Definition(x))
+	List.map sorted_names (fun x -> Definition(x))
 
-let generate_gir_for options (skeleton: skeleton_pairs) =
+let generate_gir_for options iospec (skeleton: skeleton_pairs) =
 	let () = if options.debug_generate_gir then
 		Printf.printf "Starting generation for new skeleton pair\n"
 	else () in
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
-	let pre_gir, pre_required_fun_defs = generate_gir_for_binding true options skeleton.pre in
-	let post_gir, post_required_fun_defs = generate_gir_for_binding false options skeleton.post in
+	let pre_gir, pre_required_fun_defs = generate_gir_for_binding iospec true false options skeleton.pre in
+	let post_gir, post_required_fun_defs = generate_gir_for_binding iospec true true options skeleton.post in
     (* Keep track of the variable length assignments that have been made. *)
 	let all_fundefs = pre_required_fun_defs @ post_required_fun_defs in
 	let res = List.cartesian_product pre_gir post_gir in
@@ -451,12 +467,16 @@ let generate_gir_for options (skeleton: skeleton_pairs) =
 			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    List.map res (fun (pre, post) -> (pre, post, skeleton.typemap, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
+    List.map res (fun (pre, post) ->
+		let new_typemap =
+			{ skeleton.typemap with variable_map = clone_typemap skeleton.typemap.variable_map }
+		in
+		(pre, post, new_typemap, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
 
 
 let generate_gir (options:options) iospec api skeletons: ((gir_pair) list) =
 	let result = List.concat ((List.map skeletons (fun skel ->
-		generate_gir_for options skel))) in
+		generate_gir_for options iospec skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
 		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, typemap, funs, range, map) ->
