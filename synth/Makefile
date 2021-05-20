@@ -22,3 +22,4 @@ test: plugin
 clean:
 	rm -rf _build
 	rm main.native
+	rm main.byte
