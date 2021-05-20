@@ -305,6 +305,7 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
 		let () = if options.debug_generate_gir then
 			let () = Printf.printf "Starting new binding gen for binding\n" in
 			let () = Printf.printf "%s\n" (flat_single_variable_binding_to_string single_variable_binding) in
+			let () = Printf.printf "(END BINDING)\n" in
             ()
 		else () in
 		let loop_wrappers = List.map single_variable_binding.valid_dimensions
@@ -327,7 +328,7 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
 			EmptyGIR in
         let () =
             if options.debug_generate_gir then
-                let () = Printf.printf "------\n\nFor flat skeleton %s\n" (flat_skeleton_list_to_string [skeleton]) in
+                let () = Printf.printf "------\n\nFor variable %s\n" (flat_single_variable_binding_to_string single_variable_binding) in
 				let () = Printf.printf "Valid dimensions were %s\n" (dimvar_mapping_list_to_string single_variable_binding.valid_dimensions) in
                 let () = Printf.printf "Loop wrappers found are %d\n" (List.length loop_wrappers) in
 				let () = Printf.printf "Loop assignment functions are %d\n" (List.length assign_funcs) in
@@ -356,23 +357,9 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
 					[define]
 			else
 				assignment_statements in
-		let returnstatement =
-			if insert_return then
-				match iospec.returnvar with
-				| [] -> EmptyGIR
-				| [x] ->
-						Return(VariableReference(Variable(Name(x))))
-				| _ ->
-						(* We should really suppor this at this point -- but since C/C++ is the
-						only supported backend right now, we dont really need
-						to yet. *)
-						raise (GenerateGIRException "Multireturn functions not currently supported")
-			else
-				EmptyGIR
-		in
 		(* Also return the conversion functions needed for this
 			assign. *)
-		assigns_with_defines @ [returnstatement], conversion_function
+		assigns_with_defines, conversion_function
 	)
 	)in
 	(* We now have a expression list list, where we need one element
@@ -388,7 +375,21 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
 	(* Now we have a expression list list where each set
 	   is a full set of assignments.  Convert each expr list
 	   to a sequence.  *)
-	let code_options = List.map expr_lists (fun exprs -> Sequence(exprs)) in
+	let returnstatement =
+		if insert_return then
+			match iospec.returnvar with
+			| [] -> EmptyGIR
+			| [x] ->
+					Return(VariableReference(Variable(Name(x))))
+			| _ ->
+					(* We should really suppor this at this point -- but since C/C++ is the
+					only supported backend right now, we dont really need
+					to yet. *)
+					raise (GenerateGIRException "Multireturn functions not currently supported")
+		else
+			EmptyGIR
+	in
+	let code_options = List.map expr_lists (fun exprs -> Sequence(exprs @ [returnstatement])) in
 	(* Do a quick cleanup --- e.g. making sure that there are no double
 	defines, which this approach is prone to generating.  *)
 	let cleaned_code_options = List.map code_options gir_double_define_clean in
@@ -451,7 +452,9 @@ let generate_define_statemens_for options typemap (iospec: iospec) api =
 
 let generate_gir_for options iospec (skeleton: skeleton_pairs) =
 	let () = if options.debug_generate_gir then
-		Printf.printf "Starting generation for new skeleton pair\n"
+		let () = Printf.printf "Starting generation for new skeleton pair\n" in
+		let () = Printf.printf "Pair is\n %s \n" (skeleton_pairs_to_string skeleton) in
+		()
 	else () in
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
