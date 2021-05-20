@@ -122,11 +122,11 @@ let optswrapper iospec_file api_file dump_skeletons
 (* Required positional args *)
 let iospec =
 	let doc = "IO Specification for the Function" in
-	Arg.(required & pos 1 (some string) None & info [] ~docv:"IOSpec" ~doc)
+	Arg.(required & pos 0 (some string) None & info [] ~docv:"IOSpec" ~doc)
 
 let apispec =
     let doc = "IO Specification for the target API" in
-    Arg.(required & pos 2 (some string) None & info [] ~docv:"APISpec" ~doc)
+    Arg.(required & pos 1 (some string) None & info [] ~docv:"APISpec" ~doc)
 
 (* Configuration flags *)
 let target =
