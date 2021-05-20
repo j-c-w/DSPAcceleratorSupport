@@ -188,6 +188,7 @@ let assign_dimensions (options: options) typemap inps =
 		let tps_with_dims = List.map cls_members (assign_dimensions_to_type options cls_typemap wrapped_cls_members) in
 
 		let () = if options.debug_assign_dimensions then
+			let () = Printf.printf "For class %s, \n" (cname) in
             let () = Printf.printf "Executed length paramter estimate for %s\n" (String.concat ~sep:", " cls_members) in
             ()
 		else

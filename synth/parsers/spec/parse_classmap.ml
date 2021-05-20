@@ -23,8 +23,7 @@ let load_individual_type json_definition =
 	else
         StructMetadata({members=symbols; typemap=typemap})
 
-let load_classmap filename =
-	let json = Yojson.Basic.from_file filename in
+let load_classmap_from_json json =
 	let tbl = Hashtbl.create (module String) in
 	(* Get the names of all the defined types.  *)
 	let typedefs = json |> keys in
@@ -32,3 +31,7 @@ let load_classmap filename =
 	let typepairs = List.map typedefs (fun name -> (name, load_individual_type(json |> member name))) in
 	ignore(List.map typepairs (fun (name, value) -> Hashtbl.add tbl name value));
 	tbl;;
+
+let load_classmap filename =
+	let json = Yojson.Basic.from_file filename in
+	load_classmap_from_json json

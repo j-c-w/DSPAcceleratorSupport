@@ -4,6 +4,7 @@ open Yojson;;
 open Yojson.Basic.Util;;
 open Spec_definition;;
 open Spec_utils;;
+open Parse_classmap;;
 open Parse_type;;
 open Parse_range;;
 open Parse_const;;
@@ -19,8 +20,9 @@ let extract_typemap typemap vars =
 	ignore(List.map typepairs (fun (var, t)  -> Hashtbl.add tbl var t));
 	tbl;;
 
-let load_iospec options classmap filename =
+let load_iospec options filename =
 	let json = Yojson.Basic.from_file filename in
+	let classmap = load_classmap_from_json (json |> member "classmap") in
 	let livein = List.map (json |> member "livein" |> to_list) (fun j -> j |> to_string) in
 	let liveout = List.map (json |> member "liveout" |> to_list) (fun j -> j |> to_string) in
 	let retvars = json |> member "returnvarname" |> to_string_option in
@@ -52,4 +54,4 @@ let load_iospec options classmap filename =
 		if options.debug_load then
 			Printf.printf "Loaded iospec is %s" (iospec_to_string iospec)
 		else () in
-	iospec, typemap
+	iospec, typemap, classmap

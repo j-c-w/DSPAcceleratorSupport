@@ -5,19 +5,20 @@ open Parse_classmap
 open Parse_api
 open Synthesize
 open Options
+open Spec_utils
 
 let () = Printexc.record_backtrace true;;
 
-let main options classspec_file iospec_file api_file  =
+let main options iospec_file api_file  =
 	let () = Printf.printf "Loading specifications...\n" in
-	let classspec = load_classmap classspec_file in
-    let iospec, iotypemap = load_iospec options classspec iospec_file in
-    let api, apitypemap = load_target_api options classspec api_file in
+    let iospec, iotypemap, ioclassmap = load_iospec options iospec_file in
+    let api, apitypemap, apiclassmap = load_target_api options api_file in
+	let classspec = merge_maps ioclassmap apiclassmap in
 	let () = Printf.printf "Synthesizing...\n" in
     let _ = run_synthesis options classspec iotypemap iospec apitypemap api in
 	()
 
-let optswrapper classspec_file iospec_file api_file dump_skeletons
+let optswrapper iospec_file api_file dump_skeletons
         debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions
 		debug_load debug_generate_gir dump_generate_gir
 		debug_generate_program dump_generate_program
@@ -115,14 +116,10 @@ let optswrapper classspec_file iospec_file api_file dump_skeletons
 			Printf.printf "(--only-test renumbers executables)\n"
 		else ()
 	in
-    main options classspec_file iospec_file api_file
+    main options iospec_file api_file
 
 (* Deal with the commandline arguments. *)
 (* Required positional args *)
-let classspec =
-	let doc = "Class Specifiction for the program" in
-	Arg.(required & pos 0 (some string) None & info [] ~docv:"ClassSpec" ~doc)
-
 let iospec =
 	let doc = "IO Specification for the Function" in
 	Arg.(required & pos 1 (some string) None & info [] ~docv:"IOSpec" ~doc)
@@ -314,7 +311,7 @@ let info =
 
 (* This command line parser is a shitshow, or I don't know how to use it.
    In any case, this has to stay in the right order.  *)
-let args_t = Term.(const optswrapper $ classspec $ iospec $ apispec $ dump_skeletons $
+let args_t = Term.(const optswrapper $ iospec $ apispec $ dump_skeletons $
     debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $

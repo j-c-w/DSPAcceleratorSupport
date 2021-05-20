@@ -22,8 +22,7 @@ let main iospec_file classspec_file output_file =
     (* Yes, this is a terrible hack I am 100% going to regret
     because I have no clear understanding why it needs both.  *)
     let options = { default_options with generate_timing_code = true } in
-	let classspec = load_classmap classspec_file in
-    let iospec, iotypemap = load_iospec options classspec iospec_file in
+    let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let typemap = {
 		variable_map = iotypemap;
 		classmap = classspec

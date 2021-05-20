@@ -5,9 +5,11 @@ open Spec_definition;;
 open Parse_type;;
 open Parse_typemap;;
 open Parse_range;;
+open Parse_classmap;;
 
-let load_target_api options classmap filename =
+let load_target_api options filename =
 	let json = Yojson.Basic.from_file filename in
+	let classmap = load_classmap_from_json (json |> member "classmap") in
 	let livein = List.map (json |> member "livein" |> to_list) to_string in
 	let execcmd = json |> member "execcmd" |> to_string in
 	let liveout = List.map (json |> member "liveout" |> to_list) to_string in
@@ -35,4 +37,4 @@ let load_target_api options classmap filename =
         compiler_flags = compiler_flags;
 		validmap = valid_tbl;
 	} in
-	apispec, typemap;;
+	apispec, typemap, classmap;;
