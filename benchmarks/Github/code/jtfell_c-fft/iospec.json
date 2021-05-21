@@ -1,12 +1,14 @@
 {
 	"livein": ["x", "N"],
-	"liveout": ["x"],
+	"liveout": [],
+	"returnvarname": ["returnv"],
 	"execcmd": "../benchmarks/Github/code/jtfell_c-fft/exec",
 	"funname": "DFT_naive",
 	"funargs": ["x", "N"],
 	"typemap": {
-		"x": "array(complex)",
-		"N": "int32"
+		"x": "array(complex#N)",
+		"N": "int32",
+		"returnv": "array(complex#N)"
 	},
 	"required_includes": ["../../benchmarks/Github/code/jtfell_c-fft/self_contained_code.c"],
 	"classmap": {
