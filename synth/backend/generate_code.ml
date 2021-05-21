@@ -45,7 +45,6 @@ void StopAcceleratorTimer() {
 }
 "
 
-
 (* Type signatures use pointer formatting.  *)
 let rec cxx_type_signature_synth_type_to_string typ =
     match typ with
@@ -474,6 +473,12 @@ and generate_output_assign options typemap typ out out_prefix =
 		(* We can literally just put the variable name.  *)
 		"", out_prefix ^ out
 
+let cxx_type_from_returnvar typemap retvar =
+	match retvar with
+	| [] -> "void", ""
+	| [x] -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap.variable_map x), x
+	| _ -> raise (CXXGenerationException "C++ Doesn't hangle multiple returns")
+
 (* Imports needed for the running infrastructure.  *)
 let otherimports = String.concat ~sep:"\n" [
     "#include<vector>"; "#include<nlohmann/json.hpp>";
@@ -507,7 +512,7 @@ let generate_dump_function options (typemap: typemap) (program: program) filenam
 thing --- it should respect the specification for taking in
 as args the input JSON file, and putting the outputs of the function
 in the output JSON file.  *)
-let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermediates (program: program) =
+let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermediates returntype (program: program) =
 	let json_var_name = "input_json" in
 	let header = "int main(int argc, char **argv) {" in
 	let argreader =      "    char *inpname = argv[1]; " in
@@ -531,7 +536,16 @@ let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermedi
         else
             ""
     in
-	let call_func = program.generated_funname ^ "(" ^ argnames ^ ");" in
+	let result_assignment =
+		if (String.compare "void" returntype) = 0 then
+			(* No return values, so just leave as is.  *)
+			""
+		else
+			(* We assume only a single returnvar here.  *)
+			let () = assert (List.length program.returnvar = 1) in
+			returntype ^ " " ^ (String.concat ~sep:"" program.returnvar) ^ " = "
+	in
+	let call_func = result_assignment ^ program.generated_funname ^ "(" ^ argnames ^ ");" in
     let post_timing_code =
         if options.generate_timing_code then
             "std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();"
@@ -546,36 +560,34 @@ std::cout << \"AccTime: \" << AcceleratorTotalNanos << std::endl;"
 			""
     in
 	let output_writing_function =
-		generate_dump_function options typemap program "output_file" iospec.funargs iospec.liveout "write_output"
+		generate_dump_function options typemap program "output_file" (iospec.funargs @ iospec.returnvar) (iospec.liveout @ iospec.returnvar) "write_output"
+	in
+	let accelerator_timing_functions =
+		if options.generate_timing_code then
+			accelerator_timer_functions
+		else
+			""
 	in
 	let output_write_call =
-        "write_output(" ^ (String.concat ~sep:", " iospec.funargs) ^ ");"
+        "write_output(" ^ (String.concat ~sep:", " (iospec.funargs @ iospec.returnvar)) ^ ");"
 	in
 	let tail = "}" in
-    String.concat ~sep:"\n" [output_writing_function; ""; header; argreader; resdump; pre_accel_dump; load_file; load_json; parse_args;
+	String.concat ~sep:"\n" [accelerator_timing_functions; output_writing_function],
+	String.concat ~sep:"\n" [header; argreader; resdump; pre_accel_dump; load_file; load_json; parse_args;
     pre_timing_code; call_func; post_timing_code; timing_print_code;
     output_write_call; tail]
 
-let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_intermediates program =
+let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_intermediates (program: program) =
     (* C++ only allows for single return values.  *)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
     let (function_type, outv) =
-        match program.returnvar with
-		| [] -> "void", ""
-		| [x] -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap.variable_map x), x
-		| _ -> raise (CXXGenerationException "C++ Doesn't hangle multiple returns")
+		cxx_type_from_returnvar program.typemap program.returnvar
     in
 	let intermediate_dump_function =
 		if dump_intermediates then
 			[generate_dump_function options program.typemap program "pre_accel_dump_file" apispec.livein apispec.livein options.pre_accel_dump_function]
 		else []
-	in
-	let timing_functions =
-		if options.generate_timing_code then
-			[accelerator_timer_functions]
-		else
-			[]
 	in
 	(* Generate the required helper functions.  *)
 	let helper_funcs = String.concat ~sep:"\n" (
@@ -584,7 +596,6 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 		by the ones in the program unit. *)
 		(List.map program.fundefs (cxx_generate_from_gir program.typemap))
 		@ (intermediate_dump_function)
-		@ (timing_functions)
 	) in
     (* Generate the function header *)
     let function_header =
@@ -603,9 +614,9 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 	let ioimports = cxx_generate_imports iospec.required_includes in
     let apiimports = cxx_generate_imports apispec.required_includes in
     let function_end = "}" in
-	let main_func = cxx_main_function options program.typemap iospec dump_intermediates program in
+	let main_helper_funcs, main_func = cxx_main_function options program.typemap iospec dump_intermediates function_type program in
     (* Generate the whole program.  *)
-	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_end; main_func]
+	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)

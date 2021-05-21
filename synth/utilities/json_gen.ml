@@ -44,8 +44,10 @@ let main iospec_file classspec_file output_file =
 		fundefs = [];
 		inputmap = emptymaptbl;
     } in
+	let returntype, _ = cxx_type_from_returnvar typemap iospec.returnvar in
 	(* Generate the JSON wrapper: *)
-	let code = otherimports ^ "\n" ^ cxx_main_function options typemap iospec false base_program in
+	let main_helper_funcs, main_func = cxx_main_function options typemap iospec false returntype base_program in
+	let code = otherimports ^ "\n" ^ main_helper_funcs ^ "\n" ^ main_func in
 	let () = assert (Filename.check_suffix output_file ".cpp") in
 	Out_channel.write_all output_file ~data:code
 
