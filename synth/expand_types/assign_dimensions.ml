@@ -160,6 +160,8 @@ let carry_other_elements oldtbl expanded_elements =
 let assign_dimensions (options: options) typemap inps =
 	let () = if options.debug_assign_dimensions then
 		let () = Printf.printf "Starting to assign dimensions\n" in
+        let () = Printf.printf "Variable list is: %s\n" (String.concat ~sep:", " inps) in
+        let () = Printf.printf "Typemap entries are: %s\n" (String.concat ~sep:", " (Hashtbl.keys typemap.variable_map)) in
 	() else ()
 	in
     (* First, do all the inps, or the top level types.  *)

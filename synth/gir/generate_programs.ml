@@ -22,7 +22,9 @@ let rec add_index_variables_to_typemap typemap gir =
     | LoopOver(body, indvar, maxvar) ->
             (
             match Hashtbl.add typemap (gir_name_to_string indvar) Int32 with
-            | `Duplicate -> raise (GenerateProgramException "Added same index var to the typemap twice!")
+            | `Duplicate ->
+					let () = Printf.printf "Variable %s detected twice!" (gir_name_to_string indvar) in
+					raise (GenerateProgramException "Added same index var to the typemap twice!")
             | `Ok -> ()
             )
 	| Expression(expr) -> ()
@@ -62,20 +64,26 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 	(* Ret type --- currently only support one since we are
 	   targetting C.  More for functional/tuple languages
 	   would not be hard.  *)
-	let rettype = Option.map iospec.returnvar (fun v -> LVariable(Variable(Name(v)))) in
+	(* TODO -- somehting like this for APIs with explicit
+	return types.  *)
+	(* let rettype = List.map iospec.returnvar (fun v -> LVariable(Variable(Name(v)))) in *)
 	(* Build the typemap that we need.  Note we need
 	   to (a) build the typemap, then (b) schedule then
 		   rebuild the program again with the scheduled
 		   program.  *)
+	let rettype = [] in
     let body = match rettype with
-	| None ->
+	| [] ->
 		(* This is a function call with no explicit
 		   return arguments, so just splice the function call in.  *)
-		Sequence([girpair.pre; Expression(funcall); girpair.post])
-	| Some(resref) ->
-		Sequence([girpair.pre;
-			Assignment(resref, Expression(funcall));
-			girpair.post]) in
+			Sequence([girpair.pre; Expression(funcall); girpair.post])
+	| [resref] ->
+			Sequence([girpair.pre;
+				Assignment(resref, Expression(funcall));
+				girpair.post])
+	| _ ->
+			raise (GenerateProgramException "Multi-argument returns not currently supported")
+	in
 	(* Run scheduling on pre and post so things are computed
 	   before they are used.  *)
 	let scheduled_pre = topological_program_sort opts girpair.typemap ~predefed:iospec.livein ~preassigned:iospec.livein girpair.pre in
@@ -83,14 +91,22 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 	let scheduled_post = topological_program_sort opts girpair.typemap ~predefed:(iospec.liveout @ apispec.livein @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) ~preassigned:(apispec.livein @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) girpair.post in
 	(* Finally rebuild the body.  *)
 	let final_body = match rettype with
-	| None ->
+	| [] ->
 		(* This is a function call with no explicit
 		   return arguments, so just splice the function call in.  *)
 		Sequence([scheduled_pre; Expression(funcall); scheduled_post])
-	| Some(resref) ->
+	| [resref] ->
 		Sequence([scheduled_pre;
 			Assignment(resref, Expression(funcall));
-			scheduled_post]) in
+			scheduled_post])
+	| _ ->
+			assert false
+	in
+	let () =
+		if opts.dump_generate_program then
+			Printf.printf "Final GIR is:\n %s\n" (gir_to_string final_body)
+		else ()
+	in
 	(* Need to add the index variables to the typemap.  *)
 	let () =
 		add_index_variables_to_typemap girpair.typemap.variable_map body in

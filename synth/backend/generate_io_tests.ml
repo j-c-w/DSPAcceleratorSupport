@@ -14,7 +14,8 @@ exception TypeException of string
 exception GenerationFailure
 
 let rec generate_file_numbers upto =
-	if upto = 1 then
+	if upto = 0 then []
+	else if upto = 1 then
 		["1"]
 	else
 		(string_of_int upto) :: (generate_file_numbers (upto - 1))

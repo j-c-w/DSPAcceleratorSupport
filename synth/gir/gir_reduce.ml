@@ -78,7 +78,8 @@ let rec reduce_gir (options: options) gir: gir =
 			(* Could/should reduce the cond here --- don't think
 			   we generate loads of redundant stuff though. *)
 			IfCond(c, reduce_gir options iftrue, reduce_gir options iffalse)
-    | Return(_) -> gir
+    | Return(rval) ->
+			Return(reduce_expression options rval)
     | EmptyGIR -> EmptyGIR
     in
     let () = if options.debug_gir_reduce then

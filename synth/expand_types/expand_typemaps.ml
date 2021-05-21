@@ -32,7 +32,7 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 		classmap = cloned_classmap;
 	} in
 	(* Do the dimension assignments.  *)
-	let iospec_dimensions = assign_dimensions options full_typemap (iospec.livein @ iospec.liveout) in
+	let iospec_dimensions = assign_dimensions options full_typemap (iospec.livein @ iospec.liveout @ iospec.returnvar) in
 	let apispec_dimensions = List.concat (
 		List.map iospec_dimensions (fun iospec_dim -> assign_dimensions options iospec_dim (apispec.livein @ apispec.liveout))
 	) in

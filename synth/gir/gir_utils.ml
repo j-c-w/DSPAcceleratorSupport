@@ -31,7 +31,7 @@ let rec gir_to_string gir =
 	| Expression(expr) ->
 			(expression_to_string expr)
 	| Return(v) ->
-			"return " ^ (gir_name_to_string v)
+			"return " ^ (expression_to_string v)
 	| FunctionDef(n, args, body, typmap) ->
 			"def " ^
 			(gir_name_to_string n) ^ "(" ^ (gir_name_list_to_string args)

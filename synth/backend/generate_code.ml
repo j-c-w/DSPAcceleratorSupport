@@ -166,7 +166,9 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
 			true_code ^ "\n} else {\n" ^
 			false_code ^ "\n}"
 	| Return(v) ->
-			"return " ^ (cxx_gir_name_to_string v) ^ ";"
+			let precode, expr_code = cxx_generate_from_expression typemap v in
+			(trim precode ^ "\n") ^
+			"return " ^ (expr_code) ^ ";"
 	| FunctionDef(name, args, body, fun_typtable) ->
 			(* Not doing definitions as lambdas,
 			   so it wont make much sense if this is
@@ -535,8 +537,9 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
     but can't imagine we'd need that.  *)
     let (function_type, outv) =
         match program.returnvar with
-        | None -> "void", ""
-        | Some(x) -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap.variable_map x), x
+		| [] -> "void", ""
+		| [x] -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap.variable_map x), x
+		| _ -> raise (CXXGenerationException "C++ Doesn't hangle multiple returns")
     in
 	let intermediate_dump_function =
 		if dump_intermediates then
@@ -574,12 +577,10 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 		String.concat ~sep:"\n" (generate_includes_list_from program) in
 	let ioimports = cxx_generate_imports iospec.required_includes in
     let apiimports = cxx_generate_imports apispec.required_includes in
-    (* And generate the return statement *)
-    let function_return =
-        "return " ^ outv ^ "; }" in
+    let function_end = "}" in
 	let main_func = cxx_main_function options program.typemap iospec dump_intermediates program in
     (* Generate the whole program.  *)
-	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_return; main_func]
+	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; helper_funcs; function_header; program_string; function_end; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)

@@ -568,9 +568,14 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let livein_types = skeleton_type_lookup typemap iospec.livein in
     let livein_api_types = skeleton_type_lookup typemap apispec.livein in
     let liveout_api_types = skeleton_type_lookup typemap apispec.liveout in
-    let liveout_types = skeleton_type_lookup typemap iospec.liveout in
+    let liveout_types = skeleton_type_lookup typemap (iospec.liveout @ iospec.returnvar) in
     (* Get the types that are not livein, but are function args.  *)
-    let define_only_api_types = skeleton_type_lookup typemap (set_difference (fun a -> fun b -> (String.compare a b) = 0) apispec.funargs apispec.livein) in
+    let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
+	(* Also need to get any return types thare are not already
+	defined.  *)
+	let define_only_return_types = skeleton_type_lookup typemap (
+		set_difference Utils.string_equal iospec.returnvar iospec.funargs)
+	in
     (* Get any constants that we should try for the pre-binds.  *)
     let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types livein_api_types in
     (* Get constants that we should try for the post-binds
@@ -581,7 +586,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let post_constant_options_map = Hashtbl.create (module String) in
     (* Now use these to create skeletons.  *)
 	let pre_skeletons: skeleton_type_binding list = binding_skeleton options typemap constant_options_map livein_types livein_api_types define_only_api_types in
-    let post_skeletons = binding_skeleton options typemap post_constant_options_map liveout_api_types liveout_types [] in
+    let post_skeletons = binding_skeleton options typemap post_constant_options_map liveout_api_types liveout_types define_only_return_types in
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in

@@ -10,9 +10,17 @@ exception ProgramException of string
 let rec split_on_condition cond program (sequence_elements: gir list) =
     match sequence_elements with
     | (Expression(FunctionCall(FunctionRef(Name(n)), args)) as fcall) :: rest ->
-            (* TODO --- need to handle assignments
-            for non-void accelerator functions.  *)
             if (String.compare n program.api_funname) = 0 then
+				let user_code_call =
+						Return(
+							FunctionCall(
+								FunctionRef(
+									Name(program.user_funname)
+								),
+								VariableList(List.map program.in_variables (fun inv -> Variable(Name(inv))))
+							)
+						)
+				in
                 (* This is the call to the accelerator --- so wrap it in an if statement with a return.  *)
                 [
                 IfCond(cond,
@@ -20,14 +28,7 @@ let rec split_on_condition cond program (sequence_elements: gir list) =
                     Sequence(fcall :: rest),
                     (* If false, then call to the user
                     code.  *)
-                    Expression(
-                    FunctionCall(
-                        FunctionRef(
-                            Name(program.user_funname)
-                        ),
-                        VariableList(List.map program.in_variables (fun inv -> Variable(Name(inv))))
-                    )
-                    )
+					user_code_call
                 )
                 ]
             else (* This is some unrelated funcall.  *)
@@ -66,9 +67,12 @@ let rec insert_around_call callname program gir pre_addition post_addition =
 			Sequence(List.concat(
 				List.map elems (fun elem ->
 					match elem with
+						| Assignment(lvalue, Expression(FunctionCall(FunctionRef(Name(n)), args))) as fcall ->
+							if (Utils.string_equal n program.api_funname) then
+								[pre_addition; fcall; post_addition]
+							else
+								[fcall]
 						| (Expression(FunctionCall(FunctionRef(Name(n)), args))) as fcall ->
-							(* TODO --- need to handle assignments
-							for non-void accelerator functions.  *)
 							if (String.compare n program.api_funname) = 0 then
 								(* This is the right call --- insert right
 								before. *)

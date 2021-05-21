@@ -300,8 +300,10 @@ let skeleton_check skel =
 let skeleton_pair_check options p =
 	(* Don't assign to/from a variable using different
 	length parameters.  *)
-	let result = (no_multiple_lengths_check options p) &&
-		(length_assignment_check options p)
-	in
+	let multi_assign_check = no_multiple_lengths_check options p in
+	let length_check = length_assignment_check options p in
+	let result = multi_assign_check && length_check in
+	let () = if options.debug_skeleton_multiple_lengths_filter then
+		let () = Printf.printf "Pair Check - (multi assign: %b) (length_check: %b)" (multi_assign_check) (length_check) in
+		() else () in
     result
-

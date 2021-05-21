@@ -59,6 +59,6 @@ and gir =
 	| Expression of expression
     (* Function definition, has a name, a list of args, and a body.  *)
     | FunctionDef of gir_name * (gir_name list) * gir * ((string, synth_type) Hashtbl.t)
-    | Return of gir_name
+    | Return of expression
 	| EmptyGIR
 	(* (why?) Todo --- add a lambda here *)

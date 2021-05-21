@@ -157,6 +157,9 @@ let flat_skeleton_pairs_and_ranges_to_string skeletons =
 		)
 	))
 
+let skeleton_pairs_to_string (pairs: skeleton_pairs) =
+	"Pre: " ^ (flat_skeleton_type_binding_to_string pairs.pre) ^
+	"\nPost: " ^ (flat_skeleton_type_binding_to_string pairs.post)
 
 let typesets_to_string t =
 	String.concat ~sep:") List (" (List.map t (fun t -> (String.concat ~sep:", " (List.map t skeleton_type_to_string))))

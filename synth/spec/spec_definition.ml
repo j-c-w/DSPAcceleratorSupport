@@ -63,7 +63,7 @@ type iospec = {
 	in the JSON formats.  We do perhaps need a pointer
 	type to implement this correctly, but that is a future
 	challenge.  *)
-    returnvar: string option;
+    returnvar: string list;
     funargs: string list;
 	execcmd: string;
 	required_includes: string list;
@@ -83,7 +83,7 @@ type apispec = {
 	funargs: string list;
 	required_includes: string list;
     compiler_flags: string list;
-	validmap: (string, range_set) Hashtbl.t
+	validmap: (string, range_set) Hashtbl.t;
 }
 
 type classtype = {

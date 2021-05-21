@@ -23,7 +23,7 @@ type program = {
 	post_behavioural: post_behavioural_program option;
 	typemap: typemap;
 	inputmap: (string, range_set) Hashtbl.t;
-	returnvar: string option;
+	returnvar: string list;
 	user_funname: string;
 	generated_funname: string;
 	api_funname: string;
