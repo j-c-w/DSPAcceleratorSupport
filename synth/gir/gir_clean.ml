@@ -13,7 +13,7 @@ let copy_table oldtbl =
 
 let rec gir_double_define_clean_internal deftbl gir =
 	match gir with
-	| Definition(n) ->
+	| Definition(n, escapes) ->
 			(* See if already defined *)
 			let defined =
 				Hashtbl.find deftbl (gir_name_to_string n) in

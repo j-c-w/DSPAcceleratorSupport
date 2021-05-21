@@ -84,6 +84,14 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
     | Struct(sname) -> sname
     | Fun(from, tof) -> raise (CXXGenerationException "Lambdas unsupported in C++")
 
+(* The aim of this is to avoid loads of empty newlines--- they
+build up, partiuclarly in the precode generation.  Delete them,
+but don't get ride of important newlines at the end of things :) *)
+let trim x =
+	match String.strip x with
+	| "" -> ""
+	| x -> x ^ "\n"
+
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)
 let cxx_dimtype_to_name dimtype =
@@ -115,31 +123,47 @@ let rec cxx_definition_synth_type_to_string_prefix_postfix typ name =
             (* If it's another type, then use the simple type generator *)
             (cxx_type_signature_synth_type_to_string othertyp, "")
 
-(* The aim of this is to avoid loads of empty newlines--- they
-build up, partiuclarly in the precode generation.  Delete them,
-but don't get ride of important newlines at the end of things :) *)
-let trim x =
-	match String.strip x with
-	| "" -> ""
-	| x -> x ^ "\n"
+let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ =
+    match typ with
+    | Array(stype, dimtype) ->
+            let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix stype in
+            let dim = cxx_dimtype_to_name dimtype in
+            (* THe concept is this will be expanded as:
+                prefix NAME = (prefix) malloc(size);
+               But, we only use malloc if this is actually
+               an array.
+                *)
+            prefix ^ "*", subsize ^ "*" ^ dim, true
+    | othertyp ->
+            let tyname = cxx_type_signature_synth_type_to_string othertyp in
+            tyname, "sizeof(" ^ tyname ^ ")", false
 
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
-let rec cxx_definition_synth_type_to_string typ name =
-    let (prefix, postfix) = cxx_definition_synth_type_to_string_prefix_postfix typ name in
-    (* Prefix is like the type name, 'name' is the variable name,
-       postfix is array markings like [n], and then we need
-       to add a semi colon. *)
-    prefix ^ " " ^ name ^ postfix ^ ";"
+let rec cxx_definition_synth_type_to_string escapes typ name =
+        if escapes then
+            (* If the variable escapes, then we need to malloc it.  *)
+            let (prefix, asize, usemalloc) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typ in
+            if usemalloc then
+                prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") malloc (" ^ asize ^ ");"
+            else
+                prefix ^ " " ^ name ^ ";"
+        else
+            let (prefix, postfix) =
+                cxx_definition_synth_type_to_string_prefix_postfix typ name in
+            (* Prefix is like the type name, 'name' is the variable name,
+               postfix is array markings like [n], and then we need
+               to add a semi colon. *)
+            prefix ^ " " ^ name ^ postfix ^ ";"
 
 let cxx_names_to_type_definition variable_map names =
     List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn variable_map name)) ^ " " ^ name)
 
 let rec cxx_generate_from_gir (typemap: typemap) gir =
     match gir with
-    | Definition(nref) ->
+    | Definition(nref, escapes) ->
             let defntype = (Hashtbl.find_exn typemap.variable_map (cxx_gir_name_to_string nref)) in
-            cxx_definition_synth_type_to_string defntype (cxx_gir_name_to_string nref)
+            cxx_definition_synth_type_to_string escapes defntype (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
     | Assignment(fromv, tov) ->
@@ -388,7 +412,8 @@ let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
 	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) inps livein in
     let deadin_defs = List.map deadin (fun inp ->
         let typ = Hashtbl.find_exn typemap.variable_map inp in
-		cxx_definition_synth_type_to_string typ inp
+		(* Things that go into the API are assumed to be dead-in.  *)
+		cxx_definition_synth_type_to_string false typ inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)

@@ -12,7 +12,7 @@ exception GenerateProgramException of string
 
 let rec add_index_variables_to_typemap typemap gir =
     match gir with
-	| Definition(nref) -> ()
+	| Definition(nref, escapes) -> ()
 	| Sequence(girs) -> ignore(List.map girs (add_index_variables_to_typemap typemap))
 	(* This can eitehr assign lists to lists, of variables to
 	   variables.  *)

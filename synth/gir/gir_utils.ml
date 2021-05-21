@@ -17,7 +17,12 @@ let gir_name_equal n1 n2 =
 
 let rec gir_to_string gir =
 	match gir with
-    | Definition(nref) -> "Define " ^ (gir_name_to_string nref)
+    | Definition(nref, escapes) ->
+			let deftype =
+				if escapes then "DefineMalloc"
+				else "Define"
+			in
+			deftype ^ " " ^ (gir_name_to_string nref)
 	| IfCond(cond, iftrue, iffalse) ->
 			"If(" ^ (conditional_to_string cond) ^ ") {\n" ^
 			(gir_to_string iftrue) ^ "\n} else {\n" ^
