@@ -2,6 +2,7 @@ open Core_kernel;;
 open Assign_dimensions;;
 open Spec_definition;;
 open Spec_utils;;
+open Infer_struct;;
 
 (* Given some fixed input typemap, this function
 	expands it out into a number of different typemaps.
@@ -38,17 +39,19 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 	) in
 
 	(* Do the structure inference *)
-	(* let struct_inferred = *)
-	(* 	List.concat *)
-	(* 		(List.map dimensions (fun typemap -> *)
-	(* 			infer_structure options typemap variables *)
-	(* 		) *)
-	(* 	) *)
-	(* in *)
+	let struct_inferred =
+		List.concat
+			(List.map apispec_dimensions (fun typemap ->
+				(* Only infer types over the iospec --- assume the API designers have been
+				kind enough to provide us with some info.  *)
+				infer_structure options typemap iospec.funargs
+			)
+		)
+	in
 
 	(* Clear the iospec/apispec/original classmap to avoid any accidental uses.  *)
 	let () = clear_map iospec_typemap in
 	let () = clear_map apispec_typemap in
 	let () = clear_map classmap in
 
-	apispec_dimensions
+	struct_inferred

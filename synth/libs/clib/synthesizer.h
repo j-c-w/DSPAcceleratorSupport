@@ -10,3 +10,7 @@
 
 // Operations
 #define Pow2(x) (1 << x)
+
+// Builtin types
+typedef struct facc_2xf32_t { float f32_1; float f32_2};
+typedef struct facc_2xf64_t { float f64_1; float f64_2};

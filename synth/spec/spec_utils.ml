@@ -77,6 +77,17 @@ let dimension_type_equal d1 d2 = match d1, d2 with
 		dimension_value_equal a b
 	| _ -> false
 
+let is_constant_dimension d =
+	match d with
+	| DimConstant(c) -> true
+	| DimVariable(v) -> false
+	
+let is_constant_dimension_variable d =
+	match d with
+	| EmptyDimension -> false
+	| Dimension(d) ->
+			is_constant_dimension d
+
 let rec synth_type_to_string t =
     match t with
 	| Bool -> "bool"
