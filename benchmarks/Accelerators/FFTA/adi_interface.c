@@ -1,3 +1,5 @@
+#include <adi_fft_wrapper.h>
+
 // So, the idea here is to, as stated in the paper:
 // Provide an API without too much needless sparsity.
 // We could target the accel_cfft_large function directly,
