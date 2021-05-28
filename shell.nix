@@ -3,7 +3,7 @@
 with pkgs;
 mkShell {
 	buildInputs = [
-		cloc ocaml gdb racket
+		cloc ocaml gdb racket valgrind splint
 		# Ocaml packages
 		ocamlPackages.findlib ocamlPackages.ocamlbuild ocamlPackages.yojson
 		ocamlPackages.core_kernel opam ocamlPackages.cmdliner
@@ -14,7 +14,7 @@ mkShell {
 		# Other indirect deps for the synthesizer.
 		parallel
 		# Deps for tests
-		fftw
+		fftw fftwFloat
 		# Deps for helper scripts
 		python38 python38Packages.numpy python38Packages.matplotlib
 	];
