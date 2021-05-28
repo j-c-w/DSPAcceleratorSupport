@@ -3,8 +3,13 @@
 // analog devices environments and compile/work without issue :)
 #include "adi_header_emulation.h"
 
-// This just recreates the FFTA execution without any of the input
-// restrictions etc.
+// Note that we use a combined API --- that is something I wrote
+// up that targets the multiple differnt sizes in the ADI API.
+// This isn't because we can't target it, but because it just
+// makes it a bit clearer to evaluate IMO.
+// Lots of decisions surrounding what programming
+// model should be presented to FACC.
+
 complex_float exec_adi(const complex_float *in,
 						complex_float *out,
 						int n) {
