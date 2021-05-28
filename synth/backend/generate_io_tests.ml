@@ -7,6 +7,7 @@ open Synthtype_topology;;
 open Utils;;
 open Range;;
 open Program;;
+open Range_checker_synth;;
 
 let _ = Random.init 0
 
@@ -26,6 +27,9 @@ let generate_int_within_range rangemap namestring =
                 were no rangevars specified.  *)
             Random.int (1000)
     | Some(range) ->
+			(* let () = Printf.printf "Looking at name %s\n" namestring in
+			let () = Printf.printf "Has rangemap %s\n" (range_set_to_string range) in
+			let () = Printf.printf "Rangeset is emapy is %b\n" (empty_range_set range) in *)
             match random_value_in_range range with
             | RInt(v) -> v
             | _ -> raise (TypeException "Unexpected non-int result to int query")

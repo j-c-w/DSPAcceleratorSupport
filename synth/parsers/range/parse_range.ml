@@ -50,7 +50,9 @@ and desugar_range_range rr = match rr with
                     List.map (Utils.between 0 upto) (fun x -> RangeItem(RangeInteger(1 lsl x)))
 and desugar r = match r with
     | SugaredRangeSet(srange) ->
-            RangeSet(Array.concat (Array.to_list (Array.map srange (fun x -> (Array.of_list (desugar_range_range x))))))
+			let range_items = Array.concat (Array.to_list (Array.map srange (fun x -> (Array.of_list (desugar_range_range x))))) in
+			let () = assert ((Array.length range_items) > 0) in
+            RangeSet(range_items)
 
 (* We'd really like to handle more complex things, like
 functions, e.g. every odd number in this.  *)

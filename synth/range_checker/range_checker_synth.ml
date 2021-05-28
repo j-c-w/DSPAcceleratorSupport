@@ -76,6 +76,9 @@ let range_set_intersection r1 r2 =
     | RangeSet(r1), RangeSet(r2) ->
             RangeSet(range_intersection r1 r2)
 
+let range_set_has_intersection r1 r2 =
+	not (empty_range_set (range_set_intersection r1 r2))
+
 let positive_check_for vname range_set =
 	let conds = Array.map range_set (fun range_elem ->
 		match range_elem with

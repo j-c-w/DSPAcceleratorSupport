@@ -6,6 +6,7 @@ open Skeleton_utils;;
 open Builtin_conversion_functions;;
 open Range;;
 open Range_definition;;
+open Range_checker_synth;;
 open Options;;
 open Utils;;
 
@@ -66,7 +67,11 @@ let range_compat_check options from_range to_range =
         ()
     else ()
     in
-    to_smaller
+	let has_intersection = range_set_has_intersection from_range to_range in
+	(* If the sets are small enough, we'll try combinatorial mapping, so
+	   we don't need to worry too much about overlap.  *)
+	let small_sets = (range_size_compare from_size rangeConversionSizeLimit) = -1 in
+    to_smaller && (has_intersection || small_sets)
 
 let range_from_fromvars rangemap fromvars =
     match fromvars with

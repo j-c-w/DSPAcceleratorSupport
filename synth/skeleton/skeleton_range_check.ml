@@ -72,6 +72,15 @@ let execute_conversion_on_range direction conversion inp_ranges =
             (* Maps are 1 to 1, so must be one assigning var *)
             let () = assert ((List.length inp_ranges) = 1) in
             let inp_range = List.hd_exn inp_ranges in
+            (* Sometimes this is calculated in reverse: in that case,
+               we actually want to consider the inverse mapping.  *)
+            let reversed_mappairs =
+                match direction with
+                | RangeForward ->
+                        mappairs
+                | RangeBackward ->
+                        List.map mappairs (fun (e1, e2) -> (e2, e1))
+            in
             (* Create a new range that is the same, but
             has all values that overlap the mapped
             values changed.  *)
@@ -84,7 +93,7 @@ let execute_conversion_on_range direction conversion inp_ranges =
                         match item with
                         | RangeItem(i) ->
                                 (* See if this is in the map.  *)
-                                let res = List.find mappairs (fun (f, t) ->
+                                let res = List.find reversed_mappairs (fun (f, t) ->
                                     if range_value_eq (range_value_to_item f) i then
                                         true
                                     else
@@ -106,7 +115,7 @@ let execute_conversion_on_range direction conversion inp_ranges =
                             want to generate -5 to -1,
                             1 and 1 to 5.  *)
                                 (* We need to compress ranges after this anyway.  *)
-                                let overlapping = List.filter mappairs (fun (f, t) ->
+                                let overlapping = List.filter reversed_mappairs (fun (f, t) ->
                                     range_value_in range (range_value_to_item f)
                                 )
                                 in
@@ -167,6 +176,14 @@ let transform_rangemap_by options forward_range map bindings =
                 let result_range =
 					execute_conversion_on_range forward_range flat_binding.conversion_function ranges
 				in
+				let () = if (empty_range_set result_range) then
+                    let () = Printf.printf "Generated an empty result range. \n" in
+                    let () = Printf.printf "Input range was %s\n" (String.concat (List.map ranges range_set_to_string))  in
+                    let () = Printf.printf "Output range is %s (size %s)\n" (range_set_to_string result_range) (range_size_to_string (range_size result_range)) in
+                    assert false
+                else
+                    ()
+                in
                 let () =
 					match forward_range with
 					| RangeForward ->
@@ -214,6 +231,18 @@ let generate_range_check_skeleton options classmap iospec apispec pre_binding =
     in
     result
 
+let check_valid_map iomap =
+	let keys = Hashtbl.keys iomap in
+	let _ = List.map keys (fun key ->
+		let range = Hashtbl.find_exn iomap key in
+		if (empty_range_set range) then
+			let () = Printf.printf "Error generating for key %s\n" (key) in
+			raise (RangeCheckException "Error! A mapping with a zero-sized domain has been generated!  That should have been filtered earlier")
+		else
+			()
+	) in
+	()
+
 let generate_range_checks_skeleton options classmap iospec apispec pre_bindings =
     List.map pre_bindings (generate_range_check_skeleton options classmap iospec apispec)
 
@@ -230,7 +259,7 @@ let generate_input_ranges_skeleton options rangemap validmap binding =
 	let transformed_io_validmap = transform_rangemap_by options RangeBackward validmap binding in
 	let () =
 		if options.debug_input_map_generation then
-			let () = Printf.printf "Have transformed io validmap keys %s\n" (String.concat ~sep:", " (Hashtbl.keys transformed_io_validmap)) in
+			let () = Printf.printf "Have transformed io validmap %s\n" (range_map_to_string transformed_io_validmap) in
 			() else ()
 	in
 	(* Compute the intersection of the valid map and the
@@ -248,6 +277,7 @@ let generate_input_ranges_skeleton options rangemap validmap binding =
 		let _ = Hashtbl.set inputmap key input_range in
 		()
 	) in
+	let () = check_valid_map inputmap in
 	let () =
 		if options.debug_input_map_generation then
 			let () = Printf.printf "For pre skeleton %s\n" (flat_skeleton_type_binding_to_string binding) in

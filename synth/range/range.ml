@@ -47,6 +47,11 @@ the set.  Should 100% be more intelligent than this.*)
 let random_value_in_range range =
 	match range with
 	| RangeSet(items) ->
+			let () = if (Array.length items) = 0 then
+				Printf.printf "Empty items passed!\n"
+			else
+				()
+			in
 			let n = Random.int (Array.length items) in
 			(* Pick a random item and get the thing from that.  *)
 			random_value_from_range_range_in_range (Array.get items n);;
@@ -385,5 +390,9 @@ let range_map_to_string rangemap =
 	let keys = Hashtbl.keys rangemap in
 	String.concat ~sep:"\n" (List.map keys (fun key ->
 		let range = Hashtbl.find_exn rangemap key in
-		"For key " ^ key ^ ": have range " ^ (range_set_to_string range)
+		"For key " ^ key ^ ": have range " ^ (range_set_to_string range) ^ "(size " ^ (range_size_to_string (range_size range)) ^ ")"
 	))
+
+let empty_range_set r =
+	let rsize = range_size r in
+	(range_size_compare rsize (Finite(0))) = 0

@@ -22,7 +22,10 @@ let conversion_function_to_string conv_function =
     | IdentityConversion -> "IdentityConversion"
 	| PowerOfTwoConversion -> "PowerOfTwoConversion"
     | Map(f, t, ftlist) -> "ValueMapConversion(" ^
-        (synth_type_to_string f) ^ "->" ^ (synth_type_to_string t) ^ ")"
+        (synth_type_to_string f) ^ "->" ^ (synth_type_to_string t) ^ ") {" ^
+		(String.concat ~sep:", " (List.map ftlist (fun (f, t) ->
+			(synth_value_to_string (range_value_to_synth_value f) ^ "->" ^ (synth_value_to_string (range_value_to_synth_value t))
+		)))) ^ "}"
 
 (* Possible conversion functions --- these are specified
    in their use below.  *)
@@ -43,6 +46,7 @@ let identityConversionFunction r1 r2 =
 exactly the same size and asks for a permutation
 conversion, return these options.  *)
 let permutationConversionOptions r1 r2 =
+    let () = Printf.printf "Converting from %s to %s\n" (range_set_to_string r1) (range_set_to_string r2) in
 	let value_set_r1 = range_values r1 in
 	let value_set_r2 = range_values r2 in
     let fromtype = match range_type r1 with
