@@ -25,12 +25,13 @@ open Infer_struct;;
 	However, I don't currently have the link-in to
 	that technology.
 	*)
-let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (apispec: apispec) apispec_typemap =
+let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (apispec: apispec) apispec_typemap apispec_alignmap =
 	let unified_map = merge_maps iospec_typemap apispec_typemap in
 	let cloned_classmap = clone_classmap classmap in
 	let full_typemap = {
 		variable_map = unified_map;
 		classmap = cloned_classmap;
+		alignment_map = apispec_alignmap;
 	} in
 	(* Do the dimension assignments.  *)
 	let iospec_dimensions = assign_dimensions options full_typemap (iospec.livein @ iospec.liveout @ iospec.returnvar) in

@@ -219,5 +219,7 @@ let assign_dimensions (options: options) typemap inps =
 		{
 			variable_map = tmap;
 			classmap = cmap;
+			(* The alignment map is unchanged in this pass, so we don't need to recreate it.  *)
+			alignment_map = typemap.alignment_map;
 		}
 	)

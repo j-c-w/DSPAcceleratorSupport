@@ -153,7 +153,10 @@ let infer_structure options typemap variables =
 	let result = List.map new_variable_maps (fun vmap ->
         {
             variable_map = vmap;
-            classmap = new_classmap
+			classmap = new_classmap;
+			(* The alignment map is unchanged, so we don't need
+			to do anything about it.  *)
+			alignment_map = typemap.alignment_map;
         }
     ) in
 	let variable_sets = [ variables ] in

@@ -139,8 +139,8 @@ let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ =
 
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
-let rec cxx_definition_synth_type_to_string escapes typ name =
-        if escapes then
+let rec cxx_definition_synth_type_to_string alignment escapes typ name =
+	let defin = if escapes then
             (* If the variable escapes, then we need to malloc it.  *)
             let (prefix, asize, usemalloc) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typ in
             if usemalloc then
@@ -153,7 +153,12 @@ let rec cxx_definition_synth_type_to_string escapes typ name =
             (* Prefix is like the type name, 'name' is the variable name,
                postfix is array markings like [n], and then we need
                to add a semi colon. *)
-            prefix ^ " " ^ name ^ postfix ^ ";"
+            prefix ^ " " ^ name ^ postfix
+	in
+	match alignment with
+	| None -> defin ^ ";"
+	| Some(a) ->
+			defin ^ " __attribute((aligned(" ^ (string_of_int a) ^ ")));"
 
 let cxx_names_to_type_definition variable_map names =
     List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn variable_map name)) ^ " " ^ name)
@@ -162,7 +167,8 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
     match gir with
     | Definition(nref, escapes) ->
             let defntype = (Hashtbl.find_exn typemap.variable_map (cxx_gir_name_to_string nref)) in
-            cxx_definition_synth_type_to_string escapes defntype (cxx_gir_name_to_string nref)
+			let alignment = Hashtbl.find typemap.alignment_map (cxx_gir_name_to_string nref) in
+            cxx_definition_synth_type_to_string alignment escapes defntype (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
     | Assignment(fromv, tov) ->
@@ -204,9 +210,12 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
 			let args_def = String.concat ~sep:", " (cxx_names_to_type_definition fun_typtable args_strings) in
 			(* Suppose we probably shouldn't just pass the old lenvar bindings
 				into this one.. *)
+			let emptymap = Hashtbl.create (module String) in
 			let fun_typemap = {
 				variable_map = fun_typtable;
-				classmap = typemap.classmap
+				classmap = typemap.classmap;
+				(* No particular variable alignments for a function.  *)
+				alignment_map = emptymap;
 			} in
 			let body_code = cxx_generate_from_gir fun_typemap body in
 			String.concat [
@@ -411,8 +420,9 @@ let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
 	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) inps livein in
     let deadin_defs = List.map deadin (fun inp ->
         let typ = Hashtbl.find_exn typemap.variable_map inp in
+		let alignment = Hashtbl.find typemap.alignment_map inp in
 		(* Things that go into the API are assumed to be dead-in.  *)
-		cxx_definition_synth_type_to_string false typ inp
+		cxx_definition_synth_type_to_string alignment false typ inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)

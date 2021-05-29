@@ -34,13 +34,13 @@ let reduce_programs (opts:options) programs =
     in
     filtered_programs
 
-let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec_typemap) (iospec: iospec) (apispec_typemap) (api: apispec) =
+let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec_typemap) (iospec: iospec) (apispec_typemap) (apispec_alignment) (api: apispec) =
 	(* Assign possible dimension equalities between vector types.  *)
 	(* This updates the type ref tables in place, so no reassigns needed.  *)
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Starting synthesis!%!\n"
 	else () in
-	let unified_type_maps = generate_unified_typemaps opts classmap iospec iospec_typemap api apispec_typemap in
+	let unified_type_maps = generate_unified_typemaps opts classmap iospec iospec_typemap api apispec_typemap apispec_alignment in
 	let () = if opts.print_synthesizer_numbers then
 		let () = Printf.printf "Generated the dimensions%!\n" in
 		let () = Printf.printf "Have %d possible annotated typemaps\n" (List.length unified_type_maps) in

@@ -7,6 +7,24 @@ open Parse_typemap;;
 open Parse_range;;
 open Parse_classmap;;
 
+exception APIException of string
+
+(* TODO -- would like to support different postfixes e.g. B/b/k etc. *)
+let load_alignment_map json =
+	let table = Hashtbl.create (module String) in
+	match json with
+	| `Assoc(_) ->
+		let _ = List.map (json |> keys) (fun key ->
+			let _ = Hashtbl.add table key (json |> member key |> to_int) in
+			()
+		) in
+		table
+	| `Null ->
+			(* We're allowed to have no alignment map *)
+			table
+	| other ->
+			raise (APIException "Unexpected alignment type: expexted json map")
+
 let load_target_api options filename =
 	let json = Yojson.Basic.from_file filename in
 	let classmap = load_classmap_from_json (json |> member "classmap") in
@@ -16,6 +34,7 @@ let load_target_api options filename =
 	let typemap = load_typemap json (livein @ liveout) in
 	let funname = json |> member "functionname" |> to_string in
 	let funargs = List.map (json |> member "functionargs" |> to_list) to_string in
+	let alignment_requiremts = load_alignment_map (json |> member "alignment") in
 	let valid_tbl = load_rangetable options classmap typemap (json |> member "valid") in
     (* Compiler flags not required --- empty list of flags if so.
     To be honest, this is a bit of a hack, we'd really like the entire
@@ -37,4 +56,4 @@ let load_target_api options filename =
         compiler_flags = compiler_flags;
 		validmap = valid_tbl;
 	} in
-	apispec, typemap, classmap;;
+	apispec, typemap, classmap, alignment_requiremts;;

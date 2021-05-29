@@ -27,7 +27,7 @@ type program = {
 	user_funname: string;
 	generated_funname: string;
 	api_funname: string;
-	fundefs: gir list
+	fundefs: gir list;
 }
 
 type gir_pair = {

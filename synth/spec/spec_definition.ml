@@ -104,5 +104,6 @@ type structure_metadata =
 type typemap = {
 	variable_map: (string, synth_type) Hashtbl.t;
 	classmap: (string, structure_metadata) Hashtbl.t;
+	alignment_map: (string, int) Hashtbl.t;
 }
 
