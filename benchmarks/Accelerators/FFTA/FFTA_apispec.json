@@ -24,5 +24,9 @@
 				"im": "float32"
 			}
 		}
+	},
+	"alignment": {
+		"aci_acc_input": 32,
+		"adi_acc_output": 32
 	}
 }
