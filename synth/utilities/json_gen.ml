@@ -23,9 +23,11 @@ let main iospec_file classspec_file output_file =
     because I have no clear understanding why it needs both.  *)
     let options = { default_options with generate_timing_code = true } in
     let iospec, iotypemap, classspec = load_iospec options iospec_file in
+	let empty_alignmenttbl = Hashtbl.create (module String) in
 	let typemap = {
 		variable_map = iotypemap;
-		classmap = classspec
+		classmap = classspec;
+		alignment_map = empty_alignmenttbl;
 	} in
 	let emptymaptbl = Hashtbl.create (module String) in
     (* Most of these values aren't used since we don't gen
