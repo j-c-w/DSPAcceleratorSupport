@@ -31,17 +31,15 @@ let generate_generic_tmp () =
 
 let accelerator_timer_functions = "
 
-std::chrono::steady_clock::time_point AcceleratorStart;
+clock_t AcceleratorStart;
 long long AcceleratorTotalNanos = 0;
 void StartAcceleratorTimer() {
-	AcceleratorStart = std::chrono::steady_clock::now();
+	AcceleratorStart = clock();
 }
 
 void StopAcceleratorTimer() {
 	AcceleratorTotalNanos +=
-		std::chrono::duration_cast<std::chrono::nanoseconds>(
-			std::chrono::steady_clock::now() - AcceleratorStart
-		).count();
+		(double) ((clock()) - AcceleratorStart) / CLOCKS_PER_SEC;
 }
 "
 
@@ -494,7 +492,7 @@ let otherimports = String.concat ~sep:"\n" [
     "#include<vector>"; "#include<nlohmann/json.hpp>";
     "#include<fstream>"; "#include<iomanip>";
 	"#include<clib/synthesizer.h>";
-    "#include<chrono>";
+    "#include<time.h>";
 	"#include<iostream>";
     "char *output_file; ";
 	"char *pre_accel_dump_file; // optional dump file. ";
@@ -542,7 +540,7 @@ let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermedi
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
-            "std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();"
+            "clock_t begin = clock();"
         else
             ""
     in
@@ -558,13 +556,13 @@ let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermedi
 	let call_func = result_assignment ^ program.generated_funname ^ "(" ^ argnames ^ ");" in
     let post_timing_code =
         if options.generate_timing_code then
-            "std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();"
+			"clock_t end = clock();"
         else
             ""
     in
     let timing_print_code =
         if options.generate_timing_code then
-            "std::cout << \"Time: \" << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+            "std::cout << \"Time: \" << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << \"AccTime: \" << AcceleratorTotalNanos << std::endl;"
         else
 			""
