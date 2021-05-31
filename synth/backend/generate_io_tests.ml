@@ -95,16 +95,15 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 			else
 				(* If the name wasn't specified, then we should
 				generate an array.  *)
-				let dimvar_names = match dimvar with
-				| Dimension(dms) -> [dms]
+				let dimvar_size = match dimvar with
+				| Dimension(dms) -> dms
 				| EmptyDimension ->
 						raise (TypeException "Can't have empty dimensions!")
 				in
 				(* If this throws, there's an issue with the topo sorting below --- we
 				   expect that the dimvars will have been assigned.  *)
-				let arrlen_value_wrappers = List.map dimvar_names (
-					fun dimvar ->
-						match dimvar with
+				let arrlen =
+						match dimvar_size with
 						| DimVariable(dimvar_name) ->
 							let wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
 							let arrlen = match wrapper with
@@ -117,26 +116,11 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 							| _ ->
 									(* probably we could handle this --- just need to have a think
 									about what it means. *)
-									raise (TypeException "Unexpected list dimension type (non-int) ") in
+									raise (TypeException "Unexpected list dimension type (non-int) ")
+							in
 							arrlen
 						| DimConstant(c) -> c
-					)
 				in
-				(* In the greatest stupid hack of all time, we are
-				just going to set the array values to the max
-				ov the possible lengths.
-				This shouldn't matter for langauges like C unless
-				we are considering strings.
-				There may be some size issues however.
-
-				Anyway, there is a fix to support that, but it
-				will require a more complex io_test input
-				format.  Est a few days of work.
-
-				For langauges like python or Java, this should also
-				be OK, since there should only be one possible
-				array length variable. :) *)
-				let arrlen = max_of_int_list arrlen_value_wrappers in
 				if arrlen < options.array_length_threshold then
 					ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for options rangemap values_so_far name_string subtype structure_metadata))
 				else

@@ -168,8 +168,8 @@ let check_if_code_works (options:options) execname test_no generated_io_tests co
     due to bad luck" etc. *)
     (* Anyway, this makes sure that there is at least one non-vacuous testcase *)
     let lucky_pass = List.for_all res (fun res -> Option.is_none res.true_output) in
-	let valid_passes = List.count res (fun res -> Option.is_none res.true_output) in
-	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous) \n" (execname) (passed_count) (total_count) (valid_passes) in
+	let valid_passes = List.count res (fun res -> Option.is_some res.true_output) in
+	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous) \n" (execname) (passed_count) (total_count) (total_count - valid_passes) in
 	res, (passed && (not lucky_pass))
 
 let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =

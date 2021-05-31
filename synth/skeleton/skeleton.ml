@@ -573,9 +573,8 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
 	(* Also need to get any return types thare are not already
 	defined.  *)
-	let define_only_return_types = skeleton_type_lookup typemap (
-		set_difference Utils.string_equal iospec.returnvar iospec.funargs)
-	in
+	let define_only_return_vars = set_difference Utils.string_equal iospec.returnvar iospec.funargs in
+	let define_only_return_types = skeleton_type_lookup typemap (define_only_return_vars) in
     (* Get any constants that we should try for the pre-binds.  *)
     let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types livein_api_types in
     (* Get constants that we should try for the post-binds
@@ -620,6 +619,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
         Printf.printf "Number of post-bindings generated is %d\n" (List.length range_checked_post_skeletons);
         Printf.printf "Number of skeletons generated is %d\n" (List.length skeleton_pair_objects);
         Printf.printf "Number of skeletons post-filtering is %d\n" (List.length sensible_skeleton_pairs);
+		Printf.printf "Returnvars requiring a define are %s\n" (String.concat ~sep:", " define_only_return_vars);
         )
 	else () in
 	if options.debug_generate_skeletons then
