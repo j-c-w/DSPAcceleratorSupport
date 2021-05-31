@@ -591,11 +591,11 @@ let generate_user_visible_function (iospec: iospec) (program: program) =
 	let call_args =
 		(String.concat ~sep:", " cast_args)
 	in
-	let returncast = match program.returnvar with
-	| [] -> "" (* No cast on void returns.  *)
-	| _ -> "(" ^ rettype ^ ")"
+	let returncast, useret = match program.returnvar with
+	| [] -> "", "" (* No cast on void returns.  *)
+	| _ -> "(" ^ rettype ^ ")", "return "
 	in
-	let call = "return " ^ returncast ^ program.generated_funname ^ "_internal(" ^ call_args ^ ");" in
+	let call = useret ^ returncast ^ program.generated_funname ^ "_internal(" ^ call_args ^ ");" in
 	String.concat ~sep:"\n" [
 		header; call; "}"
 	]
