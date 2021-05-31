@@ -23,6 +23,6 @@ void accel_cfft_wrapper(const complex_float *in,
 		fftwf_execute(p);
 		for (int i = 0; i < n; i ++) {
 			out[i].re = fftw_out[i][0];
-			out[i].im = fftw_out[i][0];
+			out[i].im = fftw_out[i][1];
 		}
 }
