@@ -181,21 +181,25 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 			)
 		)
 
-let get_define_for escaping_vars vnameref =
+let get_define_for define_internal_before_assign escaping_vars vnameref =
     let escapes = List.mem escaping_vars (variable_reference_to_string vnameref) Utils.string_equal in
-    match vnameref with
-    | Variable(nam) ->
-        Definition(nam, escapes)
-    (* It's hard to say for sure what to do here --- eg.
-    if you have
-    struct {
-        int *args;
-    } mystruct;
-    you'd want to eb able to define args to point e.g. to
-    the stack.  But perhaps it's just better to define
-    that at the same point you define the mystruct?
-    Not really sure.  *)
-    | _ -> raise (GenerateGIRException "Don't know how to define a more complicated type right now!")
+	if (define_internal_before_assign || escapes) then
+		match vnameref with
+		| Variable(nam) ->
+			Definition(nam, escapes)
+		(* It's hard to say for sure what to do here --- eg.
+		if you have
+		struct {
+			int *args;
+		} mystruct;
+		you'd want to eb able to define args to point e.g. to
+		the stack.  But perhaps it's just better to define
+		that at the same point you define the mystruct?
+		Not really sure.  *)
+		| _ -> raise (GenerateGIRException "Don't know how to define a more complicated type right now!")
+	else
+		(* Don't want to define anything that doesn't escape and has already been defined! *)
+		EmptyGIR
 
 (* TODO -- really need to fix this crappy conversion
 from the name_references to gir names --- there's way
@@ -292,7 +296,7 @@ let generate_conversion_function conv = match conv with
                 typelookup
             ), fname
 
-let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return (options: options) (skeleton: flat_skeleton_binding) =
+let generate_gir_for_binding (iospec: iospec) define_internal_before_assign insert_return (options: options) (skeleton: flat_skeleton_binding) =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
 	   x = cos(y) or x = sin(y) or x = y. 
@@ -300,7 +304,7 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
 	   here, but I'm going to leave that comment anyway. *)
     (* Escaping variables must be defined differently in C-like
     targets.  *)
-    let escaping_variables = Utils.set_difference Utils.string_equal iospec.returnvar iospec.liveout in
+    let escaping_variables = Utils.set_difference Utils.string_equal iospec.returnvar iospec.funargs in
 	let expression_options, required_fun_defs = List.unzip (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
 		(* There may be more than one valid dimension value.
 		   generate assignments based on all the dimension values. *)
@@ -322,14 +326,16 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
 		(* Generate the possible assignments *)
 		let assign_funcs = generate_assign_functions conversion_function_name fvars_indexes tovar_indexes in
 		(* Get the define if required.  *)
-		let define = if define_before_assign then
+		let define =
 			let () = if options.debug_generate_gir then
 				let () = Printf.printf "Have the following tovars for the generation round:\n " in
 				let () = Printf.printf "%s\n" (name_reference_list_to_string single_variable_binding.tovar_index_nesting) in
+				let () = Printf.printf "Considering the following escaping vars %s\n" (String.concat ~sep:", " escaping_variables) in
 			() else () in
-			get_define_for escaping_variables (define_name_of (generate_gir_names_for tovar_indexes))
-		else
-			EmptyGIR in
+			(* This returns an empty GIR if the define shouldn't be made
+			(e.g. this is a post code and doesn't escape.)  *)
+			get_define_for define_internal_before_assign escaping_variables (define_name_of (generate_gir_names_for tovar_indexes))
+		in
         let () =
             if options.debug_generate_gir then
                 let () = Printf.printf "------\n\nFor variable %s\n" (flat_single_variable_binding_to_string single_variable_binding) in
@@ -353,14 +359,12 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
                 (List.map assign_funcs (fun assfunc -> assfunc []))
 		in
 		let assigns_with_defines =
-			if define_before_assign then
-				if (List.length assignment_statements) > 0 then
-					List.map assignment_statements (fun ass -> Sequence([define; ass]))
-				else
-					(* Some vars can be define-only *)
-					[define]
+			if (List.length assignment_statements) > 0 then
+				List.map assignment_statements (fun ass -> Sequence([define; ass]))
 			else
-				assignment_statements in
+				(* Some vars can be define-only *)
+				[define]
+		in
 		(* Also return the conversion functions needed for this
 			assign. *)
 		assigns_with_defines, conversion_function
@@ -475,7 +479,7 @@ let generate_gir_for options iospec (skeleton: skeleton_pairs) =
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
 	let pre_gir, pre_required_fun_defs = generate_gir_for_binding iospec true false options skeleton.pre in
-	let post_gir, post_required_fun_defs = generate_gir_for_binding iospec true true options skeleton.post in
+	let post_gir, post_required_fun_defs = generate_gir_for_binding iospec false true options skeleton.post in
     (* Keep track of the variable length assignments that have been made. *)
 	let all_fundefs = pre_required_fun_defs @ post_required_fun_defs in
 	let res = List.cartesian_product pre_gir post_gir in
