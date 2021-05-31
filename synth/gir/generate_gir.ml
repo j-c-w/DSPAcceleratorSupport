@@ -300,7 +300,7 @@ let generate_gir_for_binding (iospec: iospec) define_before_assign insert_return
 	   here, but I'm going to leave that comment anyway. *)
     (* Escaping variables must be defined differently in C-like
     targets.  *)
-    let escaping_variables = iospec.returnvar @ iospec.liveout in
+    let escaping_variables = Utils.set_difference Utils.string_equal iospec.returnvar iospec.liveout in
 	let expression_options, required_fun_defs = List.unzip (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
 		(* There may be more than one valid dimension value.
 		   generate assignments based on all the dimension values. *)
@@ -449,8 +449,15 @@ let generate_define_statemens_for options typemap (iospec: iospec) api =
 	let unpassed_returnvars = Utils.set_difference Utils.string_equal iospec.returnvar iospec.funargs in
 	let names = List.map (api.livein @ unpassed_returnvars) (fun n -> (Name(n), Hashtbl.find_exn typemap.variable_map n)) in
 	let sorted_names = toposort (List.map names type_topo_dependencies) in
-	(* let () = Printf.printf "Names %s\n" (String.concat((List.map names (fun (n, s) -> (match n with Name(x) -> x) ^ (synth_type_to_string s))))) in *)
-	(* let () = Printf.printf "Sorte names %s\n" (String.concat ~sep:", " (List.map sorted_names name_reference_to_string)) in *)
+	let () = if options.debug_gir_generate_define_statements then
+		let () = Printf.printf "Names %s\n" (String.concat((List.map names (fun (n, s) -> (match n with Name(x) -> x) ^ (synth_type_to_string s))))) in
+		let () = Printf.printf "Sorte names %s\n" (String.concat ~sep:", " (List.map sorted_names gir_name_to_string)) in
+		let () = Printf.printf "Livein is %s\n" (String.concat ~sep:", " iospec.livein) in
+		let () = Printf.printf "Unpassed return vars are %s\n" (String.concat ~sep:", " unpassed_returnvars) in
+		()
+	else
+		()
+	in
     (* Generate a define for each input variable in the API *)
 	List.map sorted_names (fun x ->
 		if List.mem unpassed_returnvars (gir_name_to_string x) Utils.string_equal then

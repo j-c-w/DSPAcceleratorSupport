@@ -91,6 +91,7 @@ type options = {
 	(* GIR passes debug.  *)
 	debug_gir_topology_sort: bool;
     debug_gir_reduce: bool;
+	debug_gir_generate_define_statements: bool;
 
 	(* SType passes debug.  *)
 	debug_synth_topology: bool;
@@ -171,6 +172,7 @@ let default_options = {
 	(* GIR passes debug.  *)
 	debug_gir_topology_sort = false;
 	debug_gir_reduce = false;
+    debug_gir_generate_define_statements = false;
 
 	(* SType passes debug.  *)
 	debug_synth_topology = false;

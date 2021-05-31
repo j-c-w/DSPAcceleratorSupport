@@ -36,7 +36,8 @@ let optswrapper iospec_file api_file dump_skeletons
         debug_skeleton_range_filter debug_skeleton_filter
 		execution_timeout skip_test mse_threshold
         debug_input_map_generation generate_timing_code
-		array_length_threshold no_parmap =
+		array_length_threshold no_parmap
+        debug_gir_generate_define_statements =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -92,6 +93,7 @@ let optswrapper iospec_file api_file dump_skeletons
 
 		debug_gir_topology_sort = debug_gir_topology_sort;
 		debug_gir_reduce = debug_gir_reduce;
+		debug_gir_generate_define_statements = debug_gir_generate_define_statements;
 
         debug_synth_topology = debug_synth_topology;
 		
@@ -230,6 +232,9 @@ let debug_gir_topology_sort =
 let debug_gir_reduce =
 	let doc = "Debug the GIR reduction pass" in
 	Arg.(value & flag & info ["debug-gir-reduce"] ~docv:"DebugGIRReduce" ~doc)
+let debug_gir_generate_define_statements =
+    let doc = "Debug GIR generate define statements" in
+    Arg.(value & flag & info ["debug-gir-generate-define-statements"] ~docv:"DebugGIRDefines" ~doc)
 
 (* debug stype passes.  *)
 let debug_synth_topology =
@@ -325,5 +330,5 @@ let args_t = Term.(const optswrapper $ iospec $ apispec $ dump_skeletons $
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
-    generate_timing_code $ array_length_threshold $ no_parmap)
+    generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements)
 let () = Term.exit @@ Term.eval (args_t, info)
