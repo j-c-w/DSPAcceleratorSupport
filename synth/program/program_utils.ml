@@ -28,15 +28,20 @@ let rec split_on_condition cond program (sequence_elements: gir list) =
     match sequence_elements with
     | (Expression(FunctionCall(FunctionRef(Name(n)), args)) as fcall) :: rest ->
             if (String.compare n program.api_funname) = 0 then
-				let user_code_call =
-						Return(
+				let raw_call =
 							FunctionCall(
 								FunctionRef(
 									Name(program.user_funname)
 								),
 								VariableList(List.map program.in_variables (generate_cast_reference program))
 							)
-						)
+				in
+				(* Not all code needs return parameters *)
+				let user_code_call =
+					if (List.length program.returnvar) > 0 then
+						Return(raw_call)
+					else
+						Expression(raw_call)
 				in
                 (* This is the call to the accelerator --- so wrap it in an if statement with a return.  *)
                 [
