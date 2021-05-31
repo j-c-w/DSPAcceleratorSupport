@@ -95,13 +95,16 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	else () in
 	(* Generate the 'correct' responses for the IO tests *)
 	let real_response_files = compute_default_results opts iospec io_tests in
+	let () = if opts.print_synthesizer_numbers then
+		Printf.printf "Real responses generated\n"
+	else () in
 	(* Try the code until we find one that works.  *)
 	let working_codes = find_working_code opts code_files io_tests real_response_files in
 	(* END Round 1 of Tests *)
 
     (* Run post-synthesis *)
 	let () = if opts.print_synthesizer_numbers then
-		Printf.printf "Starting post synthesis (%d programs)\n" (List.length working_codes)
+		Printf.printf "Starting post synthesis (%d programs)\n%!" (List.length working_codes)
 	else ()
 	in
     let post_synthesis_programs = run_post_synthesis opts iospec api reduced_programs working_codes in

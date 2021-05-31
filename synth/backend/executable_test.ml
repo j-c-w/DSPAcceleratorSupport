@@ -11,12 +11,14 @@ open Float_compare;;
 this will sometimes crash and sometimes spuriously go true
 if they do not.  *)
 let rec compare_jsons options fcomp j1 j2 =
-	(* let () = Printf.printf "JSON j1 is %s \n" (Yojson.Basic.pretty_to_string j1) in
-	let () = Printf.printf "JSON j2 is %s \n" (Yojson.Basic.pretty_to_string j2) in *)
+	(* let () = Printf.printf "JSON j1 is %s \n%!" (Yojson.Basic.pretty_to_string j1) in
+	let () = Printf.printf "JSON j2 is %s \n%!" (Yojson.Basic.pretty_to_string j2) in *)
     let j1_members = keys j1 in
-    List.for_all j1_members (fun mem ->
+	let result = List.for_all j1_members (fun mem ->
 		compare_json_elts options fcomp (j1 |> member mem) (j2 |> member mem)
-	)
+	) in
+	(* let () = Printf.printf "Exiting comparison\n%!" in *)
+	result
 
 and compare_json_elts options fcomp e1 e2 =
 	let result = match (e1, e2) with
@@ -29,6 +31,7 @@ and compare_json_elts options fcomp e1 e2 =
 			  ) in (
 			  match List.zip sorted_p1 sorted_p2 with
 			  | Ok(ls) ->
+					  (* let () = Printf.printf "Looping in match%!\n" in *)
 					  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
 						  ((String.compare name1 name2) = 0) && (compare_json_elts options fcomp json1 json2)
 					  ) in
@@ -42,6 +45,7 @@ and compare_json_elts options fcomp e1 e2 =
 	  | `Int(i1), `Int(i2) ->
 			  i1 = i2
 	  | `List(l1), `List(l2) ->
+			  (* let () = Printf.printf "Looping in list\n%!" in *)
 			  ((List.length l1) = (List.length l2)) &&
 			  List.for_all (List.zip_exn l1 l2) (fun (i1, i2) ->
 				  compare_json_elts options fcomp i1 i2
@@ -64,12 +68,14 @@ and compare_json_elts options fcomp e1 e2 =
 
 let compare_outputs options f1 f2 =
     (* Open both in Yojson and parse. *)
-	(* let () = Printf.printf "Comparing files %s and %s\n" (f1) (f2) in *)
+	(* let () = Printf.printf "Comparing files %s and %s%!\n" (f1) (f2) in *)
     let f1_json = Yojson.Basic.from_file f1 in
     let f2_json = Yojson.Basic.from_file f2 in
 	let fcomp = ((new fp_comp_mse options.mse_threshold) :> fp_comp) in
 	let compare_result = compare_jsons options fcomp f1_json f2_json in
-	compare_result && (fcomp#result options)
+	let result = compare_result && (fcomp#result options) in
+	(* let () = Printf.printf "Comparison finished\n%!" in *)
+	result
 
 let check_if_code_works (options:options) execname test_no generated_io_tests correct_answer_files =
 	(* TODO --- perhaps a parmap here?  Need to make sure the output files don't overlap if so. *)
@@ -98,7 +104,7 @@ let check_if_code_works (options:options) execname test_no generated_io_tests co
             let timeout = string_of_int options.execution_timeout in
             let cmd = "timeout " ^ timeout ^ " " ^ execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
             let () = if options.debug_test then
-                Printf.printf "Running test command %s\n%!" cmd
+                Printf.printf "Running test command %s%!" cmd
             else () in
             let result =
                 if options.skip_test then
@@ -111,6 +117,10 @@ let check_if_code_works (options:options) execname test_no generated_io_tests co
                         1
                 else
                     Sys.command cmd in
+			let () = if options.debug_test then
+				Printf.printf "Done\n%!"
+			else ()
+			in
             let same_res = match testout with
             | RunFailure -> 
                 (* We could be a bit smarter than this.  Anyway,
@@ -150,7 +160,7 @@ let check_if_code_works (options:options) execname test_no generated_io_tests co
             in
             let () =
                 if options.dump_test_results then
-                    let () = Printf.printf "Executbale %s and test %s had result %b\n" (execname) (same_res.input) (same_res.passed) in
+                    let () = Printf.printf "Executbale %s and test %s had result %b\n%!" (execname) (same_res.input) (same_res.passed) in
                     ()
                 else ()
             in
@@ -169,7 +179,7 @@ let check_if_code_works (options:options) execname test_no generated_io_tests co
     (* Anyway, this makes sure that there is at least one non-vacuous testcase *)
     let lucky_pass = List.for_all res (fun res -> Option.is_none res.true_output) in
 	let valid_passes = List.count res (fun res -> Option.is_some res.true_output) in
-	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous) \n" (execname) (passed_count) (total_count) (total_count - valid_passes) in
+	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous) \n%!" (execname) (passed_count) (total_count) (total_count - valid_passes) in
 	res, (passed && (not lucky_pass))
 
 let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =
@@ -178,10 +188,15 @@ let find_working_code (options:options) generated_executables generated_io_tests
 		() else () in
 	let groups = List.zip_exn generated_executables (List.zip_exn generated_io_tests correct_answer_files) in
 	let test_no = ref 0 in
-	List.map groups (fun (executable, (inps, outps)) ->
+	let result = List.map groups (fun (executable, (inps, outps)) ->
 		test_no := !test_no + 1;
 		check_if_code_works options executable !test_no inps outps
-	)
+	) in
+	let () = if options.debug_test then
+		Printf.printf "Done executing tests\n"
+	else ()
+	in
+	result
 
 let print_working_code options (apispec: apispec) working_list =
     let output_dir = options.execution_folder ^ "/output" in
