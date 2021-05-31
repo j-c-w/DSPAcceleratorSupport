@@ -1,2 +1,2 @@
 all:
-	g++ -I ../../../../synth/libs wrapper.cpp -o exec
+	g++ -I ../../../../synth/libs wrapper.cpp -fsanitize=address -o exec
