@@ -669,9 +669,10 @@ std::cout << \"AccTime: \" << AcceleratorTotalNanos << std::endl;"
 	in
 	let tail = "}" in
 	String.concat ~sep:"\n" [accelerator_timing_functions; output_writing_function],
+	user_visible_function,
 	String.concat ~sep:"\n" [header; argreader; resdump; pre_accel_dump; load_file; load_json; parse_args;
     pre_timing_code; call_func; post_timing_code; timing_print_code;
-	output_write_call; tail; user_visible_function]
+	output_write_call; tail]
 
 let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_intermediates (program: program) =
     (* C++ only allows for single return values.  *)
@@ -710,9 +711,9 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 	let ioimports = cxx_generate_imports iospec.required_includes in
     let apiimports = cxx_generate_imports apispec.required_includes in
     let function_end = "}" in
-	let main_helper_funcs, main_func = cxx_main_function options iospec dump_intermediates function_type program in
+	let main_helper_funcs, post_accel_def_funcs, main_func = cxx_main_function options iospec dump_intermediates function_type program in
     (* Generate the whole program.  *)
-	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; main_func]
+	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; post_accel_def_funcs; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)
