@@ -221,5 +221,9 @@ let assign_dimensions (options: options) typemap inps =
 			classmap = cmap;
 			(* The alignment map is unchanged in this pass, so we don't need to recreate it.  *)
 			alignment_map = typemap.alignment_map;
+			(* We need the dimensions to be assigned ---
+			those don't technically modify the 'official'
+			types.  *)
+			original_typemap = None;
 		}
 	)

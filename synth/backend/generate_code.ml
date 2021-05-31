@@ -102,28 +102,31 @@ let cxx_dimtype_to_name dimtype =
                error later anyway.  *)
 	| EmptyDimension -> "TOFILL"
 
-let rec cxx_dimtype_to_definition dimtype =
+let rec cxx_dimtype_to_definition dimtype dim_ratio_modifier =
     match dimtype with
-            | Dimension(x) -> "[" ^ (dimension_value_to_string x) ^ "]"
+            | Dimension(x) -> "[" ^ (dimension_value_to_string x) ^ dim_ratio_modifier ^ "]"
 			| EmptyDimension -> "TOFILL"
 
-let rec cxx_definition_synth_type_to_string_prefix_postfix typ name =
+let rec cxx_definition_synth_type_to_string_prefix_postfix typ name dim_ratio_modifier =
     match typ with
     | Array(stype, dimtype) ->
 			(* This isn;t going to work for multi-dimensional arrays, but I suppose
 			that s OK.  The C memory model doesn't strictly support those
 			anyway, so we may be able to get away without this here.  *)
-            let postfix = cxx_dimtype_to_definition dimtype in
-            let prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix stype name in
+            let postfix = cxx_dimtype_to_definition dimtype dim_ratio_modifier in
+			(* TODO --- I think to support nested arrays the dim ratio modifier
+			has to be some equally nested type, but I don't want
+			to think about it right now.  *)
+            let prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix stype name dim_ratio_modifier in
             prefix, postfix ^ sub_postfix
     | othertyp ->
             (* If it's another type, then use the simple type generator *)
             (cxx_type_signature_synth_type_to_string othertyp, "")
 
-let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ =
+let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ dimratio_modifier =
     match typ with
     | Array(stype, dimtype) ->
-            let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix stype in
+            let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix stype dimratio_modifier in
             let dim = cxx_dimtype_to_name dimtype in
             (* THe concept is this will be expanded as:
                 prefix NAME = (prefix) malloc(size);
@@ -133,21 +136,53 @@ let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ =
             prefix ^ "*", subsize ^ "*" ^ dim, true
     | othertyp ->
             let tyname = cxx_type_signature_synth_type_to_string othertyp in
-            tyname, "sizeof(" ^ tyname ^ ")", false
+            tyname, "sizeof(" ^ tyname ^ ")" ^ dimratio_modifier, false
+
+(* This is basically saying: if we are allocating
+space for t1, but then cast to an array of length
+t2 with dimension 'n', what factor do we need to
+adjust n by to allocate the right ammount of space
+in terms of type t1.  *)
+let compute_dimension_ratio_modifier t1 t2 =
+	if synth_type_equal t1 t2 then
+		""
+	else
+		(* So this should only ever be called with unequal
+			when type inference has been applied.  In that
+			case, we aren't trying to handle a general case,
+			but rather just a list of special cases that the
+			structure inference phase can infer. 
+
+			I suppose if the heuristic for that gets better
+			this will have to get more complex, but for
+			now it can just be a simple pattern match. *)
+		match t1, t2 with
+		| Array(Struct("facc_2xf32_t"), _), Array(Float32, _) ->
+                "/ 2"
+		| Array(Struct("facc_2xf64_t"), _), Array(Float64, _) ->
+                "/ 2"
+		| Array(Float32, _), Array(Struct("facc_2xf32_t"), _) ->
+                "* 2"
+		| Array(Float64, _), Array(Struct("facc_2xf64_t"), _) ->
+                "* 2"
+        | _, _ ->
+                raise (CXXGenerationException ("Unexpected infered type pair " ^ (synth_type_to_string t1) ^ ", " ^ (synth_type_to_string t2)))
 
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
-let rec cxx_definition_synth_type_to_string alignment escapes typ name =
+let rec cxx_definition_synth_type_to_string alignment escapes typ base_type name =
+	let dim_ratio_modifier =
+		compute_dimension_ratio_modifier typ base_type in
 	let defin = if escapes then
             (* If the variable escapes, then we need to malloc it.  *)
-            let (prefix, asize, usemalloc) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typ in
+            let (prefix, asize, usemalloc) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typ dim_ratio_modifier in
             if usemalloc then
                 prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") malloc (" ^ asize ^ ");"
             else
                 prefix ^ " " ^ name ^ ";"
         else
             let (prefix, postfix) =
-                cxx_definition_synth_type_to_string_prefix_postfix typ name in
+                cxx_definition_synth_type_to_string_prefix_postfix typ name dim_ratio_modifier in
             (* Prefix is like the type name, 'name' is the variable name,
                postfix is array markings like [n], and then we need
                to add a semi colon. *)
@@ -166,7 +201,7 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
     | Definition(nref, escapes) ->
             let defntype = (Hashtbl.find_exn typemap.variable_map (cxx_gir_name_to_string nref)) in
 			let alignment = Hashtbl.find typemap.alignment_map (cxx_gir_name_to_string nref) in
-            cxx_definition_synth_type_to_string alignment escapes defntype (cxx_gir_name_to_string nref)
+            cxx_definition_synth_type_to_string alignment escapes defntype defntype (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
     | Assignment(fromv, tov) ->
@@ -214,6 +249,7 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
 				classmap = typemap.classmap;
 				(* No particular variable alignments for a function.  *)
 				alignment_map = emptymap;
+				original_typemap = None;
 			} in
 			let body_code = cxx_generate_from_gir fun_typemap body in
 			String.concat [
@@ -405,22 +441,37 @@ those IO values from a JSON file and puts them into values.
 Returns boht the code, and a list of function args to apply.
 *)
 let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
+	(* If there are infered types, use the original typemap.  *)
+	let iotypemap = match typemap.original_typemap with
+			| Some(t) -> t
+			(* If there is no original typemap, there might
+			e.g. not have been any structural inference
+			or this could be json gen.
+
+			Note that "has structural inference => this is none"
+			is false.  *)
+			| None -> typemap
+	in
 	let asses = List.map livein (fun inp ->
 		(* THis hsould be easy -- if it's not an array, then
 			just load the value -- if it is an array, then
 			do the complicated ararys stuff and recurse. *)
-		let typ = Hashtbl.find_exn typemap.variable_map inp in
-		generate_assign_to typemap inp (Some(inp)) typ json_ref
+		let typ = Hashtbl.find_exn iotypemap.variable_map inp in
+		(* Note that because this uses a C++ vector to build
+		directly from the file, we don't need to use any length
+		parameter adjustments (since those are implicit).  *)
+		generate_assign_to iotypemap inp (Some(inp)) typ json_ref
 	) in
 	(* There are some variables that are 'dead' in, i.e. the
 	need to be allocated (e.g. output arrays), but they don't
 	need to be filled.  Call those 'deadin' values. *)
 	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) inps livein in
     let deadin_defs = List.map deadin (fun inp ->
-        let typ = Hashtbl.find_exn typemap.variable_map inp in
-		let alignment = Hashtbl.find typemap.alignment_map inp in
+		let infered_type = Hashtbl.find_exn typemap.variable_map inp in
+        let typ = Hashtbl.find_exn iotypemap.variable_map inp in
+		let alignment = Hashtbl.find iotypemap.alignment_map inp in
 		(* Things that go into the API are assumed to be dead-in.  *)
-		cxx_definition_synth_type_to_string alignment false typ inp
+		cxx_definition_synth_type_to_string alignment false typ infered_type inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)
@@ -484,7 +535,7 @@ and generate_output_assign options typemap typ out out_prefix =
 let cxx_type_from_returnvar typemap retvar =
 	match retvar with
 	| [] -> "void", ""
-	| [x] -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap.variable_map x), x
+	| [x] -> cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap x), x
 	| _ -> raise (CXXGenerationException "C++ Doesn't hangle multiple returns")
 
 (* Imports needed for the running infrastructure.  *)
@@ -516,11 +567,39 @@ let generate_dump_function options (typemap: typemap) (program: program) filenam
 		header; write_json_def; gen_results; ofstream_create; ofstream_write; tail
 	]
 
+let generate_user_visible_function (iospec: iospec) (program: program) =
+	let origmap = Option.value_exn program.typemap.original_typemap in
+	let rettype, _ = cxx_type_from_returnvar origmap.variable_map program.returnvar in
+	let header = 
+		rettype ^ " " ^ program.generated_funname ^ "("
+		^ (String.concat ~sep:", " (cxx_names_to_type_definition origmap.variable_map iospec.funargs)) ^ ") {"
+	in
+	let cast_args =
+		List.map iospec.funargs (fun arg ->
+			(* We have to generate this because the structure
+			inference tool might infer different types --
+			we need to cast those appropriately.  *)
+			let cast_type = cxx_type_signature_synth_type_to_string (Hashtbl.find_exn program.typemap.variable_map arg) in
+			"(" ^ cast_type ^ ") " ^ arg
+		)
+	in
+	let call_args =
+		(String.concat ~sep:", " cast_args)
+	in
+	let returncast = match program.returnvar with
+	| [] -> "" (* No cast on void returns.  *)
+	| _ -> "(" ^ rettype ^ ")"
+	in
+	let call = "return " ^ returncast ^ program.generated_funname ^ "_internal(" ^ call_args ^ ");" in
+	String.concat ~sep:"\n" [
+		header; call; "}"
+	]
+
 (* Given the IOSpec, generate the main function required to actually run this
 thing --- it should respect the specification for taking in
 as args the input JSON file, and putting the outputs of the function
 in the output JSON file.  *)
-let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermediates returntype (program: program) =
+let cxx_main_function options (iospec: iospec) dump_intermediates returntype (program: program) =
 	let json_var_name = "input_json" in
 	let header = "int main(int argc, char **argv) {" in
 	let argreader =      "    char *inpname = argv[1]; " in
@@ -536,7 +615,7 @@ let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermedi
 	in
 	let load_file =      "    std::ifstream ifs(inpname); " in
 	let load_json =      "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns typemap iospec.funargs iospec.livein json_var_name in
+	let parse_args, argnames = generate_input_assigns program.typemap iospec.funargs iospec.livein json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
@@ -560,6 +639,11 @@ let cxx_main_function options (typemap: typemap) (iospec: iospec) dump_intermedi
         else
             ""
     in
+	(* Generate a function that has the types of the original
+	   user code before any type inference etc.  *)
+	let user_visible_function =
+		generate_user_visible_function iospec program
+	in
     let timing_print_code =
         if options.generate_timing_code then
             "std::cout << \"Time: \" << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
@@ -567,8 +651,9 @@ std::cout << \"AccTime: \" << AcceleratorTotalNanos << std::endl;"
         else
 			""
     in
+	let origmap = Option.value_exn program.typemap.original_typemap in
 	let output_writing_function =
-		generate_dump_function options typemap program "output_file" (iospec.funargs @ iospec.returnvar) (iospec.liveout @ iospec.returnvar) "write_output"
+		generate_dump_function options origmap program "output_file" (iospec.funargs @ iospec.returnvar) (iospec.liveout @ iospec.returnvar) "write_output"
 	in
 	let accelerator_timing_functions =
 		if options.generate_timing_code then
@@ -583,14 +668,14 @@ std::cout << \"AccTime: \" << AcceleratorTotalNanos << std::endl;"
 	String.concat ~sep:"\n" [accelerator_timing_functions; output_writing_function],
 	String.concat ~sep:"\n" [header; argreader; resdump; pre_accel_dump; load_file; load_json; parse_args;
     pre_timing_code; call_func; post_timing_code; timing_print_code;
-    output_write_call; tail]
+	output_write_call; tail; user_visible_function]
 
 let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_intermediates (program: program) =
     (* C++ only allows for single return values.  *)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
     let (function_type, outv) =
-		cxx_type_from_returnvar program.typemap program.returnvar
+		cxx_type_from_returnvar program.typemap.variable_map program.returnvar
     in
 	let intermediate_dump_function =
 		if dump_intermediates then
@@ -607,7 +692,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 	) in
     (* Generate the function header *)
     let function_header =
-        function_type ^ " " ^ program.generated_funname ^ "(" ^
+        function_type ^ " " ^ program.generated_funname ^ "_internal(" ^
         (String.concat ~sep:"," (cxx_names_to_type_definition program.typemap.variable_map program.in_variables)) ^
         ") {" 
     in
@@ -622,7 +707,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 	let ioimports = cxx_generate_imports iospec.required_includes in
     let apiimports = cxx_generate_imports apispec.required_includes in
     let function_end = "}" in
-	let main_helper_funcs, main_func = cxx_main_function options program.typemap iospec dump_intermediates function_type program in
+	let main_helper_funcs, main_func = cxx_main_function options iospec dump_intermediates function_type program in
     (* Generate the whole program.  *)
 	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 

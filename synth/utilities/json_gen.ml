@@ -24,10 +24,13 @@ let main iospec_file classspec_file output_file =
     let options = { default_options with generate_timing_code = true } in
     let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
-	let typemap = {
+	let rec typemap = {
 		variable_map = iotypemap;
 		classmap = classspec;
 		alignment_map = empty_alignmenttbl;
+		(* Some of the udnerlyign functions assume
+		the existance of this thing.  *)
+		original_typemap = Some(typemap);
 	} in
 	let emptymaptbl = Hashtbl.create (module String) in
     (* Most of these values aren't used since we don't gen
@@ -46,9 +49,9 @@ let main iospec_file classspec_file output_file =
 		fundefs = [];
 		inputmap = emptymaptbl;
     } in
-	let returntype, _ = cxx_type_from_returnvar typemap iospec.returnvar in
+	let returntype, _ = cxx_type_from_returnvar iotypemap iospec.returnvar in
 	(* Generate the JSON wrapper: *)
-	let main_helper_funcs, main_func = cxx_main_function options typemap iospec false returntype base_program in
+	let main_helper_funcs, main_func = cxx_main_function options iospec false returntype base_program in
 	let code = otherimports ^ "\n" ^ main_helper_funcs ^ "\n" ^ main_func in
 	let () = assert (Filename.check_suffix output_file ".cpp") in
 	Out_channel.write_all output_file ~data:code

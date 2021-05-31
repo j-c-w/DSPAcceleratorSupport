@@ -51,6 +51,28 @@ type synth_value =
     | StructV of string * (string, synth_value) Hashtbl.t
     | FunV of string
 
+type classtype = {
+	members: string list;
+	functions: string list;
+	typemap: (string, synth_type) Hashtbl.t
+}
+
+type structtype = {
+	members: string list;
+	typemap: (string, synth_type) Hashtbl.t
+}
+
+type structure_metadata =
+	| ClassMetadata of classtype
+	| StructMetadata of structtype
+
+type typemap = {
+	variable_map: (string, synth_type) Hashtbl.t;
+	classmap: (string, structure_metadata) Hashtbl.t;
+	alignment_map: (string, int) Hashtbl.t;
+	original_typemap: typemap option
+}
+
 type iospec = {
 	funname: string;
 	livein: string list;
@@ -85,25 +107,3 @@ type apispec = {
     compiler_flags: string list;
 	validmap: (string, range_set) Hashtbl.t;
 }
-
-type classtype = {
-	members: string list;
-	functions: string list;
-	typemap: (string, synth_type) Hashtbl.t
-}
-
-type structtype = {
-	members: string list;
-	typemap: (string, synth_type) Hashtbl.t
-}
-
-type structure_metadata =
-	| ClassMetadata of classtype
-	| StructMetadata of structtype
-
-type typemap = {
-	variable_map: (string, synth_type) Hashtbl.t;
-	classmap: (string, structure_metadata) Hashtbl.t;
-	alignment_map: (string, int) Hashtbl.t;
-}
-

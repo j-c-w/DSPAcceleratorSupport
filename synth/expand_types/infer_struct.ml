@@ -157,6 +157,7 @@ let infer_structure options typemap variables =
 			(* The alignment map is unchanged, so we don't need
 			to do anything about it.  *)
 			alignment_map = typemap.alignment_map;
+			original_typemap = Some(typemap);
         }
     ) in
 	let variable_sets = [ variables ] in

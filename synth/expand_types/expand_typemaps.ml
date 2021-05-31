@@ -32,6 +32,7 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 		variable_map = unified_map;
 		classmap = cloned_classmap;
 		alignment_map = apispec_alignmap;
+		original_typemap = None;
 	} in
 	(* Do the dimension assignments.  *)
 	let iospec_dimensions = assign_dimensions options full_typemap (iospec.livein @ iospec.liveout @ iospec.returnvar) in
@@ -49,10 +50,5 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 			)
 		)
 	in
-
-	(* Clear the iospec/apispec/original classmap to avoid any accidental uses.  *)
-	let () = clear_map iospec_typemap in
-	let () = clear_map apispec_typemap in
-	let () = clear_map classmap in
 
 	struct_inferred
