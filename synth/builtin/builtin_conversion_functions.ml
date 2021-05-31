@@ -46,7 +46,7 @@ let identityConversionFunction r1 r2 =
 exactly the same size and asks for a permutation
 conversion, return these options.  *)
 let permutationConversionOptions r1 r2 =
-    let () = Printf.printf "Converting from %s to %s\n" (range_set_to_string r1) (range_set_to_string r2) in
+    (* let () = Printf.printf "Converting from %s to %s\n" (range_set_to_string r1) (range_set_to_string r2) in *)
 	let value_set_r1 = range_values r1 in
 	let value_set_r2 = range_values r2 in
     let fromtype = match range_type r1 with

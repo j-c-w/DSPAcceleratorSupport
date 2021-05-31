@@ -33,17 +33,21 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
 		| RunFailure -> false
 		| RunSuccess(_) -> true
 	) in
-	if success_count > 0 then
-		Some(results)
-	else
-		(* Can't have no results! *)
-		None
+	results, success_count
 
 let compute_default_results opts iospec inp_files =
-	List.map inp_files (fun inp_file_set ->
-		let results = generate_results_for opts iospec inp_file_set in
-		match results with
-		| Some(r) -> r
-		| None ->
-				raise (SparsityException "Can't find any working inputs to user code: likely too sparse (try more inputs?)")
-	)
+	let results = List.map inp_files (fun inp_file_set ->
+		let results, succ_count = generate_results_for opts iospec inp_file_set in
+		let () = if succ_count = 0 then
+				let () = Printf.printf "Can't find any working inputs to user code: likely too sparse (try more inputs?)" in
+                ()
+		else ()
+		in
+		results, succ_count
+	) in
+	let _ = if List.for_all results (fun (_, c) -> c = 0) then
+		raise (SparsityException "Error: FACC was able to find 0 working inputs to the user code: likely too sparse (try profiling the code and providing likely inputs).")
+	else
+		()
+	in
+	List.map results (fun (v, _) -> v)

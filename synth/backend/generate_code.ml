@@ -550,7 +550,9 @@ let otherimports = String.concat ~sep:"\n" [
 	"#include<iostream>";
     "char *output_file; ";
 	"char *pre_accel_dump_file; // optional dump file. ";
-    "using json = nlohmann::json;" (* Not strictly an include I suppose.  *)
+	"using json = nlohmann::json;"; (* Not strictly an include I suppose.  *)
+	"const char* __asan_default_options() { return \"detect_leaks=0\"; }" (* Disable leak as code 
+	is allowed to leak if the user code did.  *)
 ]
 
 (* Generate a dump function that dumps vnames into the file stored in

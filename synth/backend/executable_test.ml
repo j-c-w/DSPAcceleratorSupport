@@ -46,7 +46,8 @@ and compare_json_elts options fcomp e1 e2 =
 			  List.for_all (List.zip_exn l1 l2) (fun (i1, i2) ->
 				  compare_json_elts options fcomp i1 i2
 			  )
-	  | `Null, `Null -> true
+	(* I mean, this could be true, but not sure why it would appear.  *)
+	  | `Null, `Null -> assert false
 	  | `String(s1), `String(s2) ->
 			  (String.compare s1 s2) = 0
 	  | _ -> false
@@ -55,7 +56,7 @@ and compare_json_elts options fcomp e1 e2 =
 		result
 	else
 		let () = if options.debug_comparison then
-			Printf.printf "Comparison between %s and %s returned false!"
+			Printf.printf "Comparison between %s and %s returned false!\n"
                 (Yojson.Basic.pretty_to_string e1)
                 (Yojson.Basic.pretty_to_string e2)
 		else () in
@@ -63,6 +64,7 @@ and compare_json_elts options fcomp e1 e2 =
 
 let compare_outputs options f1 f2 =
     (* Open both in Yojson and parse. *)
+	(* let () = Printf.printf "Comparing files %s and %s\n" (f1) (f2) in *)
     let f1_json = Yojson.Basic.from_file f1 in
     let f2_json = Yojson.Basic.from_file f2 in
 	let fcomp = ((new fp_comp_mse options.mse_threshold) :> fp_comp) in
@@ -83,86 +85,92 @@ let check_if_code_works (options:options) execname test_no generated_io_tests co
 		Printf.printf "Starting tests for executable %s\n" execname
 	else () in
 	let res = List.map tests_and_results (fun (testin, testout) ->
-		(* Get an output name for this test.  *)
-		let experiment_outname = testin ^ "_outtmp_" ^ (string_of_int test_no) ^ ".json" in
-		(* Also get the output name for the intermediate
-		(pre accelerator call) variable values.  *)
-		let pre_accel_variables_outname = testin ^ "_outtmp_pre_accel_" ^ (string_of_int test_no) ^ ".json" in
-		(* Run the program on this test input.  *)
-		(* TODO --- maybe we should time this out?  Less
-		clear whether we need that here than we did with
-		the user code (where we also don't timeout) *)
-		let timeout = string_of_int options.execution_timeout in
-		let cmd = "timeout " ^ timeout ^ " " ^ execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
-		let () = if options.debug_test then
-			Printf.printf "Running test command %s\n%!" cmd
-		else () in
-		let result =
-			if options.skip_test then
-				if Sys.file_exists experiment_outname then
-					(* Assume the test would pass if the output
-					file exists, and that it would fail
-					otherwise.  *)
-					0
-				else
-					1
-			else
-				Sys.command cmd in
-		let same_res = match testout with
-		| RunFailure -> 
-			(* We could be a bit smarter than this.  Anyway,
-			I'm hoping not to deal with too many failures,
-			they're more of an edge case(? famous last words). *)
-			if result <> 0 then
-				(* both are failures.  *)
+            (
+            (* Get an output name for this test.  *)
+            let experiment_outname = testin ^ "_outtmp_" ^ (string_of_int test_no) ^ ".json" in
+            (* Also get the output name for the intermediate
+            (pre accelerator call) variable values.  *)
+            let pre_accel_variables_outname = testin ^ "_outtmp_pre_accel_" ^ (string_of_int test_no) ^ ".json" in
+            (* Run the program on this test input.  *)
+            (* TODO --- maybe we should time this out?  Less
+            clear whether we need that here than we did with
+            the user code (where we also don't timeout) *)
+            let timeout = string_of_int options.execution_timeout in
+            let cmd = "timeout " ^ timeout ^ " " ^ execname ^ " " ^ testin ^ " " ^ experiment_outname ^ " " ^ pre_accel_variables_outname in
+            let () = if options.debug_test then
+                Printf.printf "Running test command %s\n%!" cmd
+            else () in
+            let result =
+                if options.skip_test then
+                    if Sys.file_exists experiment_outname then
+                        (* Assume the test would pass if the output
+                        file exists, and that it would fail
+                        otherwise.  *)
+                        0
+                    else
+                        1
+                else
+                    Sys.command cmd in
+            let same_res = match testout with
+            | RunFailure -> 
+                (* We could be a bit smarter than this.  Anyway,
+                I'm hoping not to deal with too many failures,
+                they're more of an edge case(? famous last words). *)
+				(* Current aim is to work in a C style (since that is what
+				we are targetting) where a run failure (segfault) is
+				UB, so we can do anything we want -- including running
+				an accelerator that doesn't crash as expected :*)
+				(* This doesn't do any good in showing 'correctness' though,
+				it's more of a vacuous property.   *)
 				{
 					input=testin;
 					true_output=None;
 					measured_output=None;
 					passed=true;
 				}
-			else
-				(* New run isn't a failure.  *)
-				{
-					input=testin;
-					true_output=None;
-					measured_output=Some((pre_accel_variables_outname, experiment_outname));
-					passed=false
-				}
-		| RunSuccess(outf) ->
-				if result = 0 then
-					{
-						input=testin;
-						true_output=Some(outf);
-						measured_output=Some((pre_accel_variables_outname, experiment_outname));
-						passed=(compare_outputs options experiment_outname outf)
-					}
-				else
-					(* Run of accelerator failed --- this probably
-					shouldn't have happened.  *)
-					let () = Printf.printf "Warning: Accelerator failed on input (input file %s): accelerator bounds should be specified for better performance. \n" (testin) in
-					(* Say this was a non-match.  *)
-					{
-						input=testin;
-						true_output=Some(outf);
-						measured_output=None;
-						passed=false
-					}
-		in
-		let () =
-			if options.dump_test_results then
-				let () = Printf.printf "Executbale %s and test %s had result %b\n" (execname) (same_res.input) (same_res.passed) in
-				()
-			else ()
-		in
-		same_res
+            | RunSuccess(outf) ->
+                    if result = 0 then
+                        {
+                            input=testin;
+                            true_output=Some(outf);
+                            measured_output=Some((pre_accel_variables_outname, experiment_outname));
+                            passed=(compare_outputs options experiment_outname outf)
+                        }
+                    else
+                        (* Run of accelerator failed --- this probably
+                        shouldn't have happened.  *)
+                        let () = Printf.printf "Warning: Accelerator failed on input (input file %s): accelerator bounds should be specified for better performance. \n" (testin) in
+                        (* Say this was a non-match.  *)
+                        {
+                            input=testin;
+                            true_output=Some(outf);
+                            measured_output=None;
+                            passed=false
+                        }
+            in
+            let () =
+                if options.dump_test_results then
+                    let () = Printf.printf "Executbale %s and test %s had result %b\n" (execname) (same_res.input) (same_res.passed) in
+                    ()
+                else ()
+            in
+            same_res
+            )
 		) in
 	(* Glue together the results.  *)
 	let total_count = List.length res in
 	let passed_count = List.count res (fun (result) -> result.passed) in
 	let passed = (total_count = passed_count) in
-	let () = Printf.printf "For executable %s, passed cound is %d of %d tests\n" (execname) (passed_count) (total_count) in
-	res, passed
+    (* OK: so this is a terrible hack, but when we just can't line up with the usercode
+    sparsity, everything will 'pass' by default, and we'd like to avoid that.  I think there
+    is a better place to do this, but I'm not 100% sure where.  IMO it might need it's own pass
+    post-test generation where we go through and are like "this is clearly buggy, this jus tmissed
+    due to bad luck" etc. *)
+    (* Anyway, this makes sure that there is at least one non-vacuous testcase *)
+    let lucky_pass = List.for_all res (fun res -> Option.is_none res.true_output) in
+	let valid_passes = List.count res (fun res -> Option.is_none res.true_output) in
+	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous) \n" (execname) (passed_count) (total_count) (valid_passes) in
+	res, (passed && (not lucky_pass))
 
 let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =
 	let () = if options.debug_test then

@@ -17,6 +17,7 @@ let rec load_json j =
     result
 
 and load_json_elt (e: Yojson.Basic.t) =
+	(* let () = Printf.printf "JSON is %s\n" (Yojson.Basic.show e) in *)
 	match e with
 	| `Assoc(d) ->
 			StructV("Unknown", load_json d)
@@ -38,6 +39,7 @@ and load_json_elt (e: Yojson.Basic.t) =
 			raise (JSONException "Unexpected type: string")
 
 let load_value_map_from file =
+	(* let () = Printf.printf "Loading from file %s\n" (file) in *)
 	let json = Yojson.Basic.from_file file in
 	let j_members = keys json in
     let json_elts = List.map j_members (fun mem ->

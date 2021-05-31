@@ -18,6 +18,8 @@ mkShell {
 		# Deps for helper scripts
 		python38 python38Packages.numpy python38Packages.matplotlib
 	];
+	# Disable leak sanitizer
+	LSAN_OPTIONS="detect_leaks=0";
 	# Enable ocaml stack traces.
 	OCAMLRUNPARAM = "b";
 	SHELL_NAME = "FFTSynth";
