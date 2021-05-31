@@ -256,12 +256,21 @@ let generate_io_tests_for_program options (iospec: iospec) program_number (progr
 	(* generate the values for each input. *)
 	let num_tests = options.number_of_tests in
     let livein_namerefs = wrap_nrefs iospec.livein in
-	let toposorted_values = synthtype_toposort options program.typemap livein_namerefs in
+	(* For generating IO examples (they need to run in the original
+	program), we need to use the original program's typemap,
+	not the infered typemap.  In practice of course, examples
+	generated are entirely equivalent, but casting doesn't
+	quite work the same in JSON.  *)
+	let io_typemap = match program.typemap.original_typemap with
+	| Some(t) -> t
+	| None -> program.typemap
+	in
+	let toposorted_values = synthtype_toposort options io_typemap livein_namerefs in
 	let () =
 		if options.debug_generate_io_tests then
 			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)
 		else () in
-	let values = generate_io_values options num_tests program.inputmap toposorted_values program.typemap in
+	let values = generate_io_values options num_tests program.inputmap toposorted_values io_typemap in
 	(* Now, convert those to YoJSON values to be written out.  *)
 	let json_files = write_io_tests options program_number iospec.livein values in
 	json_files
