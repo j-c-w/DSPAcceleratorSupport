@@ -24,6 +24,7 @@ and variable_reference =
 	(* Variable * index variable *)
 	| IndexReference of variable_reference * expression
 	| Constant of synth_value
+	| Cast of variable_reference * synth_type
 and rvalue =
 	| Expression of expression
 

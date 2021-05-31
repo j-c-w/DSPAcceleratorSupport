@@ -88,6 +88,11 @@ let is_constant_dimension_variable d =
 	| Dimension(d) ->
 			is_constant_dimension d
 
+let constant_dimension_size d =
+	match d with
+	| DimConstant(c) -> Some(c)
+	| DimVariable(_) -> None
+
 let rec synth_type_to_string t =
     match t with
 	| Bool -> "bool"
@@ -200,7 +205,59 @@ and synth_table_equal tbl1 tbl2 =
 	| Unequal_lengths ->
 			false
 
+let rec synth_value_has_type v t =
+	match v, t with
+	| Int16V(_), Int16 -> true
+	| Int32V(_), Int32 -> true
+	| Int64V(_), Int64 -> true
+	| UInt16V(_), UInt16 -> true
+	| UInt32V(_), UInt32 -> true
+	| UInt64V(_), UInt64 -> true
+	| Float16V(_), Float16 -> true
+	| Float32V(_), Float32 -> true
+	| Float64V(_), Float64 -> true
+	| BoolV(_), Bool -> true
+	| UnitV, Unit -> true
+	| ArrayV(subvals), Array(sty, dim) ->
+			let validdim =
+				match dim with
+				| EmptyDimension -> true (* no assigned dim, so valid length *)
+				| Dimension(dimvalue) ->
+					match constant_dimension_size dimvalue with
+					| Some(d) ->
+							(List.length subvals) = d
+					| None -> true (* true since dim is variable
+					length.  *)
+            in
+			List.for_all subvals (fun v ->
+				synth_value_has_type v sty
+			) && validdim
+	| StructV(name, tbl), Struct(tname) ->
+			(String.compare name tname) = 0
+	| FunV(n1), Fun(f, t) ->
+            (* Need somekinda typemap passed to do this one.  *)
+            raise (SpecException "Functio ntypechecking not supported currently.  ")
+	| _, _ -> false
 
+let synth_value_from_float t f =
+	match t with
+	| Float16 -> Float16V(f)
+	| Float32 -> Float32V(f)
+	| Float64 -> Float64V(f)
+	| _ -> raise (SpecException "Unexpected non-float type")
+
+let synth_value_from_int t i =
+	let check_non_neg i =
+		assert (i >= 0)
+	in
+	match t with
+	| Int16 -> Int16V(i)
+	| Int32 -> Int32V(i)
+	| Int64 -> Int64V(i)
+	| UInt16 -> check_non_neg i; UInt16V(i)
+	| UInt32 -> check_non_neg i; UInt32V(i)
+	| UInt64 -> check_non_neg i; UInt64V(i)
+	| _ -> raise (SpecException "Unexpected non-int type")
 
 let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in
@@ -349,6 +406,27 @@ let is_array_value v =
 	match v with
 	| ArrayV(_) -> true
 	| _ -> false
+
+(* cast a value v to a type of t if possible *)
+(* This is a very minimalistic casting engine, and
+it doesn't need to be a full one right now.  However,
+it should be noted that any more general casting
+engine is likely to end up being target language
+specific.  *)
+let synth_value_cast v t =
+	if is_float_type t then
+		(* Only supporting float -> float casts right now.  *)
+		Option.map (float_from_value v) (synth_value_from_float t)
+	else if is_integer_type t then
+		Option.map (int_from_value v) (synth_value_from_int t)
+	else
+		(* Currently not supporting any other casting for
+			internal simulation.  Would be easy to add more to emulate
+			e.g. C-style casting.  *)
+		if synth_value_has_type v t then
+			Some(v)
+		else
+			None
 
 let table_clone t =
 	let newtbl = Hashtbl.create (module String) in

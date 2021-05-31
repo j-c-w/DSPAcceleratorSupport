@@ -61,6 +61,18 @@ let rec eval_variable var valuemap =
 					Hashtbl.find_exn vtbl (gir_name_to_string mem_name)
 			| _ -> raise (EvaluationException "Member resulted in non struct result!")
 			)
+    | Cast(vref, t) ->
+            let value = eval_variable vref valuemap in
+			(
+            match synth_value_cast value t with
+            | Some(v) -> v
+            (* For casts that fail, we probably just need to
+            exapnd the internal casting engine, which is
+            as bear-bones as possible when implemented.
+            See spec_utils.  *)
+            | None ->
+                    raise (EvaluationException "Using an unsupported cast: this does not mean the cast would be unsupported in target language.  ")
+			)
 	| IndexReference(vref, expr) ->
 			let ind = eval_expression expr valuemap in
 			let ind_value = match ind with

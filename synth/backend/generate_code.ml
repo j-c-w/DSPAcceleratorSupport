@@ -285,6 +285,9 @@ and cxx_generate_from_variable_reference typemap vref =
 			(* TODO --- properly support more complex synth values, e.g. arrays or structs.  *)
 			(* Has empty pre code *)
 			"", (synth_value_to_string synth_value)
+	| Cast(vref, typ) ->
+			let precode, refcode = cxx_generate_from_variable_reference typemap vref in
+			precode, "(" ^ (cxx_type_signature_synth_type_to_string typ) ^ ")" ^ refcode
 
 and cxx_generate_from_rvalue typemap rvalue =
     match rvalue with

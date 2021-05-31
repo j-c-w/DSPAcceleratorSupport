@@ -15,6 +15,10 @@ type use_def_name =
 	| UDNameNest of use_def_name * gir_name
 
 (* an expression can only use values, not assign.  *)
+type use_def_info_synth_type = {
+	uses: use_def_name list;
+}
+
 type use_def_info_expr = {
 	uses: use_def_name list;
 }
@@ -152,6 +156,25 @@ let rec gnames_from_ud ud =
 	| UDNameNest(rest, n) ->
 			(gnames_from_ud rest) @ [n]
 
+let rec get_uses_defining_type typ =
+    match typ with
+    | Array(subtyp, dim) ->
+            let this_dim = match dim with
+            | Dimension(nm) ->
+					(
+                    match nm with
+						| DimVariable(AnonymousName) -> raise (TopologicalSortException "No anon names in the typemap!")
+						| DimVariable(Name(n)) -> [UDName(Name(n))]
+						| DimVariable(StructName(ns)) -> raise (TopologicalSortException "Congratualations, you hit the case
+						that means you need to do a f*ck of a lot of work fixing the typemaps so that
+						they are actually sane and are recursive rather than the weird implicit
+						'.' that they use now.  Enjoy!")
+						| DimConstant(_) -> []
+					)
+            | EmptyDimension -> raise (TopologicalSortException "Don't think this is possible?") in
+            this_dim @ (get_uses_defining_type subtyp)
+    | _ -> []
+
 let rec compute_use_def_assign_for_expr expr: use_def_info_expr =
 	match expr with
 	| VariableReference(nm) ->
@@ -217,6 +240,13 @@ and compute_use_def_assign_for_vref vref: use_def_info_variable_reference =
 				uses = [];
 				maybe_assigns = []
 			}
+	| Cast(v, t) ->
+			let index_ud = compute_use_def_assign_for_vref v in
+			let type_ud = get_uses_defining_type t in
+			{
+				uses = index_ud.uses @ type_ud;
+				maybe_assigns = index_ud.maybe_assigns;
+			}
 
 let compute_use_def_assign_for_rvalue (rval: rvalue): use_def_info_rval =
 	match rval with
@@ -237,25 +267,6 @@ let rec compute_use_def_assign_for_lvalue lval: use_def_info_lval =
 				really assigns.  *)
 				assigns = udefs.maybe_assigns
 			}
-
-let rec get_uses_defining_type typ =
-    match typ with
-    | Array(subtyp, dim) ->
-            let this_dim = match dim with
-            | Dimension(nm) ->
-					(
-                    match nm with
-						| DimVariable(AnonymousName) -> raise (TopologicalSortException "No anon names in the typemap!")
-						| DimVariable(Name(n)) -> [UDName(Name(n))]
-						| DimVariable(StructName(ns)) -> raise (TopologicalSortException "Congratualations, you hit the case
-						that means you need to do a f*ck of a lot of work fixing the typemaps so that
-						they are actually sane and are recursive rather than the weird implicit
-						'.' that they use now.  Enjoy!")
-						| DimConstant(_) -> []
-					)
-            | EmptyDimension -> raise (TopologicalSortException "Don't think this is possible?") in
-            this_dim @ (get_uses_defining_type subtyp)
-    | _ -> []
 
 let get_uses_defining_variable typemap name =
     (* Compute the variables that get used when defining this.  *)

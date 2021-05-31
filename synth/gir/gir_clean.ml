@@ -115,6 +115,8 @@ and check_function_calls_vref tbl v =
             let () = check_function_calls_vref tbl vref in
             check_function_calls_expr tbl expr
 	| Constant(_) -> ()
+	| Cast(v, _) ->
+			check_function_calls_vref tbl v
 and check_function_calls_expr tbl expr =
     match expr with
     | VariableReference(vref) -> check_function_calls_vref tbl vref

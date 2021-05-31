@@ -69,6 +69,8 @@ and variable_reference_to_string vref =
             (variable_reference_to_string mems) ^ "." ^ (gir_name_to_string girnam)
 	| Constant(v) ->
 			synth_value_to_string v
+	| Cast(v, t) ->
+			"(" ^ (synth_type_to_string t) ^ ")" ^ (variable_reference_to_string v)
 and varlist_to_string vlist =
 	match vlist with
 	| VariableList(nams) ->
@@ -168,3 +170,7 @@ let rec build_reference_chain parent child =
             IndexReference(subcls, ind)
 	| Constant(c) ->
 			Constant(c)
+	| Cast(ref, t) ->
+			(* Note that this won't work if the cast is
+			ntested  somewhere within the reference... *)
+			Cast(build_reference_chain parent ref, t)
