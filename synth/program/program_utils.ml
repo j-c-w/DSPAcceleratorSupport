@@ -3,8 +3,25 @@ open Gir;;
 open Gir_reduce;;
 open Program;;
 open Spec_definition;;
+open Spec_utils;;
 
 exception ProgramException of string
+
+(* Basically this says "does the user code have different
+types and if so, then generate the cast" *)
+let generate_cast_reference (program: program) v =
+	match program.typemap.original_typemap with
+	| Some(t) ->
+			let typ = Hashtbl.find_exn t.variable_map v in
+			let generated_typ = Hashtbl.find_exn program.typemap.variable_map v in
+			if synth_type_equal typ generated_typ then
+				Variable(Name(v))
+			else
+				Cast(Variable(Name(v)), typ)
+	| None ->
+			(* No casting to be done --- there is no
+			infered typemap to use.  *)
+			Variable(Name(v))
 
 (* Helper function to wrap the accelerator in a conditional.  *)
 let rec split_on_condition cond program (sequence_elements: gir list) =
@@ -17,7 +34,7 @@ let rec split_on_condition cond program (sequence_elements: gir list) =
 								FunctionRef(
 									Name(program.user_funname)
 								),
-								VariableList(List.map program.in_variables (fun inv -> Variable(Name(inv))))
+								VariableList(List.map program.in_variables (generate_cast_reference program))
 							)
 						)
 				in
