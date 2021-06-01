@@ -5,15 +5,15 @@
 	"execcmd": "../../../benchmarks/Accelerators/FFTW/FFTW",
 	"functionname": "fftwf_example_api",
 	"typemap": {
-		"api_in": "array(_complex_float_)",
-		"api_out": "array(_complex_float_)",
+		"api_in": "array(_complex_float_#interface_len)",
+		"api_out": "array(_complex_float_#interface_len)",
 		"dir": "int16",
 		"interface_len": "int32"
 	},
 	"required_includes": ["../../benchmarks/Accelerators/FFTW/interface.hpp", "complex"],
 	"valid": {
 		"dir": "set(-1, 1)",
-		"interface_len": "set(power_of_two(10))"
+		"interface_len": "set(power_of_two(20))"
 	},
 	"compiler_flags": ["-lfftw3", "-lfftw3f"],
 	"classmap": {
