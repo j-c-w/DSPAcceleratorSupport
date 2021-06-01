@@ -5,6 +5,7 @@
 #include<clib/synthesizer.h>
 #include<chrono>
 #include<iostream>
+#include <time.h>
 extern "C" {
 #include "self_contained_code.c"
 }
@@ -45,9 +46,12 @@ input_vec.push_back(input_inner);
 cmplx *input = &input_vec[0];
 int n = input_json["n"];
 cmplx output[n];
-std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-STB_FFT(input, output, n);
-std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+clock_t begin = clock();
+for (int i = 0; i < TIMES; i ++) {
+	STB_FFT(input, output, n);
+}
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
+std::cout << "AccTime: 0" << std::endl;
 write_output(input, output, n);
 }

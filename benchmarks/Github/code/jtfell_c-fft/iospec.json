@@ -6,9 +6,9 @@
 	"funname": "DFT_naive",
 	"funargs": ["x", "N"],
 	"typemap": {
-		"x": "array(complex#N)",
+		"x": "array(complex)",
 		"N": "int32",
-		"returnv": "array(complex#N)"
+		"returnv": "array(complex)"
 	},
 	"required_includes": ["../../benchmarks/Github/code/jtfell_c-fft/self_contained_code.c"],
 	"classmap": {

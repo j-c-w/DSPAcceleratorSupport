@@ -45,9 +45,12 @@ fin_vec.push_back(fin_inner);
 }
 kiss_fft_cpx *fin = &fin_vec[0];
 kiss_fft_cpx fout[nfft];
-std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-kfc_fft(nfft, fin, fout);
-std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+clock_t begin = clock();
+for (int i = 0; i < TIMES; i ++) {
+	kfc_fft(nfft, fin, fout);
+}
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
+std::cout << "AccTime: 0" << std::endl;
 write_output(nfft, fin, fout);
 }

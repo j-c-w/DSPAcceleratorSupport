@@ -5,6 +5,7 @@
 #include<clib/synthesizer.h>
 #include<chrono>
 #include<iostream>
+#include<time.h>
 extern "C" {
 #include "self_contained_code.c"
 }
@@ -87,9 +88,11 @@ in_vec.push_back(in_inner);
 }
 Meow_FFT_Complex *in = &in_vec[0];
 Meow_FFT_Complex out[data->N];
-std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-meow_fft(data, in, out);
-std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+clock_t begin = clock();
+for (int i = 0; i < TIMES; i ++) {
+	meow_fft(data, in, out);
+}
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 write_output(data, in, out);
 }

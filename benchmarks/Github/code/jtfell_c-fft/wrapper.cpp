@@ -59,10 +59,12 @@ x_vec.push_back(x_inner);
 }
 complex *x = &x_vec[0];
 int N = input_json["N"];
-std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-complex * returnv = DFT_naive(x, N);
-std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+clock_t begin = clock();
+for (int i = 0; i < TIMES; i ++) {
+	complex * returnv = DFT_naive(x, N);
+}
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << AcceleratorTotalNanos << std::endl;
 write_output(x, N, returnv);
 }

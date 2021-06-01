@@ -45,9 +45,10 @@ twiddle_factors_vec.push_back(twiddle_factors_inner);
 float *twiddle_factors = &twiddle_factors_vec[0];
 int n = input_json["n"];
 float output[n];
-std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+clock_t begin = clock();
 fft(input, output, twiddle_factors, n);
-std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
+std::cout << "AccTime: 0" << std::endl;
 write_output(input, output, twiddle_factors, n);
 }

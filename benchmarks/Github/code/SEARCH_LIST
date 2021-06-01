@@ -1,28 +1,28 @@
-https://github.com/FFTW/fftw3 --- Unsupported. Code too complex for me to find the correct structs --- expect them to be complicated however. (would only be valid in context.
-https://github.com/xiahouzuoxin/fft --- Valid
-https://github.com/simonwunderlich/FFT_eval --- NotFFT. Just a visualizer, doesn't execute any FFTs
-https://github.com/mborgerding/kissfft --- Valid. (Using the simple API.  Otherwise, may be valid in context.)
-https://github.com/alexbw/iPhoneFFT --- Not Valid --- I think this is in objective-C, but Valid-in-context Unlikely to be able to support out-of-context, and provides no tests that could be used as in-context references. (input sparsity).
-https://github.com/stg/SYLT-FFT --- Unsupported.  IntegerFFT, so may also have speedup/accuracy issues
-https://github.com/Lauszus/fftw3-android --- NotFFT. (Just an FFTW wrapper).
-https://github.com/jeremyfix/FFTConvolution --- Unsupported 2DFFT (For 2D) -- a wrapper around FFTW, but provides enough context for compilation.  
-https://github.com/cpuimage/FFTResampler --- Valid.
-https://github.com/fakufaku/esp32-fft --- Likely Valid.  Takes twiddle factors as input.  Interleaved input values. May be challenging.
-https://github.com/undees/fftw-example --- Unsupported. Requires understanding FFTW structs --- provides enough context to execute if you do understand the FFTW structs however.
-https://github.com/JodiTheTigger/meow_fft --- Valid.
-https://github.com/slowjud/FFT --- Valid but has unknown header that I can't find.  Novel structure for storing inputs.
-https://github.com/extemporelang/kiss_fft --- Clone of kissfft above.
-https://github.com/jtfell/c-fft --- Valid for some functions.  Provides too much input sparsity on others.
-https://github.com/adafruit/Adafruit_ZeroFFT --  Integer FFT
-https://github.com/FFmpeg/FFmpeg -- Valid after preprocessor generates the functions.
-https://github.com/Themaister/muFFT --- Valid.  In-context only, very complicated struct used as a plan.
-https://github.com/MrJBSwe/fft_lcd --- No implementation of an FFT.  Does call an FFT, but unclear where the source for that FFT is.
-https://github.com/BanTheRewind/Cinder-KissFft --- Clone of KissFFT.
-https://github.com/cpmech/gosl --- Written in Go not C.
-https://github.com/swharden/FftSharp --- Written for .Net in C#
-https://github.com/ibireme/YYBenchmarkFFT --- This is a benchmark suite of other FFT implementations.
-https://github.com/KevZhuArt/FFT-FastLED --- Integer FFT
-https://github.com/swharden/FftSharp --- Written in C# I think.
-https://github.com/gpu-fftw/gpu_fftw --- Seems like it should work --- might need specialized hardware to run properly though.
-https://github.com/liscio/fft/ --- Supported
-https://github.com/marton78/pffft --- Supported in context
+https://github.com/FFTW/fftw3:Complex Code:Unsupported. Code too complex for me to find the correct structs --- expect them to be complicated however. (would only be valid in context.
+https://github.com/xiahouzuoxin/fft: Supported: --- Valid
+https://github.com/simonwunderlich/FFT_eval: Not 1D FFT:  --- NotFFT. Just a visualizer, doesn't execute any FFTs
+https://github.com/mborgerding/kissfft: Supported:  --- Valid. (Using the simple API.  Otherwise, may be valid in context.)
+https://github.com/alexbw/iPhoneFFT: Not C/C++: --- Not Valid --- I think this is in objective-C, but Valid-in-context Unlikely to be able to support out-of-context, and provides no tests that could be used as in-context references. (input sparsity).
+https://github.com/stg/SYLT-FFT: Fixed-Point FFT: --- Unsupported.  IntegerFFT, so may also have speedup/accuracy issues
+https://github.com/Lauszus/fftw3-android: Not 1D FFT: --- NotFFT. (Just an FFTW wrapper).
+https://github.com/jeremyfix/FFTConvolution: Not 1D FFT: --- Unsupported 2DFFT (For 2D) -- a wrapper around FFTW, but provides enough context for compilation.
+https://github.com/cpuimage/FFTResampler: Supported:  --- Valid.
+https://github.com/fakufaku/esp32-fft: Broken: --- Likely Valid.  Takes twiddle factors as input.  Interleaved input values. May be challenging.
+https://github.com/undees/fftw-example: Clone: --- Unsupported. Requires understanding FFTW structs --- provides enough context to execute if you do understand the FFTW structs however.
+https://github.com/JodiTheTigger/meow_fft: Support In-Progress: --- Valid.
+https://github.com/slowjud/FFT: Broken: --- Valid but has unknown header that I can't find.  Novel structure for storing inputs.
+https://github.com/extemporelang/kiss_fft: Clone: --- Clone of kissfft above.
+https://github.com/jtfell/c-fft: Supported: --- Valid for some functions.  Provides too much input sparsity on others.
+https://github.com/adafruit/Adafruit_ZeroFFT: Fixed-Point FFT: --  Integer FFT
+https://github.com/FFmpeg/FFmpeg: Fixed-Point FFT: -- Valid after preprocessor generates the functions.
+https://github.com/Themaister/muFFT : Supported: --- Valid.  In-context only, very complicated struct used as a plan.
+https://github.com/MrJBSwe/fft_lcd :Not 1D FFT: --- No implementation of an FFT.  Does call an FFT, but unclear where the source for that FFT is.
+https://github.com/BanTheRewind/Cinder-KissFft :Clone: --- Clone of KissFFT.
+https://github.com/cpmech/gosl :Not C/C++: --- Written in Go not C.
+https://github.com/swharden/FftSharp:Not C/C++: --- Written for .Net in C#
+https://github.com/ibireme/YYBenchmarkFFT:Not 1D FFT: --- This is a benchmark suite of other FFT implementations.
+https://github.com/KevZhuArt/FFT-FastLED: Fixed-Point FFT: --- Integer FFT
+https://github.com/swharden/FftSharp:Not C/C++: --- Written in C# I think.
+https://github.com/gpu-fftw/gpu_fftw :Supported:--- Seems like it should work --- might need specialized hardware to run properly though.
+https://github.com/liscio/fft/ :Supported:--- Supported
+https://github.com/marton78/pffft :Supported:--- Supported in context

@@ -1,7 +1,7 @@
 {
 	"livein": ["input", "twiddle_factors", "n"],
 	"liveout": ["output"],
-	"execcmd": "../benchmarks/Github/code/fakufaku_esp32/exec",
+	"execcmd": "../benchmarks/Github/code/fakufaku_esp32-fft/exec",
 	"funname": "fft",
 	"funargs": ["input", "output", "twiddle_factors", "n"],
 	"typemap": {

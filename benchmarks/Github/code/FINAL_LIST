@@ -2,6 +2,6 @@ Following is a list of benchmarks from the search list that were deemed suitable
 xiahouzouxin_fft: None
 mborgerding_kissfft: None
 cpuimage_FFTResampler: None
-fakufaku_esp32-fft: In-Context Data, struct inference (2N array length)
-JodiTheTigger_meow_fft: In-Context Data, Null Arrays, Pointer Support
 jtfell_c-fft: None
+fakufaku_esp32-fft: Seems buggy (?)
+JodiTheTigger_meow_fft: In-Context Data, Null Arrays, Pointer Support

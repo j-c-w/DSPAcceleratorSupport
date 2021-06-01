@@ -141,6 +141,7 @@ void fft_primitive(float *x, float *y, int n, int stride, float *twiddle_factors
   // End condition, stop at n=2 to avoid one trivial recursion
   if (n == 2)
   {
+	  std::cout << "Stride " << stride << std::endl;
     y[0] = x[0] + x[stride];
     y[1] = x[1] + x[stride + 1];
     y[2] = x[0] - x[stride];

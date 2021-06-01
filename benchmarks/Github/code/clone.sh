@@ -13,6 +13,9 @@ for inffile in $(find -name INFO); do
 	# Now, get out the right region.
 	if [[ -f ../EXTRACT ]]; then
 		../../extractor.sh ../EXTRACT > ../self_contained_code.c
+		if [[ -f ../EXTRACT_LIBRARY ]]; then
+			../../extractor.sh ../EXTRACT_LIBRARY > ../context_code.c
+		fi
 
 		cd ..
 		make
