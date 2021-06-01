@@ -32,14 +32,14 @@ let generate_generic_tmp () =
 let accelerator_timer_functions = "
 
 clock_t AcceleratorStart;
-long long AcceleratorTotalNanos = 0;
+clock_t AcceleratorTotalNanos = 0;
 void StartAcceleratorTimer() {
 	AcceleratorStart = clock();
 }
 
 void StopAcceleratorTimer() {
 	AcceleratorTotalNanos +=
-		(double) ((clock()) - AcceleratorStart) / CLOCKS_PER_SEC;
+		(clock()) - AcceleratorStart;
 }
 "
 
@@ -652,7 +652,7 @@ let cxx_main_function options (iospec: iospec) dump_intermediates returntype (pr
     let timing_print_code =
         if options.generate_timing_code then
             "std::cout << \"Time: \" << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
-std::cout << \"AccTime: \" << AcceleratorTotalNanos << std::endl;"
+std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;"
         else
 			""
     in
