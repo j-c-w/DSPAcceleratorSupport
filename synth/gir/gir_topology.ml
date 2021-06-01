@@ -84,6 +84,8 @@ let rec unwrap_arrays ty =
 	match ty with
 	| Array(subty, dim) ->
 			unwrap_arrays subty
+	| Pointer(sty) ->
+			unwrap_arrays sty
 	| other -> other
 
 let rec get_ud_type typemap ud_name =
@@ -173,6 +175,8 @@ let rec get_uses_defining_type typ =
 					)
             | EmptyDimension -> raise (TopologicalSortException "Don't think this is possible?") in
             this_dim @ (get_uses_defining_type subtyp)
+	| Pointer(subty) ->
+			get_uses_defining_type subty
     | _ -> []
 
 let rec compute_use_def_assign_for_expr expr: use_def_info_expr =

@@ -70,6 +70,8 @@ and compare_elts options fcomp v1 v2 =
 			(List.for_all (List.zip_exn vs1 vs2) (fun (i1, i2) ->
 				compare_elts options fcomp i1 i2
 			))
+	| PointerV(vs1), PointerV(vs2) ->
+			compare_elts options fcomp vs1 vs2
     | StructV(n, vls), StructV(n2, vls2) ->
 			((String.compare n n2) = 0) && (compare options fcomp vls vls2)
 	| _, _ -> false

@@ -10,6 +10,36 @@ open Range_checker;;
 
 exception PostSynthesizerException of string
 
+let rec is_configuration_type typ =
+    match typ with
+    | Bool -> true
+    | Int16 -> true
+    | Int32 -> true
+    | Int64 -> true
+    | UInt16 -> true
+    | UInt32 -> true
+    | UInt64 -> true
+    (* I think this should be domain-specific, or
+    perhaps range specific?  E.g. in the FFT domain,
+    individual floats are highly likely to be configuration
+    parameters. *)
+    | Float16 -> true
+    | Float32 -> true
+    | Float64 -> true
+    | Unit -> false
+    | Array(_, _) -> false
+    | Pointer(st) ->
+            is_configuration_type st
+    (* FIXME --- need to probably support passing
+    this if it has configuration parameters within it. *)
+    (* TODO --- ^^ that is probably not the best fix,
+    what we should really do is traverse the struct, stop
+    at any arrays, and just pass in refs to the
+    individual components of the struct we thing are config
+    parameters (e.g. array lengths).  *)
+    | Struct(name) -> false
+    | Fun(_, _) -> false
+
 (* Get the parameters that seem likely to be configuration
    parameters, e.g. not arrays of things, that are
    values, and nothing liveout, since that'll also
@@ -24,32 +54,7 @@ let configuration_parameters_for typemap (iospec: iospec) (apispec: apispec) =
 	let deadout = Utils.set_difference (Utils.string_equal) iospec.livein iospec.liveout in
 	let config_deadout = List.filter deadout (fun deadvar ->
 		let typ = Hashtbl.find_exn typemap.variable_map deadvar in
-		match typ with
-		| Bool -> true
-		| Int16 -> true
-		| Int32 -> true
-		| Int64 -> true
-		| UInt16 -> true
-		| UInt32 -> true
-		| UInt64 -> true
-		(* I think this should be domain-specific, or
-		perhaps range specific?  E.g. in the FFT domain,
-		individual floats are highly likely to be configuration
-		parameters. *)
-		| Float16 -> true
-		| Float32 -> true
-		| Float64 -> true
-		| Unit -> false
-		| Array(_, _) -> false
-		(* FIXME --- need to probably support passing
-		this if it has configuration parameters within it. *)
-		(* TODO --- ^^ that is probably not the best fix,
-		what we should really do is traverse the struct, stop
-		at any arrays, and just pass in refs to the
-		individual components of the struct we thing are config
-		parameters (e.g. array lengths).  *)
-		| Struct(name) -> false
-		| Fun(_, _) -> false
+        is_configuration_type typ
 	) in
 	config_deadout
 

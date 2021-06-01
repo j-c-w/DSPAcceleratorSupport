@@ -57,6 +57,7 @@ let rec cxx_type_signature_synth_type_to_string typ =
     | Float32 -> "float"
     | Float64 -> "double"
     | Array(stype, _) -> (cxx_type_signature_synth_type_to_string stype) ^ " *"
+	| Pointer(stype) -> (cxx_type_signature_synth_type_to_string stype) ^ " *"
     | Unit -> "void"
     (* Assume not passed as pointer.   May need to change. *)
     | Struct(sname) -> sname
@@ -76,6 +77,7 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
     | Float32 -> "float"
     | Float64 -> "double"
     | Array(stype, _) -> "std::vector<" ^ (cxx_vectors_type_signature_synth_type_to_string stype) ^ ">"
+	| Pointer(stype) -> (cxx_vectors_type_signature_synth_type_to_string stype) ^ "*"
     | Unit -> "void"
     (* Again, assume not as pointer *)
     | Struct(sname) -> sname
@@ -134,6 +136,9 @@ let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ dimratio
                an array.
                 *)
             prefix ^ "*", subsize ^ "*" ^ dim, true
+	| Pointer(stype) ->
+			let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix stype dimratio_modifier in
+			prefix ^ "*", subsize, true
     | othertyp ->
             let tyname = cxx_type_signature_synth_type_to_string othertyp in
             tyname, "sizeof(" ^ tyname ^ ")" ^ dimratio_modifier, false
@@ -410,6 +415,14 @@ let rec generate_assign_to typemap assname fieldname typ json_ref =
 			let post_loop = artypstr ^ " *" ^ assname ^ " = &" ^ vecname ^ "[0];" in
 			resdef ^ "\n" ^ loop_header ^ "\n" ^ recursed_code ^ "\n" ^ in_loop_assign ^ "\n" ^ end_loop ^
 			"\n" ^ post_loop
+	| Pointer(stype) ->
+			let pointer_typ_str = cxx_type_signature_synth_type_to_string stype in
+			let sub_variable = assname ^ "_pointer" in
+			let recursed_code = generate_assign_to typemap sub_variable None stype json_ref in
+			(* Pointers obviously aren't stored as such in JSON files.   But
+			 they can be stack allocated here. *)
+			recursed_code ^ "\n" ^
+			pointer_typ_str ^ "* " ^ assname ^ " = &" ^ sub_variable ^ ";"
 	| Struct(sname) ->
 			(* Get the members we need to fill, and
 			   then get the values.  *)
@@ -520,6 +533,14 @@ and generate_output_assign options typemap typ out out_prefix =
 		(String.concat ~sep:"\n" [
 			vecres; assloop_header; newout_assign; assbody; inloopassign; loop_end
 		], outtmp)
+	| Pointer(styp) ->
+		let ptyp = cxx_vectors_type_signature_synth_type_to_string styp in
+		let outtmp = generate_out_tmp() in
+		let outtmp_assign = ptyp ^ " " ^ outtmp ^ " = " ^ "*" ^ out ^ ";" in
+		let sub_ass, assresvar = generate_output_assign options typemap styp outtmp out_prefix in
+		(String.concat ~sep:"\n" [
+			outtmp_assign; sub_ass
+		], assresvar)
 	| Struct(n) ->
 		let json_tmp = generate_out_tmp () in
 		let defn = "json " ^ json_tmp ^ ";" in

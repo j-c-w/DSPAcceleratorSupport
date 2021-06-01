@@ -31,6 +31,7 @@ let rec get_dependencies_for typemap typ =
 	| Float16 -> []
 	| Float32 -> []
 	| Float64 -> []
+	| Pointer(tp) -> get_dependencies_for typemap tp
 	| Array(tp, dims) ->
 			let this_deps = match dims with
 			| Dimension(x) -> (match x with

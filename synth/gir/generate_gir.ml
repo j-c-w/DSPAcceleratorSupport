@@ -414,6 +414,8 @@ let rec type_topo_dependencies (nam, typ) =
 			let _, subdeps = type_topo_dependencies (nam, subtyp) in
 			(* let () = Printf.printf "For name %s have deps %s \n " (name_reference_to_string nam) (String.concat (List.map (all_dimvars_from dimtype)name_reference_to_string )) in *)
 			(nam, (all_dimvars_from dimtype) @ (subdeps))
+	| Pointer(sty) ->
+			type_topo_dependencies (nam, sty)
 	(* All non-array types are not dependent types
 		in the languages we are currently supporting.  *)
 	| _ -> (nam, [])

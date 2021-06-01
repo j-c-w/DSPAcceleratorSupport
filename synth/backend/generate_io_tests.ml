@@ -83,6 +83,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
     | Float64 -> Float64V(generate_float_within_range rangemap name_string)
     | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
     | Unit -> UnitV
+	| Pointer(stype) -> PointerV(generate_inputs_for options rangemap values_so_far name_string stype structure_metadata)
     (* TODO --- Probably need to
        make a distinction between square and non
        square arrays.  *)
@@ -199,6 +200,8 @@ let rec value_to_string value =
     | ArrayV(vals) ->
             let vals = List.map vals value_to_string in
             "[" ^ (String.concat ~sep:", " vals) ^ "]"
+	| PointerV(v) ->
+			(value_to_string v) ^ "*"
     | StructV(n, valuetbl) ->
             io_test_to_string (Hashtbl.keys valuetbl) valuetbl
     | FunV(_) ->

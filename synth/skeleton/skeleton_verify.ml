@@ -102,33 +102,38 @@ let single_bind_opt_check_sets (binds: single_variable_binding_option_group list
 let rec get_names typemap classmap x =
     List.concat (List.map x (fun x ->
 		let typ = Hashtbl.find_exn typemap x in
-		match typ with
-		| Struct(nm) ->
-				let cmap = Hashtbl.find_exn classmap nm in
-				let mems = get_class_fields cmap in
-				let tmap = get_class_typemap cmap in
-				let nms = get_names tmap classmap mems in
-				List.map nms (fun sub_nm ->
-					match sub_nm with
-					| AnonymousName -> Name(x)
-					| Name(_) -> StructName([Name(x); sub_nm])
-					| StructName(nms) -> StructName((Name(x)) :: nms)
-				)
-		| Array(Struct(nm), _) ->
-				let cmap = Hashtbl.find_exn classmap nm in
-				let mems = get_class_fields cmap in
-				let tmap = get_class_typemap cmap in
-				let nms = get_names tmap classmap mems in
-				List.map nms (fun sub_nm ->
-					match sub_nm with
-					| AnonymousName -> Name(x)
-					| Name(_) -> StructName([Name(x); sub_nm])
-					| StructName(nms) -> StructName((Name(x)) :: nms)
-				)
-		| other ->
-				[Name(x)]
+		names_from_type typemap classmap x typ
 	)
 	)
+
+and names_from_type typemap classmap x typ =
+	match typ with
+	| Struct(nm) ->
+			let cmap = Hashtbl.find_exn classmap nm in
+			let mems = get_class_fields cmap in
+			let tmap = get_class_typemap cmap in
+			let nms = get_names tmap classmap mems in
+			List.map nms (fun sub_nm ->
+				match sub_nm with
+				| AnonymousName -> Name(x)
+				| Name(_) -> StructName([Name(x); sub_nm])
+				| StructName(nms) -> StructName((Name(x)) :: nms)
+			)
+	| Array(Struct(nm), _) ->
+			let cmap = Hashtbl.find_exn classmap nm in
+			let mems = get_class_fields cmap in
+			let tmap = get_class_typemap cmap in
+			let nms = get_names tmap classmap mems in
+			List.map nms (fun sub_nm ->
+				match sub_nm with
+				| AnonymousName -> Name(x)
+				| Name(_) -> StructName([Name(x); sub_nm])
+				| StructName(nms) -> StructName((Name(x)) :: nms)
+			)
+	| Pointer(sty) ->
+			names_from_type typemap classmap x sty
+	| other ->
+			[Name(x)]
 
 let verify_pre typemap (iospec: iospec) (apispec: apispec) pre_binding_list =
     let () = check_all_defined (get_names typemap.variable_map typemap.classmap apispec.livein) pre_binding_list in

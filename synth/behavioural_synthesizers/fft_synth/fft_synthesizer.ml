@@ -408,26 +408,31 @@ and eval_variable v (inputs: (string, synth_value) Hashtbl.t): synth_value =
 (* This is really just a shitty heuristic, and it's just crap code
 too.  Want to think of a better way of doing this.  *)
 let rec split_variables classmap typemap variables =
+	let rec add_variable_to_list (b, a, i, f, s) t v =
+		match t with
+		| Bool -> (v :: b, a, i, f, s)
+		| Int16 -> (b, a, v :: i, f, s)
+		| Int32 -> (b, a, v :: i, f, s)
+		| Int64 -> (b, a, v :: i, f, s)
+		| UInt16 -> (b, a, v :: i, f, s)
+		| UInt32 -> (b, a, v :: i, f, s)
+		| UInt64 -> (b, a, v :: i, f, s)
+		| Float16 -> (b, a, i, v :: f, s)
+		| Float32 -> (b, a, i, v :: f, s)
+		| Float64 -> (b, a, i, v :: f, s)
+		| Struct(nm) -> (b, a, i, f, (v, nm) :: s)
+		| Array(subty, _) ->
+				(b, v :: a, i, f, s)
+		| Pointer(subty) ->
+				add_variable_to_list (b, a, i, f, s) subty v
+		| Unit -> raise (FFTSynth "Unit not supproted")
+		| Fun(_, _) -> raise (FFTSynth "Higher order functions not supported")
+	in
     (* Get the type of each variable.  *)
     let types = List.map variables (fun v -> Hashtbl.find_exn typemap (name_reference_to_string v)) in
 	let b_vars, arr_vars, i_vars, f_vars, s_vars = List.fold (List.zip_exn types variables) ~init:([], [], [], [], [])
         ~f:(fun (b, a, i, f, s) -> fun (t, v) ->
-            match t with
-			| Bool -> (v :: b, a, i, f, s)
-            | Int16 -> (b, a, v :: i, f, s)
-            | Int32 -> (b, a, v :: i, f, s)
-            | Int64 -> (b, a, v :: i, f, s)
-			| UInt16 -> (b, a, v :: i, f, s)
-			| UInt32 -> (b, a, v :: i, f, s)
-			| UInt64 -> (b, a, v :: i, f, s)
-            | Float16 -> (b, a, i, v :: f, s)
-            | Float32 -> (b, a, i, v :: f, s)
-            | Float64 -> (b, a, i, v :: f, s)
-            | Struct(nm) -> (b, a, i, f, (v, nm) :: s)
-            | Array(subty, _) ->
-					(b, v :: a, i, f, s)
-            | Unit -> raise (FFTSynth "Unit not supproted")
-            | Fun(_, _) -> raise (FFTSynth "Higher order functions not supported")
+			add_variable_to_list (b, a, i, f, s) t v
         ) in
     let struct_name_types = List.map s_vars (fun (varname, structname) ->
 		get_struct_variables classmap varname structname

@@ -13,6 +13,7 @@
 %token FLOAT32
 %token FLOAT64
 %token ARRAY
+%token POINTER
 %token UNIT
 %token LPAREN
 %token RPAREN
@@ -48,4 +49,5 @@ tsub:
  | ARRAY; LPAREN; tsub; RPAREN { Array($3, EmptyDimension) };
  | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, Dimension(DimConstant($5))) };
  | ARRAY; LPAREN; tsub; HASH; IDENT; RPAREN { Array($3, Dimension(DimVariable(Name($5)))) }
+ | POINTER; LPAREN; tsub; RPAREN { Pointer($3) };
  | IDENT {Struct($1)}

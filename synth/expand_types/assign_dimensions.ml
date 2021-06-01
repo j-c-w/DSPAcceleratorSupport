@@ -8,7 +8,7 @@ exception AssignDimensionsException of string
 
 let debug_find_exn tbl name =
 	(* Printf.printf "%s%s\n" "Looking for name " name; *)
-	Hashtbl.find_exn tbl name
+	Hashtbl.find_exn tbl.variable_map name
 
 let lookup tbl names =
 	List.map names (fun name ->
@@ -18,9 +18,11 @@ let lookup tbl names =
 let valid_lenvar tbl name =
     match name with
     | Name(varname) ->
-        let var = debug_find_exn tbl varname in
-		is_integer_type var
-    | StructName(_) -> raise (AssignDimensionsException "Didn't know how to deal with a struct name here")
+			let var = debug_find_exn tbl varname in
+			is_integer_type var
+    | StructName(sname) ->
+			let typ = type_of_name_reference tbl name in
+			is_integer_type typ
     | AnonymousName -> raise (AssignDimensionsException "Don't know how to deal with anon name here")
 
 let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_type list=
@@ -79,9 +81,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 (* If there is a struct being passed, then we need to handle
    each of the subarguments of the struct.  *)
 let rec expand_and_wrap_names typemap nms =
-	List.concat (
-		List.map nms (fun nm ->
-			let typ = Hashtbl.find_exn typemap.variable_map nm in
+	let rec expand_type typemap typ nm =
 			match typ with
 			| Struct(struct_name) ->
 					let struct_info = Hashtbl.find_exn typemap.classmap struct_name in
@@ -94,9 +94,16 @@ let rec expand_and_wrap_names typemap nms =
 					List.map members (fun mem ->
 						name_reference_concat (Name(struct_name)) mem
 					)
+			| Pointer(sty) ->
+					expand_type typemap sty nm
 			| other ->
 					(* All other types can just be themselves.  *)
 					[Name(nm)]
+	in
+	List.concat (
+		List.map nms (fun nm ->
+			let typ = Hashtbl.find_exn typemap.variable_map nm in
+			expand_type typemap typ nm
 		)
 	)
 
@@ -170,7 +177,7 @@ let assign_dimensions (options: options) typemap inps =
 		let () = Printf.printf "Have the following top level names to choose dimensions from: %s \n"
 			(name_reference_list_to_string top_level_wrapped_names)
 		in () else () in
-	let res_typemaps = List.map inps (assign_dimensions_to_type options typemap.variable_map top_level_wrapped_names) in
+	let res_typemaps = List.map inps (assign_dimensions_to_type options typemap top_level_wrapped_names) in
     (* Also preserve the other elements.  *)
     let other_elements = carry_other_elements typemap.variable_map inps in
     let () = if options.debug_assign_dimensions then
@@ -182,12 +189,12 @@ let assign_dimensions (options: options) typemap inps =
     (* Now, do all the classes.  *)
     let classnames = Hashtbl.keys typemap.classmap in
 	let res_classmaps = (List.map classnames (fun cname ->
-        let metadata = debug_find_exn typemap.classmap cname in
+        let metadata = Hashtbl.find_exn typemap.classmap cname in
         let cls_typemap = get_class_typemap metadata in
         let cls_members = get_class_members metadata in
 		let sub_typemap = { typemap with variable_map = cls_typemap } in
         let wrapped_cls_members = expand_and_wrap_names sub_typemap cls_members in
-		let tps_with_dims = List.map cls_members (assign_dimensions_to_type options cls_typemap wrapped_cls_members) in
+		let tps_with_dims = List.map cls_members (assign_dimensions_to_type options sub_typemap wrapped_cls_members) in
 
 		let () = if options.debug_assign_dimensions then
 			let () = Printf.printf "For class %s, \n" (cname) in

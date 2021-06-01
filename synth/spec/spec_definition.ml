@@ -20,6 +20,7 @@ type synth_type =
 	| Int16 | Int32 | Int64
 	| UInt16 | UInt32 | UInt64
 	| Float16 | Float32 | Float64
+	| Pointer of synth_type
 	| Array of synth_type * dimension_type
 	| Unit
 	| Struct of string
@@ -47,6 +48,7 @@ type synth_value =
     | Float32V of float
     | Float64V of float
     | UnitV
+	| PointerV of synth_value
     | ArrayV of synth_value list
     | StructV of string * (string, synth_value) Hashtbl.t
     | FunV of string

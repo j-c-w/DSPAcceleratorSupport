@@ -187,6 +187,8 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
             let subtyps = generate_typesets classmap subtyp None in
 			(* This gives the array the name, so 'x' belongs to '[]'.  *)
 			SArray(name_from_opt inpname, subtyps, lenvar)
+	| Pointer(styp) ->
+			generate_typesets classmap styp inpname
 	| Unit -> raise (SkeletonGenerationException "Can't Unit typesets")
 	| Fun(_, _) -> raise (SkeletonGenerationException "Cannot generate typesets from a fun")
 	(* Everything else goes to itself.  *)

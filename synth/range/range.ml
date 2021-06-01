@@ -296,6 +296,7 @@ let rec synth_type_to_range_type stype =
 	| Float32 -> RangeFloatType
 	| Float64 -> RangeFloatType
 	| Bool -> RangeBoolType
+	| Pointer(sty) -> synth_type_to_range_type sty
 	| Array(sty, dim) ->
 			RangeArrayType(synth_type_to_range_type sty)
 	| _ -> raise (RangeError "Unsupported range type")
@@ -314,6 +315,8 @@ let rec item_from_synth_value svalue =
 		| Float32V(v) -> Some(RangeFloat(v))
 		| Float64V(v) -> Some(RangeFloat(v))
 		| BoolV(v) -> Some(RangeBool(v))
+		| PointerV(v) ->
+				item_from_synth_value v
 		| ArrayV(v) ->
                 (
 				match v with

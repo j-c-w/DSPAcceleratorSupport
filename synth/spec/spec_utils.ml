@@ -105,6 +105,7 @@ let rec synth_type_to_string t =
     | Float16 -> "float16"
     | Float32 -> "float32"
     | Float64 -> "float64"
+	| Pointer(tp) -> "pointer(" ^ (synth_type_to_string tp) ^ ")"
     | Array(x, dims) -> "array(" ^ (synth_type_to_string x) ^ ": with dims " ^
         (dimension_type_to_string dims) ^ ")"
     | Struct(name) -> name
@@ -123,6 +124,8 @@ let rec synth_type_equal s1 s2 =
 	| Float16, Float16 -> true
 	| Float32, Float32 -> true
 	| Float64, Float64 -> true
+	| Pointer(tp1), Pointer(tp2) ->
+			(synth_type_equal tp1 tp2)
 	| Array(x, dms), Array(x2, dms2) ->
 			(synth_type_equal x x2) &&
 			(dimension_type_equal dms dms2)
@@ -147,6 +150,8 @@ let rec synth_value_to_string value =
     | Float32V(v) -> string_of_float v
     | Float64V(v) -> string_of_float v
     | UnitV -> "Unit"
+	| PointerV(v) ->
+			"pointer(" ^ (synth_value_to_string v) ^ ")"
     | ArrayV(vs) ->
             "[" ^ (String.concat ~sep:", " (List.map vs synth_value_to_string)) ^ "]"
     | StructV(name, _) ->
@@ -172,6 +177,8 @@ let rec synth_value_equal c1 c2 =
 	| Float32V(v1), Float32V(v2) -> Utils.float_equal v1 v2
 	| Float64V(v1), Float64V(v2) -> Utils.float_equal v1 v2
 	| UnitV, UnitV -> true
+	| PointerV(vp1), PointerV(vp2) ->
+			synth_value_equal vp1 vp2
 	| ArrayV(vs1), ArrayV(vs2) ->
 			(
 			match List.zip vs1 vs2 with
@@ -218,6 +225,8 @@ let rec synth_value_has_type v t =
 	| Float64V(_), Float64 -> true
 	| BoolV(_), Bool -> true
 	| UnitV, Unit -> true
+	| PointerV(subv), Pointer(v) ->
+			synth_value_has_type subv v
 	| ArrayV(subvals), Array(sty, dim) ->
 			let validdim =
 				match dim with
@@ -319,6 +328,22 @@ let name_reference_base_name nr =
 	| Name(_) -> nr
 	| StructName(x :: xs) -> x
 	| StructName([]) -> raise (SpecException "can't have empty strucname")
+
+let rec type_of_name_reference (typemap: typemap) nr =
+	match nr with
+	| Name(n) -> Hashtbl.find_exn typemap.variable_map n
+	| StructName([]) -> raise (SpecException "No type for empty struct name")
+	| StructName([Name(x)]) ->
+			Hashtbl.find_exn typemap.variable_map x
+	(* Assume well formatted names, or this will crash *)
+	| StructName(Name(x) :: xs) ->
+			let updated_typemap = {
+				typemap with
+				variable_map = (get_class_typemap (Hashtbl.find_exn typemap.classmap (x)))
+			} in
+			type_of_name_reference updated_typemap (StructName(xs))
+	| StructName(_) -> raise (SpecException "Ill-formatted")
+	| AnonymousName -> raise (SpecException "no type for anon name")
 
 let is_float_type typ =
 	match typ with
