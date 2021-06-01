@@ -13,7 +13,7 @@ def load_from_file(fname):
     times = []
     with open(fname) as f:
         for line in f.readlines():
-            time=int(line.strip())
+            time=float(line.strip())
             times.append(time)
 
     # Get a median.  TODO -- get CI.
@@ -27,30 +27,41 @@ def get_lines_from(set):
 
     return x, y
 
-def plot(set1, set2):
-    x, y = get_lines_from(set1)
-    x2, y2 = get_lines_from(set2)
-
+def plot(lines, names, style):
+    plt.clf()
+    plt.cla()
     fix, ax = plt.subplots()
     ax.set_xscale('log', basex=2)
-    plt.plot(x, y, label="Original")
-    plt.plot(x2, y2, label="FFTW")
-    plt.ylabel("Running Time (ns)")
-    plt.xlabel("Input size")
+    ax.set_yscale('log', basey=10)
+    for lineset, name in zip(lines, names):
+        x, y = get_lines_from(lineset)
+        plt.plot(x, y, label=name)
+        minx, maxx = min(x), max(x)
+
+    if style == 'speedup':
+        plt.plot([minx, maxx], [1.0, 1.0], label="Speedup Threshold")
+        plt.ylabel("Speedup Ratio (log) ")
+        plt.title("Speed Comparison Across Different Sizes")
+        plt.xlabel("Input size")
+    elif style == 'overhead':
+        plt.ylabel("Overhead (log)")
+        plt.title("Overhead of FACC-Generated Code Across Different Sizes")
+        plt.xlabel("Input size")
+
     plt.legend()
-    plt.title("Speed Comparison Across Different Sizes")
 
-    plt.savefig("output.eps")
+    plt.savefig(style + "_output.eps")
+    plt.close()
 
-def load_result_maps(folder):
-    files = glob.glob(folder + "/*.json_out")
+def load_result_maps(base_folder, folder, postfix):
+    files = glob.glob(base_folder + "/" + folder + "/*." + postfix)
     results = {}
 
     for file in files:
         # get the number:
         number = parse_filename(file)
         values = load_from_file(file)
-        results[number] = values
+        results[number] = np.array(values)
 
     return results
 
@@ -59,10 +70,37 @@ if __name__ == "__main__":
 
     parser.add_argument("OriginalResultsFolder")
     parser.add_argument("AcceleratedResultsFolder")
+    parser.add_argument("Folders", nargs='+')
 
     args = parser.parse_args()
 
-    v1 = load_result_maps(args.OriginalResultsFolder)
-    v2 = load_result_maps(args.AcceleratedResultsFolder)
+    lines = []
+    names = []
+    for folder in args.Folders:
+        v1 = load_result_maps(folder, args.OriginalResultsFolder, "json_out")
+        v2 = load_result_maps(folder, args.AcceleratedResultsFolder, "json_out")
+        res = {}
+        for k in v1.keys():
+            res[k] = v1[k] / v2[k]
 
-    plot(v1, v2)
+        lines.append(res)
+        names.append(folder)
+
+    plot(lines, names, 'speedup')
+
+    # Plot the overhead graph
+    lines = []
+    names = []
+    for folder in args.Folders:
+        v1 = load_result_maps(folder, args.AcceleratedResultsFolder, "json_out")
+        v2 = load_result_maps(folder, args.AcceleratedResultsFolder, "json_acctime_out")
+        res = {}
+        for k in v1.keys():
+            # Do the subtraction because v2 actually measures the time /in/ the accelerator,
+            # which is the inverse of the overhead.
+            res[k] = (v1[k] - v2[k]) / v1[k]
+
+        lines.append(res)
+        names.append(folder)
+
+    plot(lines, names, 'overhead')

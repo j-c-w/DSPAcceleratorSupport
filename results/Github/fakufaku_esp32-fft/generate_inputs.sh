@@ -13,7 +13,7 @@ mkdir -p inputs
 contents="2.510045379820, 21.72443302820"
 typeset -a inputs
 inputs=("$contents")
-for i in $(seq 1 $(( $1 - 1))); do
+for i in $(seq 1 $(( $1 - 1 ))); do
 	inputs+=(",$contents")
 done
 

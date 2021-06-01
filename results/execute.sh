@@ -8,7 +8,7 @@ if [[ $# -ne 1 ]]; then
 	exit 1
 fi
 
-TIMES=10
+TIMES=2
 files=$(find -name $1)
 
 for file in ${files[@]}; do
@@ -28,16 +28,22 @@ for file in ${files[@]}; do
 	orig_res_folder=${1}_orig_results
 	rm -rf $orig_res_folder
 	results=$(mkdir -p $orig_res_folder)
+	echo "Results in $rfolder/${file}_out"
+	echo "Time spent in accelerator in $rfolder/${file}_accelerator_time_out"
 
 	for file in ${ifiles[@]}; do
 		for t in $(seq 1 $TIMES); do
 			# Get the time out from the executable.
-			eval ./$execname inputs/$file | grep -e "Time:" | cut -d":" -f2- >> $rfolder/${file}_out
+			eval ./$execname inputs/$file > tmpout
+			cat tmpout | grep -e '^Time:' | cut -d":" -f2- >> $rfolder/${file}_out
+			cat tmpout | grep -e "^AccTime:" | cut -d":" -f2 >> $rfolder/${file}_acctime_out
 		done
 
 		for t in $(seq 1 $TIMES); do
 			# Same thing but for the origingal
-			eval ./original inputs/$file | grep -e "Time:" | cut -d":" -f2- >> $orig_res_folder/${file}_out
+			eval ./original inputs/$file > tmpout
+			cat tmpout | grep -e '^Time:' | cut -d":" -f2- >> $orig_res_folder/${file}_out
+			cat tmpout | grep -e "^AccTime:" | cut -d":" -f2 >> $orig_res_folder/${file}_acctime_out
 		done
 	done
 	popd

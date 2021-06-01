@@ -1,8 +1,10 @@
 */*/inputs/*.json
-*/*/accelerated_*
+*/*/accelerated_fftw
+*/*/tmpout
 */*/original
 */*/value_profiler
 */*/*_results
 */*/value_profiles
 **/perf.data*
-output.eps
+*_output.eps
+open_source_project_distribution.eps
