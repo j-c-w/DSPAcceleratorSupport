@@ -3,7 +3,7 @@
 with pkgs;
 mkShell {
 	buildInputs = [
-		cloc ocaml gdb racket valgrind splint
+		cloc ocaml gdb racket valgrind splint linuxPackages-libre.perf
 		# Ocaml packages
 		ocamlPackages.findlib ocamlPackages.ocamlbuild ocamlPackages.yojson
 		ocamlPackages.core_kernel opam ocamlPackages.cmdliner
