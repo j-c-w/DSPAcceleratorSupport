@@ -60,8 +60,9 @@ x_vec.push_back(x_inner);
 complex *x = &x_vec[0];
 int N = input_json["N"];
 clock_t begin = clock();
+complex *returnv;
 for (int i = 0; i < TIMES; i ++) {
-	complex * returnv = DFT_naive(x, N);
+	returnv = DFT_naive(x, N);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
