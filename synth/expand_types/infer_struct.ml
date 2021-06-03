@@ -2,6 +2,7 @@ open Core_kernel;;
 open Spec_definition;;
 open Spec_utils;;
 open Builtin_types;;
+open Options;;
 
 (* So this is a shit-ly done pass.  The concept is pretty expansive, but
 it's going to need good heuristics to scale well.  It doesn't take into
@@ -136,6 +137,10 @@ let apply_structure_heuristics variable_sets tmaps =
 
 (* TODO --- support classmaps *)
 let infer_structure options typemap variables =
+    let () = if options.debug_infer_structs then
+        Printf.printf "Beggingin infer structs\n"
+    else ()
+    in
     (* Get the expansions of the formals.  *)
     let typemap_expansions, builtins = infer_structs_on_typemap options typemap variables in
     (* Insert the classmap generation e.g. here.  *)
@@ -161,4 +166,11 @@ let infer_structure options typemap variables =
         }
     ) in
 	let variable_sets = [ variables ] in
-	apply_structure_heuristics variable_sets result
+    let filtered_results = apply_structure_heuristics variable_sets result in
+	let () = if options.debug_infer_structs then
+        let () = Printf.printf "Total number of structs before heuristitcs is %d\n" (List.length result) in
+        let () = Printf.printf "Total number of resulting typemaps is %d\n" (List.length filtered_results) in
+        ()
+    else ()
+    in
+    filtered_results

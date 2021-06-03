@@ -617,6 +617,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
         (Printf.printf "Number of types (livein IO=%d, livein API=%d, liveout API=%d, liveout IO=%d)\n"
             (List.length livein_types) (List.length livein_api_types)
             (List.length liveout_api_types) (List.length liveout_types);
+		Printf.printf "For this typemap:\n";
         Printf.printf "Number of pre-bindings generated is %d\n" (List.length range_checked_pre_skeletons);
         Printf.printf "Number of post-bindings generated is %d\n" (List.length range_checked_post_skeletons);
         Printf.printf "Number of skeletons generated is %d\n" (List.length skeleton_pair_objects);
@@ -647,8 +648,13 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     sensible_skeleton_pairs
 
 let generate_all_skeleton_pairs opts typemaps iospec apispec =
-	List.concat (
+	let result = List.concat (
 		List.map typemaps (fun typemap ->
 			generate_skeleton_pairs opts typemap iospec apispec
 		)
-	)
+	) in
+	let () = if opts.debug_generate_skeletons then
+		Printf.printf "Total number fo skeletons (across all typemaps) is %d\n" (List.length result)
+	else ()
+	in
+	result

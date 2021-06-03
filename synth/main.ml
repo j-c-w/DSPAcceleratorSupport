@@ -37,7 +37,8 @@ let optswrapper iospec_file api_file dump_skeletons
 		execution_timeout skip_test mse_threshold
         debug_input_map_generation generate_timing_code
 		array_length_threshold no_parmap
-        debug_gir_generate_define_statements =
+        debug_gir_generate_define_statements debug_infer_structs
+		debug_expand_typemaps =
     (* First make the options object, then call the normal main function.  *)
     let target_type = backend_target_from_string target in
     let options = {
@@ -82,6 +83,8 @@ let optswrapper iospec_file api_file dump_skeletons
 		debug_load = debug_load;
 		debug_generate_skeletons = debug_generate_skeletons;
         debug_assign_dimensions = debug_assign_dimensions;
+		debug_infer_structs = debug_infer_structs;
+		debug_expand_typemaps = debug_expand_typemaps;
 		debug_generate_gir = debug_generate_gir;
 		debug_generate_program = debug_generate_program;
 		debug_generate_code = debug_generate_code;
@@ -284,6 +287,12 @@ let debug_generate_skeletons =
 let debug_assign_dimensions =
 	let doc = "Print debug information for assign_dimensions.ml" in
 	Arg.(value & flag & info ["debug-assign-dimensions"] ~docv:"DebugAssignDimensions" ~doc)
+let debug_infer_structs =
+	let doc = "Print debug information for infer_structs.ml" in
+	Arg.(value & flag & info ["debug-infer-structs"] ~docv:"DebugInferStructs" ~doc)
+let debug_expand_typemaps =
+	let doc = "Print debug information for exapdn_typemaps.ml" in
+	Arg.(value & flag & info ["debug-expand-typemaps"] ~docv:"DebugExpandTypemaps" ~doc)
 let debug_load =
 	let doc = "Debug the loading pass" in
 	Arg.(value & flag & info ["debug-load"] ~docv:"DebugLoad" ~doc)
@@ -330,5 +339,6 @@ let args_t = Term.(const optswrapper $ iospec $ apispec $ dump_skeletons $
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
-    generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements)
+    generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
+	debug_infer_structs $ debug_expand_typemaps)
 let () = Term.exit @@ Term.eval (args_t, info)

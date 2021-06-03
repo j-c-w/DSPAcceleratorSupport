@@ -3,6 +3,7 @@ open Assign_dimensions;;
 open Spec_definition;;
 open Spec_utils;;
 open Infer_struct;;
+open Options;;
 
 (* Given some fixed input typemap, this function
 	expands it out into a number of different typemaps.
@@ -36,9 +37,17 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 	} in
 	(* Do the dimension assignments.  *)
 	let iospec_dimensions = assign_dimensions options full_typemap (iospec.livein @ iospec.liveout @ iospec.returnvar) in
+	let () = if options.debug_expand_typemaps then
+		Printf.printf "Number of iospec dimensions are %d\n" (List.length iospec_dimensions)
+	else ()
+	in
 	let apispec_dimensions = List.concat (
 		List.map iospec_dimensions (fun iospec_dim -> assign_dimensions options iospec_dim (apispec.livein @ apispec.liveout))
 	) in
+	let () = if options.debug_expand_typemaps then
+		Printf.printf "Number of apispec dimensions are %d\n" (List.length apispec_dimensions)
+	else ()
+	in
 
 	(* Do the structure inference *)
 	let struct_inferred =
@@ -49,6 +58,10 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 				infer_structure options typemap iospec.funargs
 			)
 		)
+	in
+	let () = if options.debug_expand_typemaps then
+		Printf.printf "Numebr of infered structs are %d\n" (List.length struct_inferred)
+	else ()
 	in
 
 	struct_inferred
