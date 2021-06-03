@@ -91,12 +91,43 @@ let trim x =
 	| "" -> ""
 	| x -> x ^ "\n"
 
+let rec cxx_name_reference_to_string typemap n =
+	match n with
+	| AnonymousName -> raise (SpecException "Unsupport anon name in backend")
+	| Name(n) -> n
+	| StructName([]) -> ""
+	(* Assume well-formatted struct name *)
+	| StructName([x]) -> cxx_name_reference_to_string typemap x
+	| StructName(x :: xs) ->
+			let rec get_subtype vtyp = match vtyp with
+			| Pointer(vs) ->
+					let _, map = get_subtype vs in
+					(* Use the -> reference mode *)
+					"->", map
+			| Array(vs, _) -> raise (CXXGenerationException "Unsupported array generationin name_reference")
+			(* Use the "." joiner mode for a struct.  *)
+			| Struct(nms) -> ".", get_class_typemap (Hashtbl.find_exn typemap.classmap nms)
+			| other -> "", typemap.variable_map
+			in
+			let xjoiner, map = get_subtype (Hashtbl.find_exn typemap.variable_map (name_reference_to_string x)) in
+			let new_typemap =
+				{
+					typemap with variable_map = map
+				}
+			in
+			(name_reference_to_string x) ^ xjoiner ^ (cxx_name_reference_to_string new_typemap (StructName(xs)))
+
+let cxx_dimension_value_to_string typemap dvalue =
+	match dvalue with
+	| DimConstant(i) -> (string_of_int i)
+	| DimVariable(n) -> cxx_name_reference_to_string typemap n
+
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)
-let cxx_dimtype_to_name dimtype =
+let cxx_dimtype_to_name typemap dimtype =
     match dimtype with
     | Dimension(x) ->
-            (dimension_value_to_string x)
+            (cxx_dimension_value_to_string typemap x)
             (* Think this can be achieved in the gen_json call.
                Just return a TODO note, since that's what
                has to happen.  If it's (incorrectly)
@@ -104,32 +135,32 @@ let cxx_dimtype_to_name dimtype =
                error later anyway.  *)
 	| EmptyDimension -> "TOFILL"
 
-let rec cxx_dimtype_to_definition dimtype dim_ratio_modifier =
+let rec cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier =
     match dimtype with
-            | Dimension(x) -> "[" ^ (dimension_value_to_string x) ^ dim_ratio_modifier ^ "]"
+            | Dimension(x) -> "[" ^ (cxx_dimension_value_to_string typemap x) ^ dim_ratio_modifier ^ "]"
 			| EmptyDimension -> "TOFILL"
 
-let rec cxx_definition_synth_type_to_string_prefix_postfix typ name dim_ratio_modifier =
+let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier =
     match typ with
     | Array(stype, dimtype) ->
 			(* This isn;t going to work for multi-dimensional arrays, but I suppose
 			that s OK.  The C memory model doesn't strictly support those
 			anyway, so we may be able to get away without this here.  *)
-            let postfix = cxx_dimtype_to_definition dimtype dim_ratio_modifier in
+            let postfix = cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier in
 			(* TODO --- I think to support nested arrays the dim ratio modifier
 			has to be some equally nested type, but I don't want
 			to think about it right now.  *)
-            let prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix stype name dim_ratio_modifier in
+            let prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix typemap stype name dim_ratio_modifier in
             prefix, postfix ^ sub_postfix
     | othertyp ->
             (* If it's another type, then use the simple type generator *)
             (cxx_type_signature_synth_type_to_string othertyp, "")
 
-let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ dimratio_modifier =
+let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dimratio_modifier =
     match typ with
     | Array(stype, dimtype) ->
-            let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix stype dimratio_modifier in
-            let dim = cxx_dimtype_to_name dimtype in
+            let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
+            let dim = cxx_dimtype_to_name typemap dimtype in
             (* THe concept is this will be expanded as:
                 prefix NAME = (prefix) malloc(size);
                But, we only use malloc if this is actually
@@ -137,7 +168,7 @@ let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typ dimratio
                 *)
             prefix ^ "*", subsize ^ "*" ^ dim, true
 	| Pointer(stype) ->
-			let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix stype dimratio_modifier in
+			let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
 			prefix ^ "*", subsize, true
     | othertyp ->
             let tyname = cxx_type_signature_synth_type_to_string othertyp in
@@ -175,19 +206,19 @@ let compute_dimension_ratio_modifier t1 t2 =
 
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
-let rec cxx_definition_synth_type_to_string alignment escapes typ base_type name =
+let rec cxx_definition_synth_type_to_string typemap alignment escapes typ base_type name =
 	let dim_ratio_modifier =
 		compute_dimension_ratio_modifier typ base_type in
 	let defin = if escapes then
             (* If the variable escapes, then we need to malloc it.  *)
-            let (prefix, asize, usemalloc) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typ dim_ratio_modifier in
+            let (prefix, asize, usemalloc) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dim_ratio_modifier in
             if usemalloc then
                 prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") malloc (" ^ asize ^ ");"
             else
                 prefix ^ " " ^ name ^ ";"
         else
             let (prefix, postfix) =
-                cxx_definition_synth_type_to_string_prefix_postfix typ name dim_ratio_modifier in
+                cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier in
             (* Prefix is like the type name, 'name' is the variable name,
                postfix is array markings like [n], and then we need
                to add a semi colon. *)
@@ -206,7 +237,7 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
     | Definition(nref, escapes) ->
             let defntype = (Hashtbl.find_exn typemap.variable_map (cxx_gir_name_to_string nref)) in
 			let alignment = Hashtbl.find typemap.alignment_map (cxx_gir_name_to_string nref) in
-            cxx_definition_synth_type_to_string alignment escapes defntype defntype (cxx_gir_name_to_string nref)
+            cxx_definition_synth_type_to_string typemap alignment escapes defntype defntype (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
     | Assignment(fromv, tov) ->
@@ -216,7 +247,7 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
 			fromv_name ^ " = " ^ tov_name ^ ";"
     | LoopOver(gir, indvariable, loopmax) ->
             let indvar_name = (cxx_gir_name_to_string indvariable) in
-            let pre_loopmax_code, loopmax_name = (cxx_generate_from_variable_reference typemap loopmax) in
+            let pre_loopmax_code, loopmax_name, _ = (cxx_generate_from_variable_reference typemap loopmax) in
 			(trim pre_loopmax_code) ^
             "for (int " ^ indvar_name ^ " = 0; " ^ indvar_name ^ " < " ^ loopmax_name ^ "; " ^ indvar_name ^ "++) {\n\t\t" ^
             (cxx_generate_from_gir typemap gir) ^
@@ -271,35 +302,56 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
 	to assign to the right variables.  *)
 and cxx_generate_from_lvalue typemap lvalue =
     match lvalue with
-    | LVariable(nref) -> (cxx_generate_from_variable_reference typemap nref)
+    | LVariable(nref) ->
+			let pre, ref, _ = (cxx_generate_from_variable_reference typemap nref) in
+			pre, ref
 
 and cxx_generate_from_variable_reference typemap vref =
 	match vref with
 	| Variable(nm) ->
-			"", cxx_gir_name_to_string nm
+			"", cxx_gir_name_to_string nm, Hashtbl.find_exn typemap.variable_map (gir_name_to_string nm)
 	| MemberReference(structref, member) ->
 			(* TODO -- need to support pointer-ref
 			   generation.  *)
-			let struct_pre_code, struct_reference = cxx_generate_from_variable_reference typemap structref in
-			struct_pre_code, struct_reference ^ "." ^ (cxx_gir_name_to_string member)
+			let struct_pre_code, struct_reference, structtype = cxx_generate_from_variable_reference typemap structref in
+			let classname = match structtype with
+				| Pointer(Struct(nm)) -> nm
+				| Struct(nm) -> nm
+				| other -> raise (CXXGenerationException "Unexecpted member reference")
+			in
+			let class_typemap = get_class_typemap (Hashtbl.find_exn typemap.classmap classname) in
+			let member_type = Hashtbl.find_exn class_typemap (gir_name_to_string member) in
+			let op =
+				match structtype with
+				| Pointer(v) -> "->"
+				| Struct(v) -> "."
+				| other -> raise (CXXGenerationException "Unexpected member reference")
+			in
+			struct_pre_code, struct_reference ^ op ^ (cxx_gir_name_to_string member), member_type
 	| IndexReference(arr, ind) ->
 			let pre_code, ind_reference = cxx_generate_from_expression typemap ind in
-			let arr_pre_code, arr_reference = cxx_generate_from_variable_reference typemap arr in
-			arr_pre_code ^ "\n" ^ pre_code, arr_reference ^ "[" ^ ind_reference ^ "]"
+			let arr_pre_code, arr_reference, arr_reference_typ = cxx_generate_from_variable_reference typemap arr in
+            let reftyp = match arr_reference_typ with
+            | Array(sty, _) -> sty
+            | other -> raise (CXXGenerationException "Unexpected array reference")
+            in
+			arr_pre_code ^ "\n" ^ pre_code, arr_reference ^ "[" ^ ind_reference ^ "]", reftyp
 	| Constant(synth_value) ->
 			(* TODO --- properly support more complex synth values, e.g. arrays or structs.  *)
 			(* Has empty pre code *)
-			"", (synth_value_to_string synth_value)
+			"", (synth_value_to_string synth_value), synth_value_to_type synth_value
 	| Cast(vref, typ) ->
-			let precode, refcode = cxx_generate_from_variable_reference typemap vref in
-			precode, "(" ^ (cxx_type_signature_synth_type_to_string typ) ^ ")" ^ refcode
+			let precode, refcode, original_type = cxx_generate_from_variable_reference typemap vref in
+			precode, "(" ^ (cxx_type_signature_synth_type_to_string typ) ^ ")" ^ refcode, typ
 
 and cxx_generate_from_rvalue typemap rvalue =
     match rvalue with
     | Expression(expr) -> (cxx_generate_from_expression typemap expr)
 and cxx_generate_from_expression typemap expr =
     match expr with
-    | VariableReference(nref) -> cxx_generate_from_variable_reference typemap nref
+    | VariableReference(nref) ->
+			let pre, post, typ = cxx_generate_from_variable_reference typemap nref in
+			pre, post
     | FunctionCall(fref, vlist) ->
 			let pre_args_code, args_list = (cxx_generate_from_vlist typemap vlist) in
             pre_args_code, (cxx_generate_from_function_ref fref) ^ "(" ^ args_list ^ ");"
@@ -337,22 +389,22 @@ and cxx_generate_from_function_ref fref =
 and cxx_generate_from_vlist typemap vlist =
     match vlist with
     | VariableList(nrefs) ->
-		let pre_code, refs = List.unzip (List.map nrefs (cxx_generate_from_variable_reference typemap)) in
+		let pre_code, refs, types = Utils.unzip3 (List.map nrefs (cxx_generate_from_variable_reference typemap)) in
         (String.concat ~sep:"\n" pre_code, String.concat ~sep:", " refs)
 and cxx_generate_from_conditional typemap cond =
 	match cond with
 	| Check(vref, comparator) ->
 			(* Unary comparators are represented
 			as functions, e.g. REPR(var) *)
-			let vref_pre_code, vref_ref = cxx_generate_from_variable_reference typemap vref in
+			let vref_pre_code, vref_ref, vref_type = cxx_generate_from_variable_reference typemap vref in
 			vref_pre_code, (cxx_generate_from_unary_comparator comparator) ^ "(" ^
 			vref_ref ^ ")"
 	| Compare(vref1, vref2, oper) ->
 			(* Again, use a function-like structure, relying
 			on #defines in the clib to provide the appropriate
 			definitions.  *)
-			let vref1_pre_code, vref1_ref = cxx_generate_from_variable_reference typemap vref1 in
-			let vref2_pre_code, vref2_ref = cxx_generate_from_variable_reference typemap vref2 in
+			let vref1_pre_code, vref1_ref, vref1type = cxx_generate_from_variable_reference typemap vref1 in
+			let vref2_pre_code, vref2_ref, vref2type = cxx_generate_from_variable_reference typemap vref2 in
 			vref1_pre_code ^ "\n" ^ vref2_pre_code ^ "\n",
 			(cxx_generate_from_binary_comparator oper) ^ "(" ^
 			vref1_ref ^
@@ -487,7 +539,7 @@ let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
         let typ = Hashtbl.find_exn iotypemap.variable_map inp in
 		let alignment = Hashtbl.find iotypemap.alignment_map inp in
 		(* Things that go into the API are assumed to be dead-in.  *)
-		cxx_definition_synth_type_to_string alignment false typ infered_type inp
+		cxx_definition_synth_type_to_string typemap alignment false typ infered_type inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)
@@ -498,7 +550,7 @@ let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
 that produces the output JSON.*)
 let rec generate_output_assigns options typemap types outvars outprefix outjson =
 	let asses = List.map (List.zip_exn outvars types) (fun (out, typ) ->
-		let defcode, vname = (generate_output_assign options typemap typ out outprefix) in
+		let defcode, vname = (generate_output_assign options typemap typ out outprefix ".") in
 		(* Defcode is the code to define any intermediate values needed. *)
 		defcode ^ "\n" ^
 		outjson ^ "[\"" ^ out ^ "\"] = " ^ vname ^ ";"
@@ -508,7 +560,7 @@ let rec generate_output_assigns options typemap types outvars outprefix outjson 
 (* note that this is a slightly confusing definition, because we are
 trying to input from the 'out' variable into the json, not assign
 to it.  *)
-and generate_output_assign options typemap typ out out_prefix =
+and generate_output_assign options typemap typ out out_prefix operator =
 	let () = if options.debug_generate_code then
 		Printf.printf "Generating outupt for %s\n" (out)
 	else () in
@@ -518,7 +570,7 @@ and generate_output_assign options typemap typ out out_prefix =
 		let artypname = cxx_vectors_type_signature_synth_type_to_string artyp in
 		let outtmp = generate_out_tmp () in
         let ivar = generate_ivar_tmp() in
-		let length = cxx_dimtype_to_name adim in
+		let length = cxx_dimtype_to_name typemap adim in
 		let vecres = "std::vector<json> " ^ outtmp ^ ";" in
 		(* TODO--- need to actually properly handle multi-dimensions here.  *)
 		(* (Array indexing like this won't work for the C view of the world --probaly
@@ -526,7 +578,7 @@ and generate_output_assign options typemap typ out out_prefix =
 		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ length ^ "; " ^ ivar ^ "++) {" in
 		let newout = generate_out_tmp() in
 		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ out ^ "[" ^ ivar ^ "];" in
-		let assbody, assresvar = generate_output_assign options typemap artyp newout out_prefix in
+		let assbody, assresvar = generate_output_assign options typemap artyp newout out_prefix "." in
 		(* Add to the array. *)
 		let inloopassign = outtmp ^ ".push_back(" ^ assresvar ^ ");" in
 		let loop_end = "}" in
@@ -537,7 +589,7 @@ and generate_output_assign options typemap typ out out_prefix =
 		let ptyp = cxx_vectors_type_signature_synth_type_to_string styp in
 		let outtmp = generate_out_tmp() in
 		let outtmp_assign = ptyp ^ " " ^ outtmp ^ " = " ^ "*" ^ out ^ ";" in
-		let sub_ass, assresvar = generate_output_assign options typemap styp outtmp out_prefix in
+		let sub_ass, assresvar = generate_output_assign options typemap styp outtmp out_prefix "->" in
 		(String.concat ~sep:"\n" [
 			outtmp_assign; sub_ass
 		], assresvar)
@@ -550,7 +602,7 @@ and generate_output_assign options typemap typ out out_prefix =
 		let unprefixed_assigns = get_class_fields structdefn in
 		let sub_typemap = get_class_typemap structdefn in
 		let sub_types = List.map unprefixed_assigns (fun ass -> Hashtbl.find_exn sub_typemap ass) in
-		let asscode = generate_output_assigns options typemap sub_types sub_assigns (out ^ ".") json_tmp in
+		let asscode = generate_output_assigns options typemap sub_types sub_assigns (out ^ operator) json_tmp in
 		String.concat ~sep:"\n" [defn; asscode], json_tmp
 	| _ ->
 		(* We can literally just put the variable name.  *)

@@ -162,6 +162,32 @@ let rec synth_value_to_string value =
 let synth_value_list_to_string values =
     String.concat ~sep:", " (List.map values synth_value_to_string)
 
+let rec synth_value_to_type v =
+	match v with
+	| BoolV(_) -> Bool
+	| Int16V(_) -> Int16
+	| Int32V(_) -> Int32
+	| Int64V(_) -> Int64
+	| UInt16V(_) -> UInt16
+	| UInt32V(_) -> UInt32
+	| UInt64V(_) -> UInt64
+	| Float16V(_) -> Float16
+	| Float32V(_) -> Float32
+	| Float64V(_) -> Float64
+	| UnitV -> Unit
+	| PointerV(v) ->
+			Pointer(synth_value_to_type v)
+	| ArrayV(vs) ->
+			(* TODO --- support something better for
+			empty arrays? *)
+			let subtype = synth_value_to_type (List.hd_exn vs) in
+			Array(subtype, Dimension(DimConstant(List.length vs)))
+	| StructV(name, cnts) ->
+			Struct(name)
+	| FunV(v) ->
+			(* Think we just need a typemap to do this one.  *)
+			raise (SpecException "Unsupported")
+
 let rec synth_value_equal c1 c2 =
 	match c1, c2 with
 	| BoolV(v1), BoolV(v2) -> (Bool.compare v1 v2) = 0

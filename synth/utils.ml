@@ -117,3 +117,10 @@ let parmap options f l =
 		Parmap.parmap f (Parmap.L l)
 	else
 		List.map l f
+
+let rec unzip3 ls =
+	match ls with
+	| [] -> [], [], []
+	| (a, b, c) :: ls ->
+			let xs, ys, zs = unzip3 ls in
+			(a :: xs, b :: ys, c :: zs)
