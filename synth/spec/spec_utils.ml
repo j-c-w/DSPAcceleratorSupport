@@ -337,9 +337,18 @@ let rec type_of_name_reference (typemap: typemap) nr =
 			Hashtbl.find_exn typemap.variable_map x
 	(* Assume well formatted names, or this will crash *)
 	| StructName(Name(x) :: xs) ->
+			let rec compute_struct_name typ = match typ with
+			| Struct(n) -> n
+			(* Both arrays and pointers are 'invisible' wrt. a
+			   struct reference PoV *)
+			| Pointer(subtype) -> compute_struct_name subtype
+			| Array(st, dim) -> compute_struct_name st
+			| other -> raise (SpecException "Through-struct reference with non-struct type. ")
+			in
+			let sname = compute_struct_name (Hashtbl.find_exn typemap.variable_map x) in
 			let updated_typemap = {
 				typemap with
-				variable_map = (get_class_typemap (Hashtbl.find_exn typemap.classmap (x)))
+				variable_map = (get_class_typemap (Hashtbl.find_exn typemap.classmap sname))
 			} in
 			type_of_name_reference updated_typemap (StructName(xs))
 	| StructName(_) -> raise (SpecException "Ill-formatted")

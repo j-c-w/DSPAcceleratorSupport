@@ -92,7 +92,7 @@ let rec expand_and_wrap_names typemap nms =
 					in
 					(* We need to prepend this struct's name.  *)
 					List.map members (fun mem ->
-						name_reference_concat (Name(struct_name)) mem
+						name_reference_concat (Name(nm)) mem
 					)
 			| Pointer(sty) ->
 					expand_type typemap sty nm
