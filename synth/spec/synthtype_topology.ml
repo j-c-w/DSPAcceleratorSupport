@@ -33,25 +33,30 @@ let rec get_dependencies_for typemap typ =
 	| Float64 -> []
 	| Pointer(tp) -> get_dependencies_for typemap tp
 	| Array(tp, dims) ->
+			let () = Printf.printf "Dimvar is %s\n" (dimension_type_to_string dims) in
 			let this_deps = match dims with
 			| Dimension(x) -> (match x with
-				| DimVariable(v) -> [v]
+                (* We only consider non-interlooping structs here, although we could support
+                more complex things with a more complex algorihtm.  *)
+				| DimVariable(v) -> [name_reference_top_level_name v]
 				| DimConstant(_) -> []
 			)
 			| _ -> raise (STopologyException "Unhandled")
 			in
 			this_deps @ (get_dependencies_for typemap tp)
 	| Struct(sname) ->
-			(* TODO -- we could do a topo sort of the individual
-			fields, but that would only help for very weird
-			and IMO unlikely topo chains.  *)
+            (* We don't do a sort of the individual field names.  External
+             variables that might be used as references should be counted however.  *)
 			let metadata = Hashtbl.find_exn typemap.classmap sname in
 			let subs = get_class_fields metadata in
 			let stypedef = get_class_typemap metadata in
 			let subtyps = List.map subs (Hashtbl.find_exn stypedef) in
-			List.concat (
+            let subdefs = List.concat (
 				List.map subtyps (get_dependencies_for typemap)
-			)
+			) in
+            (* Remove any types that are inherint to this type: they shouldn't be
+            considered here.  *)
+            List.filter subdefs (fun d -> List.mem subs (name_reference_to_string d) Utils.string_equal)
 	| Unit ->
 			[]
 	| Fun(f, t) ->
@@ -64,10 +69,11 @@ let rec get_dependencies_for typemap typ =
 
 let compute_use_defs typemap names =
 	List.map names (fun n ->
+		let () = Printf.printf "Getting dependencies for %s\n" (name_reference_to_string n) in
 		let typ = Hashtbl.find_exn typemap.variable_map (name_reference_to_string n) in
 		{
 			name = n;
-			dependencies = (get_dependencies_for typemap typ)
+			dependencies = Utils.remove_duplicates name_reference_equal (get_dependencies_for typemap typ)
 		}
 	)
 
@@ -111,7 +117,8 @@ let rec synth_khan options vars s sorted =
 
 let synthtype_toposort options typemap snames =
 	let () = if options.debug_synth_topology then
-		let () = Printf.printf "Starting new synthtype topology sort" in
+		let () = Printf.printf "Starting new synthtype topology sort\n" in
+        let () = Printf.printf "Names are %s\n" (name_reference_list_to_string snames) in
 		()
 	else ()
 	in

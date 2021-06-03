@@ -56,12 +56,14 @@ type synth_value =
 type classtype = {
 	members: string list;
 	functions: string list;
-	typemap: (string, synth_type) Hashtbl.t
+    typemap: (string, synth_type) Hashtbl.t;
+    io_typemap: ((string, synth_type) Hashtbl.t);
 }
 
 type structtype = {
 	members: string list;
-	typemap: (string, synth_type) Hashtbl.t
+    typemap: (string, synth_type) Hashtbl.t;
+    io_typemap: ((string, synth_type) Hashtbl.t);
 }
 
 type structure_metadata =

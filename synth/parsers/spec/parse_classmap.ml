@@ -19,9 +19,9 @@ let load_individual_type json_definition =
 	let typemap_members = symbols @ functions in
 	let typemap = load_typemap json_definition typemap_members in
 	if (String.compare isstruct "class") = 0 then
-        ClassMetadata({members=symbols; functions=functions; typemap=typemap})
+		ClassMetadata({members=symbols; functions=functions; typemap=typemap; io_typemap=typemap})
 	else
-        StructMetadata({members=symbols; typemap=typemap})
+		StructMetadata({members=symbols; typemap=typemap; io_typemap=typemap})
 
 let load_classmap_from_json json =
 	let tbl = Hashtbl.create (module String) in

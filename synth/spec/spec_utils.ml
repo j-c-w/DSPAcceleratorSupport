@@ -42,6 +42,13 @@ let rec name_reference_equal n1 n2 =
 	oddly nested structnames *)
 	| _, _ -> false
 
+let rec name_reference_top_level_name n =
+	match n with
+	| AnonymousName -> raise (SpecException "No name for empty name ref")
+	| Name(x) -> Name(x)
+	| StructName(x :: xs) -> x
+	| StructName([]) -> raise (SpecException "Invalid struct name")
+
 let name_reference_list_concat ns =
 	List.fold ~init:AnonymousName ~f:name_reference_concat ns
 
@@ -317,6 +324,10 @@ let get_class_typemap smeta =
 	match smeta with
 	| ClassMetadata(cls) -> cls.typemap
 	| StructMetadata(str) -> str.typemap
+let get_class_io_typemap smeta =
+    match smeta with
+    | ClassMetadata(cls) -> cls.io_typemap
+    | StructMetadata(str) -> str.io_typemap
 let get_class_members smeta =
 	match smeta with
 	| ClassMetadata(cls) -> cls.members @ cls.functions

@@ -11,7 +11,8 @@ let two_float32_type_hashtable =
 	tbl
 let two_float32_type_metadata = StructMetadata({
 	members = ["f32_1"; "f32_2"];
-	typemap = two_float32_type_hashtable
+	typemap = two_float32_type_hashtable;
+	io_typemap = two_float32_type_hashtable;
 })
 
 let two_float64_type = Struct("facc_2xf64_t")
@@ -22,7 +23,8 @@ let two_float64_hashtable =
 	tbl
 let two_float64_type_metadata = StructMetadata({
 	members = ["f64_1"; "f64_2"];
-	typemap = two_float64_hashtable
+	typemap = two_float64_hashtable;
+	io_typemap = two_float64_hashtable;
 })
 
 let builtin_structs =

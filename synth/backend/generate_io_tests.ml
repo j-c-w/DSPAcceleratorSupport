@@ -68,7 +68,7 @@ let generate_array_from_range rangemap namestring =
 
 
 (* TODO --- Could do with making this a bit more deterministic. *)
-let rec generate_inputs_for options rangemap values_so_far name_string t structure_metadata =
+let rec generate_inputs_for options rangemap values_so_far name_string t structure_ordering =
     match t with
     (* TODO -- Support negative values.  *)
 	| Bool -> BoolV(generate_bool_within_range rangemap name_string)
@@ -83,7 +83,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
     | Float64 -> Float64V(generate_float_within_range rangemap name_string)
     | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
     | Unit -> UnitV
-	| Pointer(stype) -> PointerV(generate_inputs_for options rangemap values_so_far name_string stype structure_metadata)
+	| Pointer(stype) -> PointerV(generate_inputs_for options rangemap values_so_far name_string stype structure_ordering)
     (* TODO --- Probably need to
        make a distinction between square and non
        square arrays.  *)
@@ -123,7 +123,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 						| DimConstant(c) -> c
 				in
 				if arrlen < options.array_length_threshold then
-					ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for options rangemap values_so_far name_string subtype structure_metadata))
+					ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for options rangemap values_so_far name_string subtype structure_ordering))
 				else
 					(* Don't want to try and generate arrays that are too big, because
 					it just makes synthesis take forever, espc with
@@ -131,34 +131,28 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
                     (* let () = Printf.printf "Arrlen is %d, maxlen is %d" (arrlen) (options.array_length_threshold) in *)
 					raise (GenerationFailure)
     | Struct(name) ->
-            let metadata = Hashtbl.find structure_metadata name in
-            (* Get the strcuture metadata *)
-            let (members, tmap) = match metadata with
-            | Some(ClassMetadata(ctype)) -> (ctype.members, ctype.typemap)
-            | Some(StructMetadata(stype)) -> (stype.members, stype.typemap)
-            | None -> raise (TypeException("Unbound type " ^ name))
-            in
-            (* Generate a value for each type in the
-              metadata.  *)
+			(* To generate the sub-typemap, use the toposorted fields for that partiuclar class.  *)
+			let members, tmap = Hashtbl.find_exn structure_ordering name in
+            (* Generate a value for each type in the metadata.  *)
             let valuetbl = Hashtbl.create (module String) in
             (* TODO -- maybe need to do something to the values so far in here? *)
-            let member_datas = List.map members (fun member -> (generate_inputs_for options rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap member) structure_metadata, member)) in
+            let member_datas = List.map members (fun member -> (generate_inputs_for options rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap member) structure_ordering, member)) in
             (* Now, put those generated values in a map.  *)
             ignore(List.map member_datas (fun (data, m) -> Hashtbl.add valuetbl m data));
             StructV(name, valuetbl)
 
-let rec generate_io_values_worker options rangemap generated_vs vs typemap =
+let rec generate_io_values_worker options rangemap generated_vs vs structure_orderings typemap =
 	match vs with
 	| [] -> ()
 	| x :: xs ->
 			let name_string = name_reference_to_string x in
 			let typx = Hashtbl.find_exn typemap.variable_map name_string in
-            let inputs = generate_inputs_for options rangemap generated_vs name_string typx typemap.classmap in
+            let inputs = generate_inputs_for options rangemap generated_vs name_string typx structure_orderings in
 			let res = Hashtbl.add generated_vs (name_reference_to_string x) inputs in
             let () = assert (match res with | `Ok -> true | _ -> false) in
-			(generate_io_values_worker options rangemap generated_vs xs typemap)
+			(generate_io_values_worker options rangemap generated_vs xs structure_orderings typemap)
 
-let rec generate_io_values options num_tests rangemap livein typemap =
+let rec generate_io_values options num_tests rangemap livein structure_orderings typemap =
 	match num_tests with
 	| 0 -> []
 	| n ->
@@ -168,7 +162,7 @@ let rec generate_io_values options num_tests rangemap livein typemap =
             are too long to test successfully.  *)
             let () = inputs := (try
                 let mapping = Hashtbl.create (module String) in
-                let () = (generate_io_values_worker options rangemap mapping livein typemap) in
+                let () = (generate_io_values_worker options rangemap mapping livein structure_orderings typemap) in
                 (* let () = Printf.printf "Generation success\n" in *)
                 (Some(mapping))
             with GenerationFailure -> 
@@ -177,7 +171,7 @@ let rec generate_io_values options num_tests rangemap livein typemap =
             )
             in ()
         done in
-		(Option.value_exn !inputs) :: (generate_io_values options (num_tests - 1) rangemap livein typemap)
+		(Option.value_exn !inputs) :: (generate_io_values options (num_tests - 1) rangemap livein structure_orderings typemap)
 
 let rec value_to_string value =
     let str_value = match value with
@@ -235,6 +229,22 @@ let wrap_nrefs nms =
         Name(nm)
     )
 
+(* This pass assumes that classes don't have extra-class variable dependencies.
+   In reality, we could support those at the top level topo-sort provided there
+   aren't any loops etc.  *)
+let generate_toposorted_classmap (options: options) input_typemap =
+	let names = Hashtbl.keys input_typemap.classmap in
+	let result_hashmap = Hashtbl.create (module String) in
+	let _ = List.map names (fun name ->
+		let structdata = Hashtbl.find_exn input_typemap.classmap name in
+		let typemap = get_class_io_typemap structdata in
+		let names = List.map (get_class_fields structdata) (fun v -> Name(v)) in
+		let full_typemap = {input_typemap with variable_map = typemap } in
+		let toposorted_values = synthtype_toposort options full_typemap names in
+		toposorted_values, typemap
+	) in
+	result_hashmap
+
 let generate_io_tests_for_program options (iospec: iospec) program_number (program: program) =
 	let () =
 		if options.debug_generate_io_tests then
@@ -253,11 +263,12 @@ let generate_io_tests_for_program options (iospec: iospec) program_number (progr
 	| None -> program.typemap
 	in
 	let toposorted_values = synthtype_toposort options io_typemap livein_namerefs in
+	let structure_orderings = generate_toposorted_classmap options program.typemap in
 	let () =
 		if options.debug_generate_io_tests then
 			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)
 		else () in
-	let values = generate_io_values options num_tests program.inputmap toposorted_values io_typemap in
+	let values = generate_io_values options num_tests program.inputmap toposorted_values structure_orderings io_typemap in
 	(* Now, convert those to YoJSON values to be written out.  *)
 	let json_files = write_io_tests options program_number iospec.livein values in
 	json_files
