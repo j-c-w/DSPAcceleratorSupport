@@ -26,3 +26,4 @@ https://github.com/swharden/FftSharp:Not C/C++: --- Written in C# I think.
 https://github.com/gpu-fftw/gpu_fftw :Supported:--- Seems like it should work --- might need specialized hardware to run properly though.
 https://github.com/liscio/fft/ :Supported:--- Supported
 https://github.com/marton78/pffft :Supported:--- Supported in context
+https://github.com/liscio/fft: Supported: --- supported
