@@ -536,8 +536,3 @@ let clear_map (t: ('a, 'b) Hashtbl.t) =
 		Hashtbl.remove t key
 	) in
 	()
-
-let update_structure_metadata_typemap metadata newtypemap =
-    match metadata with
-    | StructMetadata(stype) -> StructMetadata({stype with typemap = newtypemap})
-    | ClassMetadata(ctype) -> ClassMetadata({ctype with typemap = newtypemap})

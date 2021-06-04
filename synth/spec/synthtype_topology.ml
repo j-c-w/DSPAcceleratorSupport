@@ -33,7 +33,7 @@ let rec get_dependencies_for typemap typ =
 	| Float64 -> []
 	| Pointer(tp) -> get_dependencies_for typemap tp
 	| Array(tp, dims) ->
-			let () = Printf.printf "Dimvar is %s\n" (dimension_type_to_string dims) in
+			(* let () = Printf.printf "Dimvar is %s\n" (dimension_type_to_string dims) in *)
 			let this_deps = match dims with
 			| Dimension(x) -> (match x with
                 (* We only consider non-interlooping structs here, although we could support
@@ -41,12 +41,13 @@ let rec get_dependencies_for typemap typ =
 				| DimVariable(v) -> [name_reference_top_level_name v]
 				| DimConstant(_) -> []
 			)
-			| _ -> raise (STopologyException "Unhandled")
+			| EmptyDimension -> raise (STopologyException "Unhandled")
 			in
 			this_deps @ (get_dependencies_for typemap tp)
 	| Struct(sname) ->
             (* We don't do a sort of the individual field names.  External
              variables that might be used as references should be counted however.  *)
+			(* let () = Printf.printf "Recursing for struct %s\n" (sname) in *)
 			let metadata = Hashtbl.find_exn typemap.classmap sname in
 			let subs = get_class_fields metadata in
 			let stypedef = get_class_typemap metadata in
@@ -56,7 +57,12 @@ let rec get_dependencies_for typemap typ =
 			) in
             (* Remove any types that are inherint to this type: they shouldn't be
             considered here.  *)
-            List.filter subdefs (fun d -> List.mem subs (name_reference_to_string d) Utils.string_equal)
+			(* let () = Printf.printf "For struct name %s\n" (sname) in
+			let () = Printf.printf "Filtering out variables %s\n" (String.concat ~sep:", " subs) in
+			let () = Printf.printf "Pre filtering is %s\n" (name_reference_list_to_string subdefs) in *)
+			let result = List.filter subdefs (fun d -> not (List.mem subs (name_reference_to_string d) Utils.string_equal)) in
+			(* let () = Printf.printf "Post filtering is %s\n" (name_reference_list_to_string result) in *)
+			result
 	| Unit ->
 			[]
 	| Fun(f, t) ->
@@ -69,8 +75,8 @@ let rec get_dependencies_for typemap typ =
 
 let compute_use_defs typemap names =
 	List.map names (fun n ->
-		let () = Printf.printf "Getting dependencies for %s\n" (name_reference_to_string n) in
 		let typ = Hashtbl.find_exn typemap.variable_map (name_reference_to_string n) in
+		let () = Printf.printf "Getting dependencies for %s: %s\n" (name_reference_to_string n) (synth_type_to_string typ) in
 		{
 			name = n;
 			dependencies = Utils.remove_duplicates name_reference_equal (get_dependencies_for typemap typ)

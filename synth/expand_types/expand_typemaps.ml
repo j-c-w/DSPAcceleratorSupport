@@ -1,5 +1,6 @@
 open Core_kernel;;
 open Assign_dimensions;;
+open Assign_dimensions_check;;
 open Spec_definition;;
 open Spec_utils;;
 open Infer_struct;;
@@ -36,13 +37,14 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 		original_typemap = None;
 	} in
 	(* Do the dimension assignments.  *)
-	let iospec_dimensions = assign_dimensions options full_typemap (iospec.livein @ iospec.liveout @ iospec.returnvar) in
+    (* Only do the classmaps the first time through though.  *)
+	let iospec_dimensions = assign_dimensions options true full_typemap (iospec.livein @ iospec.liveout @ iospec.returnvar) in
 	let () = if options.debug_expand_typemaps then
 		Printf.printf "Number of iospec dimensions are %d\n" (List.length iospec_dimensions)
 	else ()
 	in
 	let apispec_dimensions = List.concat (
-		List.map iospec_dimensions (fun iospec_dim -> assign_dimensions options iospec_dim (apispec.livein @ apispec.liveout))
+		List.map iospec_dimensions (fun iospec_dim -> assign_dimensions options false iospec_dim (apispec.livein @ apispec.liveout))
 	) in
 	let () = if options.debug_expand_typemaps then
 		Printf.printf "Number of apispec dimensions are %d\n" (List.length apispec_dimensions)
@@ -64,4 +66,6 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 	else ()
 	in
 
+	(* Verify that all structures have had dimensions assigned  *)
+	let _ = List.map struct_inferred assign_dimensions_check in
 	struct_inferred

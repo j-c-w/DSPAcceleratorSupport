@@ -135,7 +135,11 @@ let create_all_typemaps tps =
 let create_all_classmaps tps =
 	let updated_maps = List.map tps (fun (cname, metadata, subtymaps) ->
 		List.map subtymaps (fun subtymap ->
-			(cname, update_structure_metadata_typemap metadata subtymap)
+			(cname, {
+                metadata with typemap = sub_typemap;
+                              (* The IO typemap also needs inferred types.  *)
+                              io_typemap = sub_typemap;
+            })
 		)
 	)
 	in
@@ -164,7 +168,7 @@ let carry_other_elements oldtbl expanded_elements =
 (* Assign dimensions to all array types.
    inps is the set of variables to choose
    types from. *)
-let assign_dimensions (options: options) typemap inps =
+let assign_dimensions (options: options) do_classmaps typemap inps =
 	let () = if options.debug_assign_dimensions then
 		let () = Printf.printf "Starting to assign dimensions\n" in
         let () = Printf.printf "Variable list is: %s\n" (String.concat ~sep:", " inps) in
@@ -186,38 +190,43 @@ let assign_dimensions (options: options) typemap inps =
         ()
 	else
         () in
-    (* Now, do all the classes.  *)
-    let classnames = Hashtbl.keys typemap.classmap in
-	let res_classmaps = (List.map classnames (fun cname ->
-        let metadata = Hashtbl.find_exn typemap.classmap cname in
-        let cls_typemap = get_class_typemap metadata in
-        let cls_members = get_class_members metadata in
-		let sub_typemap = { typemap with variable_map = cls_typemap } in
-        let wrapped_cls_members = expand_and_wrap_names sub_typemap cls_members in
-		let tps_with_dims = List.map cls_members (assign_dimensions_to_type options sub_typemap wrapped_cls_members) in
+	let result_classmaps =
+		if do_classmaps then
+			(* Now, do all the classes.  *)
+			let classnames = Hashtbl.keys typemap.classmap in
+			let res_classmaps = (List.map classnames (fun cname ->
+				let metadata = Hashtbl.find_exn typemap.classmap cname in
+				let cls_typemap = get_class_typemap metadata in
+				let cls_members = get_class_members metadata in
+				let sub_typemap = { typemap with variable_map = cls_typemap } in
+				let wrapped_cls_members = expand_and_wrap_names sub_typemap cls_members in
+				let tps_with_dims = List.map cls_members (assign_dimensions_to_type options sub_typemap wrapped_cls_members) in
 
-		let () = if options.debug_assign_dimensions then
-			let () = Printf.printf "For class %s, \n" (cname) in
-            let () = Printf.printf "Executed length paramter estimate for %s\n" (String.concat ~sep:", " cls_members) in
-            ()
+				let () = if options.debug_assign_dimensions then
+					let () = Printf.printf "For class %s, \n" (cname) in
+					let () = Printf.printf "Have options %s\n" (name_reference_list_to_string wrapped_cls_members) in
+					let () = Printf.printf "Executed length paramter estimate for %s\n" (String.concat ~sep:", " cls_members) in
+					()
+				else
+					()
+				in
+				(* reconstruct this into a list of typemaps.  *)
+				cname, metadata, create_all_typemaps tps_with_dims
+			)) in
+			let () = if options.dump_assigned_dimensions then
+				let () = Printf.printf "The top-level dimensions are %s\n" (type_hash_table_to_string typemap.variable_map) in
+				Printf.printf "The class-level dimensions are %s\n" (
+					String.concat ~sep:"\nNext Class " (List.map classnames (fun name -> name ^ (type_hash_table_to_string (get_class_typemap (Hashtbl.find_exn typemap.classmap name))))
+				))
+			else
+				()
+			in
+			(* Now, create the product-based list of possible
+			typemaps.  *)
+			create_all_classmaps res_classmaps
 		else
-			()
-		in
-        (* reconstruct this into a list of typemaps.  *)
-		cname, metadata, create_all_typemaps tps_with_dims
-	)) in
-
-	let () = if options.dump_assigned_dimensions then
-        let () = Printf.printf "The top-level dimensions are %s\n" (type_hash_table_to_string typemap.variable_map) in
-        Printf.printf "The class-level dimensions are %s\n" (
-            String.concat ~sep:"\nNext Class " (List.map classnames (fun name -> name ^ (type_hash_table_to_string (get_class_typemap (Hashtbl.find_exn typemap.classmap name))))
-        ))
-    else
-        ()
+			[typemap.classmap]
 	in
-	(* Now, create the product-based list of possible
-	typemaps.  *)
-	let result_classmaps = create_all_classmaps res_classmaps in
 	let result_typemaps = create_all_typemaps (res_typemaps @ other_elements) in
 	let () = if options.debug_assign_dimensions then
 		Printf.printf "Number of result classmaps is %d, result typemaps is %d\n" (List.length result_classmaps) (List.length result_typemaps)
