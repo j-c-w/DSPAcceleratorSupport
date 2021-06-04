@@ -24,7 +24,7 @@ let check_dimensions_in typemap =
 	let keys = Hashtbl.keys typemap in
 	let _ = List.map keys (fun key ->
 		let typ = Hashtbl.find_exn typemap key in
-		let () = Printf.printf "Checking %s: %s\n" (key) (synth_type_to_string typ) in
+		(* let () = Printf.printf "Checking %s: %s\n" (key) (synth_type_to_string typ) in *)
 		typ_has_dimension key typ
 	) in
 	()
