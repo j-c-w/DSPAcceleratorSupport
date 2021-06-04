@@ -135,11 +135,13 @@ let create_all_typemaps tps =
 let create_all_classmaps tps =
 	let updated_maps = List.map tps (fun (cname, metadata, subtymaps) ->
 		List.map subtymaps (fun subtymap ->
-			(cname, {
-                metadata with typemap = sub_typemap;
-                              (* The IO typemap also needs inferred types.  *)
-                              io_typemap = sub_typemap;
-            })
+			let resdata = match metadata with
+			| ClassMetadata(cty) ->
+					ClassMetadata({ cty with typemap = subtymap; io_typemap = subtymap })
+			| StructMetadata(sty) ->
+					StructMetadata({ sty with typemap = subtymap; io_typemap = subtymap })
+			in
+			(cname, resdata)
 		)
 	)
 	in

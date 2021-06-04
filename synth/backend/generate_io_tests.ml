@@ -132,11 +132,12 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 					raise (GenerationFailure)
     | Struct(name) ->
 			(* To generate the sub-typemap, use the toposorted fields for that partiuclar class.  *)
+			(* let () = Printf.printf "Looking at %s\n" (name) in *)
 			let members, tmap = Hashtbl.find_exn structure_ordering name in
             (* Generate a value for each type in the metadata.  *)
             let valuetbl = Hashtbl.create (module String) in
             (* TODO -- maybe need to do something to the values so far in here? *)
-            let member_datas = List.map members (fun member -> (generate_inputs_for options rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap member) structure_ordering, member)) in
+            let member_datas = List.map members (fun member -> (generate_inputs_for options rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap.variable_map member) structure_ordering, member)) in
             (* Now, put those generated values in a map.  *)
             ignore(List.map member_datas (fun (data, m) -> Hashtbl.add valuetbl m data));
             StructV(name, valuetbl)
@@ -241,7 +242,7 @@ let generate_toposorted_classmap (options: options) input_typemap =
 		let names = List.map (get_class_fields structdata) (fun v -> Name(v)) in
 		let full_typemap = {input_typemap with variable_map = typemap } in
 		let toposorted_values = synthtype_toposort options full_typemap names in
-		toposorted_values, typemap
+		Hashtbl.add result_hashmap name ((List.map toposorted_values name_reference_to_string), full_typemap)
 	) in
 	result_hashmap
 
