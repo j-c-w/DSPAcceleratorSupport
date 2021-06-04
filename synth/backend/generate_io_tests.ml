@@ -207,7 +207,7 @@ let rec value_to_string value =
             let vals = List.map vals value_to_string in
             "[" ^ (String.concat ~sep:", " vals) ^ "]"
 	| PointerV(v) ->
-			(value_to_string v) ^ "*"
+			(value_to_string v)
     | StructV(n, valuetbl) ->
             io_test_to_string (Hashtbl.keys valuetbl) valuetbl
     | FunV(_) ->
