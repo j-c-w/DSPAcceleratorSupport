@@ -76,7 +76,7 @@ let rec get_dependencies_for typemap typ =
 let compute_use_defs typemap names =
 	List.map names (fun n ->
 		let typ = Hashtbl.find_exn typemap.variable_map (name_reference_to_string n) in
-		let () = Printf.printf "Getting dependencies for %s: %s\n" (name_reference_to_string n) (synth_type_to_string typ) in
+		(* let () = Printf.printf "Getting dependencies for %s: %s\n" (name_reference_to_string n) (synth_type_to_string typ) in *)
 		{
 			name = n;
 			dependencies = Utils.remove_duplicates name_reference_equal (get_dependencies_for typemap typ)

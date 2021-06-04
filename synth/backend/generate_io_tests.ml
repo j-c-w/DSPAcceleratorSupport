@@ -1,6 +1,7 @@
 open Core_kernel;;
 open Spec_definition;;
 open Spec_utils;;
+open Value_utils;;
 open Options;;
 open Yojson;;
 open Synthtype_topology;;
@@ -69,18 +70,23 @@ let generate_array_from_range rangemap namestring =
 
 (* TODO --- Could do with making this a bit more deterministic. *)
 let rec generate_inputs_for options rangemap values_so_far name_string t structure_ordering =
+	let () = if options.debug_generate_io_tests then
+		let () = Printf.printf "Generating value for %s...\n" (name_string) in
+		()
+	else ()
+	in
     match t with
     (* TODO -- Support negative values.  *)
-	| Bool -> BoolV(generate_bool_within_range rangemap name_string)
-    | Int16 -> Int16V(generate_int_within_range rangemap name_string)
-    | Int32 -> Int32V(generate_int_within_range rangemap name_string)
-    | Int64 -> Int64V(generate_int_within_range rangemap name_string)
-	| UInt16 -> UInt16V(generate_uint_within_range rangemap name_string)
-	| UInt32 -> UInt32V(generate_uint_within_range rangemap name_string)
-	| UInt64 -> UInt64V(generate_uint_within_range rangemap name_string)
-    | Float16 -> Float16V(generate_float_within_range rangemap name_string)
-    | Float32 -> Float32V(generate_float_within_range rangemap name_string)
-    | Float64 -> Float64V(generate_float_within_range rangemap name_string)
+	| Bool -> BoolV(generate_bool_within_range rangemap (name_string))
+    | Int16 -> Int16V(generate_int_within_range rangemap (name_string))
+    | Int32 -> Int32V(generate_int_within_range rangemap (name_string))
+    | Int64 -> Int64V(generate_int_within_range rangemap (name_string))
+	| UInt16 -> UInt16V(generate_uint_within_range rangemap (name_string))
+	| UInt32 -> UInt32V(generate_uint_within_range rangemap (name_string))
+	| UInt64 -> UInt64V(generate_uint_within_range rangemap (name_string))
+    | Float16 -> Float16V(generate_float_within_range rangemap (name_string))
+    | Float32 -> Float32V(generate_float_within_range rangemap (name_string))
+    | Float64 -> Float64V(generate_float_within_range rangemap (name_string))
     | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
     | Unit -> UnitV
 	| Pointer(stype) -> PointerV(generate_inputs_for options rangemap values_so_far name_string stype structure_ordering)
@@ -88,11 +94,12 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
        make a distinction between square and non
        square arrays.  *)
     | Array(subtype, dimvar) ->
-			if Hashtbl.mem rangemap name_string then
+			(* Not sure whether this should use the context name at the moment --- I think it should  *)
+			if Hashtbl.mem rangemap (name_string) then
 				(* If the array has specified values
 				we should use those --- often occurs with things
 				that have precomputed constant tables, e.g. twiddle factors.  *)
-				generate_array_from_range rangemap name_string
+				generate_array_from_range rangemap (name_string)
 			else
 				(* If the name wasn't specified, then we should
 				generate an array.  *)
@@ -106,19 +113,23 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 				let arrlen =
 						match dimvar_size with
 						| DimVariable(dimvar_name) ->
-							let wrapper = Hashtbl.find_exn values_so_far (name_reference_to_string dimvar_name) in
-							let arrlen = match wrapper with
-							| Int16V(v) -> v
-							| Int32V(v) -> v
-							| Int64V(v) -> v
-							| UInt16V(v) -> v
-							| UInt32V(v) -> v
-							| UInt64V(v) -> v
-							| _ ->
-									(* probably we could handle this --- just need to have a think
-									about what it means. *)
-									raise (TypeException "Unexpected list dimension type (non-int) ")
-							in
+								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
+								let () = if options.debug_generate_io_tests then
+									Printf.printf "Getting dimension %s\n" (name_reference_to_string dimvar_name)
+								else () in
+								let wrapper = get_value values_so_far dimvar_name in
+								let arrlen = match wrapper with
+								| Int16V(v) -> v
+								| Int32V(v) -> v
+								| Int64V(v) -> v
+								| UInt16V(v) -> v
+								| UInt32V(v) -> v
+								| UInt64V(v) -> v
+								| _ ->
+										(* probably we could handle this --- just need to have a think
+										about what it means. *)
+										raise (TypeException "Unexpected list dimension type (non-int) ")
+								in
 							arrlen
 						| DimConstant(c) -> c
 				in
@@ -130,17 +141,17 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 					slower computers.  *)
                     (* let () = Printf.printf "Arrlen is %d, maxlen is %d" (arrlen) (options.array_length_threshold) in *)
 					raise (GenerationFailure)
-    | Struct(name) ->
+    | Struct(structname) ->
 			(* To generate the sub-typemap, use the toposorted fields for that partiuclar class.  *)
-			(* let () = Printf.printf "Looking at %s\n" (name) in *)
-			let members, tmap = Hashtbl.find_exn structure_ordering name in
+			(* let () = Printf.printf "Looking at %s\n" (structname) in *)
+			let members, tmap = Hashtbl.find_exn structure_ordering structname in
             (* Generate a value for each type in the metadata.  *)
             let valuetbl = Hashtbl.create (module String) in
-            (* TODO -- maybe need to do something to the values so far in here? *)
-            let member_datas = List.map members (fun member -> (generate_inputs_for options rangemap values_so_far (name ^ "." ^ member) (Hashtbl.find_exn tmap.variable_map member) structure_ordering, member)) in
-            (* Now, put those generated values in a map.  *)
-            ignore(List.map member_datas (fun (data, m) -> Hashtbl.add valuetbl m data));
-            StructV(name, valuetbl)
+            let _ = List.map members (fun member ->
+				let resv = generate_inputs_for options rangemap valuetbl member (Hashtbl.find_exn tmap.variable_map member) structure_ordering in
+				Hashtbl.add valuetbl member resv
+			) in
+            StructV(structname, valuetbl)
 
 let rec generate_io_values_worker options rangemap generated_vs vs structure_orderings typemap =
 	match vs with

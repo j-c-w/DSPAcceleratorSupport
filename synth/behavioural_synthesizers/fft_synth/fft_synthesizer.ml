@@ -3,6 +3,7 @@ open Fft_synthesizer_definition;;
 open Fft_synthesizer_gen;;
 open Spec_definition;;
 open Spec_utils;;
+open Value_utils;;
 open Program;;
 open Options;;
 
@@ -297,52 +298,6 @@ let bit_reversal arr =
             ()
     done in
     Array.to_list array_version
-
-let rec get_value inputs vname =
-	match vname with
-	| Name(n) -> Hashtbl.find_exn inputs n
-	| StructName([n]) -> Hashtbl.find_exn inputs (name_reference_to_string n)
-	| StructName(n :: ns) ->
-			let substruct = Hashtbl.find_exn inputs (name_reference_to_string n) in
-			(
-			match substruct with
-			| StructV(n, values) ->
-					get_value values (StructName(ns))
-			(* This is a bit of a stupid hack --- but need some way of extracting
-			 things from arrays.  *)
-			(* Or, at least, I think it's a stupic hack.  Might actually be the
-			right place to do this... *)
-			| ArrayV(values) ->
-					ArrayV(List.map values (fun v -> match v with
-					| StructV(n, values) -> get_value values (StructName(ns))
-					| _ -> raise (FFTSynth ("Unexecptected non struct"))))
-			| _ ->
-					raise (FFTSynth ("Unexpected non struct " ^ (synth_value_to_string substruct)))
-			)
-	| _ -> raise (FFTSynth "Unexpected name")
-
-let rec set_value inputs vname result =
-	match vname with
-	| Name(n) -> Hashtbl.set inputs n result
-	| StructName([n]) ->
-			Hashtbl.set inputs (name_reference_to_string n) result
-	| StructName(n :: ns) ->
-			(
-			match Hashtbl.find_exn inputs (name_reference_to_string n) with
-			| StructV(n, vmap) ->
-					set_value vmap (StructName(ns)) result
-			| ArrayV(values) ->
-					ignore(
-						List.map values (fun v ->
-							match v with
-							| StructV(n, vmap) ->
-									set_value vmap (StructName(ns))
-							| _ -> raise (FFTSynth "Unexpected type")
-						)
-					)
-			| _ -> raise (FFTSynth "Unexpected type")
-			)
-	| _ -> raise (FFTSynth "Unexepected Name")
 
 let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
     match program with
