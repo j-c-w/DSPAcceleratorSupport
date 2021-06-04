@@ -199,6 +199,10 @@ and fill_variable filler v =
     filler v
 
 let hole_options options bool_variables array_variables int_variables float_variables variable_type =
+	(* let () = Printf.printf "Bool variables are: %s\n" (name_reference_list_to_string bool_variables) in
+	let () = Printf.printf "Array variables are: %s\n" (name_reference_list_to_string array_variables) in
+	let () = Printf.printf "Int variables are: %s\n" (name_reference_list_to_string int_variables) in
+	let () = Printf.printf "Float variables are: %s\n" (name_reference_list_to_string float_variables) in *)
     let result = match variable_type with
     | FSIntConstantHole -> List.map fs_int_constants (fun x -> FSConstant(x))
     | FSFloatConstantHole -> List.map fs_float_constants (fun x -> FSConstant(x))
@@ -359,6 +363,26 @@ and eval_variable v (inputs: (string, synth_value) Hashtbl.t): synth_value =
         v
     | _ -> raise (FFTSynth "Can't eval a hole")
 
+let assert_not_empty (bres, ares, ires, fres) =
+	let rec assert_list_not_empty l =
+		let r = List.for_all l (fun l ->
+			match l with
+			| AnonymousName -> false
+			| Name("") -> false
+			| Name(_) -> true
+			| StructName(ns) ->
+					(assert_list_not_empty ns)
+		)
+		in
+		let () = if r then () else Printf.printf "Found empty name in list %s\n" (name_reference_list_to_string l) in
+		let () = assert r in
+		r
+	in
+		assert (assert_list_not_empty bres);
+		assert (assert_list_not_empty ares);
+		assert (assert_list_not_empty ires);
+		assert (assert_list_not_empty fres)
+
 (* Generate the assignment options for each class of variable.  *)
 (* This is really just a shitty heuristic, and it's just crap code
 too.  Want to think of a better way of doing this.  *)
@@ -393,10 +417,13 @@ let rec split_variables classmap typemap variables =
 		get_struct_variables classmap varname structname
     ) in
     (* Probably could be done in a more scalable manner.  Anyway... *)
-    List.fold struct_name_types ~init:(b_vars, arr_vars, i_vars, f_vars) ~f:(fun (b, a, i, f) ->
+	let (bres, ares, ires, fres) = List.fold struct_name_types ~init:(b_vars, arr_vars, i_vars, f_vars) ~f:(fun (b, a, i, f) ->
             fun (b2, a2, i2, f2) ->
                 (b @ b2, a @ a2, i @ i2, f @ f2)
-    )
+    ) in
+	let () = assert_not_empty (bres, ares, ires, fres) in
+	(bres, ares, ires, fres)
+
 and get_struct_variables classmap varname structname =
         let struct_metadata = Hashtbl.find_exn classmap structname in
         let structtypemap = get_class_typemap struct_metadata in

@@ -308,8 +308,18 @@ and cxx_generate_from_lvalue typemap lvalue =
 
 and cxx_generate_from_variable_reference typemap vref =
 	match vref with
-	| Variable(nm) ->
-			"", cxx_gir_name_to_string nm, Hashtbl.find_exn typemap.variable_map (gir_name_to_string nm)
+	| Variable(Name(nm)) ->
+			(* let () = Printf.printf "Variable is %s%!\n" (gir_name_to_string nm) in *)
+			let typ =
+				if (String.compare nm "") = 0 then
+					(* Empty is used as a placeholder by the behavioural synthesizer.  *)
+					(* Unit seems like the best type to give that --- it obviously can't be passed
+					to functions, but it is used to be passed to #defines.  *)
+					Unit
+				else
+					Hashtbl.find_exn typemap.variable_map nm
+			in
+			"", nm, typ
 	| MemberReference(structref, member) ->
 			(* TODO -- need to support pointer-ref
 			   generation.  *)
@@ -353,6 +363,7 @@ and cxx_generate_from_expression typemap expr =
 			let pre, post, typ = cxx_generate_from_variable_reference typemap nref in
 			pre, post
     | FunctionCall(fref, vlist) ->
+			(* let () = Printf.printf "fref code is %s\n" (cxx_generate_from_function_ref fref) in *)
 			let pre_args_code, args_list = (cxx_generate_from_vlist typemap vlist) in
             pre_args_code, (cxx_generate_from_function_ref fref) ^ "(" ^ args_list ^ ");"
 	| GIRMap(vfrom, value_pairs_list) ->

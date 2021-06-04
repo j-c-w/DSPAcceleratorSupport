@@ -131,7 +131,10 @@ and generate_gir_condition cond =
 
 and generate_gir_variable v =
 	match v with
-	| FSVariable(n) -> Variable(Name(name_reference_to_string n))
+	| FSVariable(n) ->
+			let nstring = name_reference_to_string n in
+			let () = assert ((String.compare nstring "") <> 0) in
+			Variable(Name(nstring))
 	(* Will have trouble with more complex consts, although
 	   we don't actually need those right now.  *)
 	| FSConstant(v) -> Constant(v)
