@@ -16,9 +16,10 @@ type range_program = {
 (* This should be a list of live-in variables, the function
 	and then the live out varaibles. *)
 type program = {
-    in_variables: string list;
+	funargs: string list;
+    livein: string list;
     gir: gir;
-    out_variables: string list;
+    liveout: string list;
 	range_checker: range_program option;
 	post_behavioural: post_behavioural_program option;
 	typemap: typemap;

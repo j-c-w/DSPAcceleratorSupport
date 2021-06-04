@@ -656,15 +656,15 @@ let generate_dump_function options (typemap: typemap) (program: program) filenam
 		header; write_json_def; gen_results; ofstream_create; ofstream_write; tail
 	]
 
-let generate_user_visible_function (iospec: iospec) (program: program) =
+let generate_user_visible_function (program: program) =
 	let origmap = Option.value_exn program.typemap.original_typemap in
 	let rettype, _ = cxx_type_from_returnvar origmap.variable_map program.returnvar in
 	let header = 
 		rettype ^ " " ^ program.generated_funname ^ "("
-		^ (String.concat ~sep:", " (cxx_names_to_type_definition origmap.variable_map iospec.funargs)) ^ ") {"
+		^ (String.concat ~sep:", " (cxx_names_to_type_definition origmap.variable_map program.funargs)) ^ ") {"
 	in
 	let cast_args =
-		List.map iospec.funargs (fun arg ->
+		List.map program.funargs (fun arg ->
 			(* We have to generate this because the structure
 			inference tool might infer different types --
 			we need to cast those appropriately.  *)
@@ -688,7 +688,7 @@ let generate_user_visible_function (iospec: iospec) (program: program) =
 thing --- it should respect the specification for taking in
 as args the input JSON file, and putting the outputs of the function
 in the output JSON file.  *)
-let cxx_main_function options (iospec: iospec) dump_intermediates returntype (program: program) =
+let cxx_main_function options dump_intermediates returntype (program: program) =
 	let json_var_name = "input_json" in
 	let header = "int main(int argc, char **argv) {" in
 	let argreader =      "    char *inpname = argv[1]; " in
@@ -704,7 +704,7 @@ let cxx_main_function options (iospec: iospec) dump_intermediates returntype (pr
 	in
 	let load_file =      "    std::ifstream ifs(inpname); " in
 	let load_json =      "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns program.typemap iospec.funargs iospec.livein json_var_name in
+	let parse_args, argnames = generate_input_assigns program.typemap program.funargs program.livein json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
@@ -731,7 +731,7 @@ let cxx_main_function options (iospec: iospec) dump_intermediates returntype (pr
 	(* Generate a function that has the types of the original
 	   user code before any type inference etc.  *)
 	let user_visible_function =
-		generate_user_visible_function iospec program
+		generate_user_visible_function program
 	in
     let timing_print_code =
         if options.generate_timing_code then
@@ -742,7 +742,7 @@ std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC <<
     in
 	let origmap = Option.value_exn program.typemap.original_typemap in
 	let output_writing_function =
-		generate_dump_function options origmap program "output_file" (iospec.funargs @ iospec.returnvar) (iospec.liveout @ iospec.returnvar) "write_output"
+		generate_dump_function options origmap program "output_file" (program.funargs @ program.returnvar) (program.liveout @ program.returnvar) "write_output"
 	in
 	let accelerator_timing_functions =
 		if options.generate_timing_code then
@@ -751,7 +751,7 @@ std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC <<
 			""
 	in
 	let output_write_call =
-        "write_output(" ^ (String.concat ~sep:", " (iospec.funargs @ iospec.returnvar)) ^ ");"
+        "write_output(" ^ (String.concat ~sep:", " (program.funargs @ program.returnvar)) ^ ");"
 	in
 	let tail = "}" in
 	String.concat ~sep:"\n" [accelerator_timing_functions; output_writing_function],
@@ -783,7 +783,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
     (* Generate the function header *)
     let function_header =
         function_type ^ " " ^ program.generated_funname ^ "_internal(" ^
-        (String.concat ~sep:"," (cxx_names_to_type_definition program.typemap.variable_map program.in_variables)) ^
+        (String.concat ~sep:"," (cxx_names_to_type_definition program.typemap.variable_map program.funargs)) ^
         ") {" 
     in
     (* Generate the actual program --- need to include e.g. any range programs
@@ -797,7 +797,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 	let ioimports = cxx_generate_imports iospec.required_includes in
     let apiimports = cxx_generate_imports apispec.required_includes in
     let function_end = "}" in
-	let main_helper_funcs, post_accel_def_funcs, main_func = cxx_main_function options iospec dump_intermediates function_type program in
+	let main_helper_funcs, post_accel_def_funcs, main_func = cxx_main_function options dump_intermediates function_type program in
     (* Generate the whole program.  *)
 	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; post_accel_def_funcs; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 

@@ -114,9 +114,10 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 	let required_fundefs =
 		remove_unused_fundefs final_body girpair.fundefs in
     {
-        in_variables = iospec.funargs;
+		funargs = iospec.funargs;
+        livein = iospec.livein;
         gir = final_body;
-        out_variables = iospec.liveout;
+        liveout = iospec.liveout;
 		range_checker = girpair.range_checker;
         post_behavioural = None;
         returnvar = iospec.returnvar;

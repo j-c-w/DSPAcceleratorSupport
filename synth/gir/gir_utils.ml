@@ -123,12 +123,12 @@ let range_program_to_string (rp: range_program option) =
     | Some(prog) -> conditional_to_string prog.condition
 
 let program_to_string (program: program) =
-    "Function(" ^ (String.concat ~sep:"," program.in_variables) ^ ") {\n" ^
+    "Function(" ^ (String.concat ~sep:"," program.funargs) ^ ") {\n" ^
     "Executed if: " ^ (range_program_to_string program.range_checker) ^ "\n" ^
     (gir_to_string program.gir) ^ "\nPostBehavioural: " ^
     (post_behavioural_to_string program.post_behavioural) ^ "\n" ^
     "\n EndFunction (outvars: " ^
-    (String.concat ~sep:"," program.out_variables) ^ ")\n"
+    (String.concat ~sep:"," program.liveout) ^ ")\n"
 
 let variable_reference_list_to_string nms =
 	String.concat ~sep:", " (List.map nms variable_reference_to_string)

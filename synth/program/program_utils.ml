@@ -33,7 +33,7 @@ let rec split_on_condition cond program (sequence_elements: gir list) =
 								FunctionRef(
 									Name(program.user_funname)
 								),
-								VariableList(List.map program.in_variables (generate_cast_reference program))
+								VariableList(List.map program.funargs (generate_cast_reference program))
 							)
 				in
 				(* Not all code needs return parameters *)
