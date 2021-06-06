@@ -10,7 +10,7 @@ fi
 mkdir -p inputs
 # I haven't yet seen a data-dependent FFT algorithm,
 # so we'll just use a constnat input.
-contents="2.510045379820, 21.72443302820"
+contents="{\"r\": 2.510045379820, \"j\":21.72443302820}"
 typeset -a inputs
 inputs=("$contents")
 for i in $(seq 1 $(( $1 - 1 ))); do
@@ -19,8 +19,7 @@ done
 
 # This uses an input template that gets extended.
 template="{
-	\"n\": $1,
-	\"input\": [
+	\"in\": [
 	"${inputs[@]}"
 	]
 }"
