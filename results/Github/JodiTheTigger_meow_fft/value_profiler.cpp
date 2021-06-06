@@ -33,27 +33,35 @@ json output_temp_2;
 
 output_temp_2["N"] = output_temp_1.N;
 std::vector<json> output_temp_3;
-for (unsigned int i4 = 0; i4 < output_temp_1.N; i4++) {
-Meow_FFT_Complex output_temp_5 = data->wn[i4];
-json output_temp_6;
+if (data->wn != NULL) {
+	for (unsigned int i4 = 0; i4 < output_temp_1.stages.count; i4++) {
+	Meow_FFT_Complex output_temp_5 = data->wn[i4];
+	json output_temp_6;
 
-output_temp_6["r"] = output_temp_5.r;
+	output_temp_6["r"] = output_temp_5.r;
 
-output_temp_6["j"] = output_temp_5.j;
-output_temp_3.push_back(output_temp_6);
-}
+	output_temp_6["j"] = output_temp_5.j;
+	output_temp_3.push_back(output_temp_6);
+	}
 output_temp_2["wn"] = output_temp_3;
-std::vector<json> output_temp_7;
-for (unsigned int i8 = 0; i8 < output_temp_1.N; i8++) {
-Meow_FFT_Complex output_temp_9 = data->wn_ordered[i8];
-json output_temp_10;
-
-output_temp_10["r"] = output_temp_9.r;
-
-output_temp_10["j"] = output_temp_9.j;
-output_temp_7.push_back(output_temp_10);
+} else {
+	output_temp_2["wn"] = NULL;
 }
-output_temp_2["wn_ordered"] = output_temp_7;
+std::vector<json> output_temp_7;
+if (data->wn_ordered != NULL) {
+	for (unsigned int i8 = 0; i8 < output_temp_1.stages.count; i8++) {
+	Meow_FFT_Complex output_temp_9 = data->wn_ordered[i8];
+	json output_temp_10;
+
+	output_temp_10["r"] = output_temp_9.r;
+
+	output_temp_10["j"] = output_temp_9.j;
+	output_temp_7.push_back(output_temp_10);
+	}
+	output_temp_2["wn_ordered"] = output_temp_7;
+} else {
+	output_temp_2["wn_ordered"] = NULL;
+}
 json output_temp_11;
 
 output_temp_11["count"] = data->stages.count;
