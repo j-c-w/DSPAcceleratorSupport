@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 # Assumes that the inputs have been generated and
 # things have been built.
 
@@ -15,7 +17,7 @@ for profiler in ${files[@]}; do
 	ifiles=$(find . -name "*.json")
 
 	for file in ${ifiles[@]}; do
-		eval ./$(basename $profiler) $file value_profiles/$file
+		eval ./$(basename $profiler) $file value_profiles/$(basename $file)
 	done
 	popd
 done
