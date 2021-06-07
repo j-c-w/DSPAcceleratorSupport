@@ -9,6 +9,7 @@ open Parse_type;;
 open Parse_range;;
 open Parse_const;;
 open Options;;
+open Json_utils;;
 
 exception IOSpecError of string
 
@@ -19,6 +20,9 @@ let extract_typemap typemap vars =
 	(* Add these types to the hash map.  *)
 	ignore(List.map typepairs (fun (var, t)  -> Hashtbl.add tbl var t));
 	tbl;;
+
+let load_value_profiles vprofile =
+	load_value_map_from (vprofile |> to_string)
 
 let load_iospec options filename =
 	let json = Yojson.Basic.from_file filename in
@@ -37,6 +41,10 @@ let load_iospec options filename =
     | `Null -> []
     | other -> List.map (other |> to_list) to_string in
 	let required_includes = List.map (json |> member "required_includes" |> to_list) to_string in
+	let value_profiles = List.map (match json |> member "value_profiles" with
+	| `Null -> []
+	| other -> other |> to_list
+	) load_value_profiles in
 	let range_tbl = load_rangetable options classmap typemap (json |> member "range") in
 	let valid_tbl = load_rangetable options classmap typemap (json |> member "valid") in
 	let const_tbl = load_consttable options (json |> member "consts") in
@@ -49,6 +57,7 @@ let load_iospec options filename =
 		compiler_flags=compiler_flags;
 		required_includes=required_includes;
 		rangemap = range_tbl;
+        value_profiles = value_profiles;
 		validmap = valid_tbl;
 		constmap = const_tbl;
 		returnvar=retvars;

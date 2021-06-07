@@ -514,6 +514,9 @@ let clone_typemap (t: (string, synth_type) Hashtbl.t) =
 let clone_classmap (t: (string, structure_metadata) Hashtbl.t) =
     table_clone t
 
+let clone_valuemap (t: (string, synth_value) Hashtbl.t) =
+	table_clone t
+
 let merge_maps (t1: (string, 'a) Hashtbl.t) (t2: (string, 'a) Hashtbl.t) =
 	let newtbl = Hashtbl.create (module String) in
 	let k1 = Hashtbl.keys t1 in

@@ -93,6 +93,9 @@ type iospec = {
     funargs: string list;
 	execcmd: string;
 	required_includes: string list;
+	(* Note that value profiles don't have to specify every
+	value --- the backend generator can do the rest.  *)
+	value_profiles: ((string, synth_value) Hashtbl.t) list;
 	rangemap: (string, range_set) Hashtbl.t;
 	validmap: (string, range_set) Hashtbl.t;
 	(* Which consts appear in the user code -- indexed
