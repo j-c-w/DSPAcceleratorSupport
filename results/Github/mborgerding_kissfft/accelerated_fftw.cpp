@@ -96,7 +96,9 @@ fin_vec.push_back(fin_inner);
 kiss_fft_cpx *fin = &fin_vec[0];
 kiss_fft_cpx fout[nfft];
 clock_t begin = clock();
-kfc_fft_accel(nfft, fin, fout);
+for (int i = 0; i < TIMES; i ++) {
+	kfc_fft_accel(nfft, fin, fout);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << AcceleratorTotalNanos << std::endl;
