@@ -44,6 +44,7 @@ def plot(lines, names, style):
         plt.title("Speed Comparison Across Different Sizes")
         plt.xlabel("Input size")
     elif style == 'overhead':
+        plt.plot([minx, maxx], [1.0, 1.0], label="Low Overhead Threshold")
         plt.ylabel("Overhead (log)")
         plt.title("Overhead of FACC-Generated Code Across Different Sizes")
         plt.xlabel("Input size")
@@ -94,11 +95,12 @@ if __name__ == "__main__":
     for folder in args.Folders:
         v1 = load_result_maps(folder, args.AcceleratedResultsFolder, "json_out")
         v2 = load_result_maps(folder, args.AcceleratedResultsFolder, "json_acctime_out")
+        v3 = load_result_maps(folder, args.OriginalResultsFolder, "json_out")
         res = {}
         for k in v1.keys():
             # Do the subtraction because v2 actually measures the time /in/ the accelerator,
             # which is the inverse of the overhead.
-            res[k] = (v1[k] - v2[k]) / v1[k]
+            res[k] = (v1[k] - v2[k]) / v3[k]
 
         lines.append(res)
         names.append(folder)
