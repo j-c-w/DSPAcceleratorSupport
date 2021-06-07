@@ -1,5 +1,5 @@
 
-#include "../../benchmarks/Github/code/JodiTheTigger_meow_fft/self_contained_code.c"
+#include "../../../benchmarks/Github/code/JodiTheTigger_meow_fft/context_code.c"
 
 
 #include "../../benchmarks/Accelerators/FFTW/interface.hpp"
@@ -62,7 +62,7 @@ short dir;;
 		api_in[i133].im = in[i133].j;
 	};
 	
-if ((PRIM_EQUAL(dir, -1)) && ((PRIM_EQUAL(interface_len, 524288)) || ((PRIM_EQUAL(interface_len, 262144)) || ((PRIM_EQUAL(interface_len, 131072)) || ((PRIM_EQUAL(interface_len, 65536)) || ((PRIM_EQUAL(interface_len, 32768)) || ((PRIM_EQUAL(interface_len, 16384)) || ((PRIM_EQUAL(interface_len, 8192)) || ((PRIM_EQUAL(interface_len, 4096)) || ((PRIM_EQUAL(interface_len, 2048)) || ((PRIM_EQUAL(interface_len, 1024)) || ((PRIM_EQUAL(interface_len, 512)) || ((PRIM_EQUAL(interface_len, 256)) || ((PRIM_EQUAL(interface_len, 128)) || ((PRIM_EQUAL(interface_len, 64)) || ((PRIM_EQUAL(interface_len, 32)) || ((PRIM_EQUAL(interface_len, 16)) || ((PRIM_EQUAL(interface_len, 8)) || ((PRIM_EQUAL(interface_len, 4)) || ((PRIM_EQUAL(interface_len, 2)) || (PRIM_EQUAL(interface_len, 1)))))))))))))))))))))) {
+if ((PRIM_EQUAL(dir, -1)) && (PRIM_EQUAL(interface_len, 2) || PRIM_EQUAL(interface_len, 4) || PRIM_EQUAL(interface_len, 8) || PRIM_EQUAL(interface_len, 16) || PRIM_EQUAL(interface_len, 32) || ((PRIM_EQUAL(interface_len, 524288)) || ((PRIM_EQUAL(interface_len, 262144)) || ((PRIM_EQUAL(interface_len, 131072)) || ((PRIM_EQUAL(interface_len, 65536)) || ((PRIM_EQUAL(interface_len, 32768)) || ((PRIM_EQUAL(interface_len, 16384)) || ((PRIM_EQUAL(interface_len, 8192)) || ((PRIM_EQUAL(interface_len, 4096)) || ((PRIM_EQUAL(interface_len, 2048)) || ((PRIM_EQUAL(interface_len, 1024)) || ((PRIM_EQUAL(interface_len, 512)) || ((PRIM_EQUAL(interface_len, 256)) || ((PRIM_EQUAL(interface_len, 128)) || ((PRIM_EQUAL(interface_len, 64)) || ((PRIM_EQUAL(interface_len, 32)) || ((PRIM_EQUAL(interface_len, 16)) || ((PRIM_EQUAL(interface_len, 8)) || ((PRIM_EQUAL(interface_len, 4)) || ((PRIM_EQUAL(interface_len, 2)) || (PRIM_EQUAL(interface_len, 1))))))))))))))))))))))) {
 StartAcceleratorTimer();;
 	fftwf_example_api(api_in, api_out, interface_len, dir);;
 	StopAcceleratorTimer();;
@@ -85,52 +85,27 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
-int data_pointerN = input_json["data"]["N"];
-std::vector<Meow_FFT_Complex> data_pointerwn_vec;
-for (auto& elem : input_json["data"]["wn"]) {
-float data_pointerwn_innerr = elem["r"];
-float data_pointerwn_innerj = elem["j"];
-Meow_FFT_Complex data_pointerwn_inner = { data_pointerwn_innerr, data_pointerwn_innerj};
-data_pointerwn_vec.push_back(data_pointerwn_inner);
-}
-Meow_FFT_Complex *data_pointerwn = &data_pointerwn_vec[0];
-std::vector<Meow_FFT_Complex> data_pointerwn_ordered_vec;
-for (auto& elem : input_json["data"]["wn_ordered"]) {
-float data_pointerwn_ordered_innerr = elem["r"];
-float data_pointerwn_ordered_innerj = elem["j"];
-Meow_FFT_Complex data_pointerwn_ordered_inner = { data_pointerwn_ordered_innerr, data_pointerwn_ordered_innerj};
-data_pointerwn_ordered_vec.push_back(data_pointerwn_ordered_inner);
-}
-Meow_FFT_Complex *data_pointerwn_ordered = &data_pointerwn_ordered_vec[0];
-unsigned int data_pointerstagescount = input_json["data"]["stages"]["count"];
-std::vector<unsigned int> data_pointerstagesradix_vec;
-for (auto& elem : input_json["data"]["stages"]["radix"]) {
-unsigned int data_pointerstagesradix_inner = elem;
-data_pointerstagesradix_vec.push_back(data_pointerstagesradix_inner);
-}
-unsigned int *data_pointerstagesradix = &data_pointerstagesradix_vec[0];
-std::vector<unsigned int> data_pointerstagesremainder_vec;
-for (auto& elem : input_json["data"]["stages"]["remainder"]) {
-unsigned int data_pointerstagesremainder_inner = elem;
-data_pointerstagesremainder_vec.push_back(data_pointerstagesremainder_inner);
-}
-unsigned int *data_pointerstagesremainder = &data_pointerstagesremainder_vec[0];
-std::vector<unsigned int> data_pointerstagesoffsets_vec;
-for (auto& elem : input_json["data"]["stages"]["offsets"]) {
-unsigned int data_pointerstagesoffsets_inner = elem;
-data_pointerstagesoffsets_vec.push_back(data_pointerstagesoffsets_inner);
-}
-unsigned int *data_pointerstagesoffsets = &data_pointerstagesoffsets_vec[0];
-Meow_Fft_Stages data_pointerstages = { data_pointerstagescount, data_pointerstagesradix, data_pointerstagesremainder, data_pointerstagesoffsets};
-Meow_FFT_Workset data_pointer = { data_pointerN, data_pointerwn, data_pointerwn_ordered, data_pointerstages};
-Meow_FFT_Workset* data = &data_pointer;
 std::vector<Meow_FFT_Complex> in_vec;
+int n = 0;
 for (auto& elem : input_json["in"]) {
 float in_innerr = elem["r"];
 float in_innerj = elem["j"];
 Meow_FFT_Complex in_inner = { in_innerr, in_innerj};
 in_vec.push_back(in_inner);
+n += 1;
 }
+/// This is the in-context part.  That is, is a 'typical use' pattern
+// that we used for the value profiling.  It doesn't technicaly
+// need to be here, and a good compiler could eliminate it since
+// virtually everything within is now dead-in.  However,
+// I can't be bothered to write a proper input generator
+// that actually generates valid values for all these things,
+// so we'll just do this.
+size_t workset_bytes = meow_fft_generate_workset(n, NULL);
+Meow_FFT_Workset* data =
+	(Meow_FFT_Workset *) malloc(workset_bytes);
+meow_fft_generate_workset(n, data);
+// end in-context part.
 Meow_FFT_Complex *in = &in_vec[0];
 Meow_FFT_Complex out[data->N];
 clock_t begin = clock();
