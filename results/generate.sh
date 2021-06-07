@@ -4,7 +4,7 @@ set -eu
 # Generates all the inputs for every benchmark
 generators=( $(find -name generate_inputs.sh) )
 # Only testing powers of two right now.
-MAX=10
+MAX=15
 
 for file in "${generators[@]}"; do
 	dname=$(dirname $file)
