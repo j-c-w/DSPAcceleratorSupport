@@ -7,6 +7,11 @@ if [[ $# -ne 1 ]]; then
 	exit 1
 fi
 
+if (( $1 > 1024 )); then
+	echo "Stop from generating inputs too large"
+	exit 0
+fi
+
 mkdir -p inputs
 # I haven't yet seen a data-dependent FFT algorithm,
 # so we'll just use a constnat input.

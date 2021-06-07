@@ -7,6 +7,12 @@ if [[ $# -ne 1 ]]; then
 	exit 1
 fi
 
+# Stop from generating inputs that are too big.
+if [[ $1 == 2 ]]; then
+	echo "Unsupported length by JodiTheTigger: 2"
+	exit 0
+fi
+
 mkdir -p inputs
 # I haven't yet seen a data-dependent FFT algorithm,
 # so we'll just use a constnat input.
