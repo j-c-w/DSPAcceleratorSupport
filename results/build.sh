@@ -2,7 +2,7 @@
 set -eu
 
 # How many times to execute the FFT loop within the benchmark
-export TIMES_IN_BENCHMARK=1000
+export TIMES_IN_BENCHMARK=10000
 
 # Generates all the inputs for every benchmark
 makefiles=( $(find -name Makefile) )
