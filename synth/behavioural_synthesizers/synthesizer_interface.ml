@@ -165,6 +165,14 @@ let synthesize_post (options: options) typemap (iospec: iospec) (apispec: apispe
     let () = if options.debug_post_synthesis then
         Printf.printf "Starting post-synthesis\n"
     else () in
-	match options.post_synthesizer with
-	| NoSynthesizer -> None
-	| FFTSynth -> fft_synth options typemap names program io_pairs
+	match io_pairs with
+	| [] -> (* So, this means that everything failed.  *)
+			(* Usualy this is due to some incorrect length
+			assumptions --- in any case, we can't have
+			the post-synthesizer vacuously proving that
+			there are many 'valid' programs.  *)
+			None
+	| io_pairs ->
+		match options.post_synthesizer with
+		| NoSynthesizer -> None
+		| FFTSynth -> fft_synth options typemap names program io_pairs
