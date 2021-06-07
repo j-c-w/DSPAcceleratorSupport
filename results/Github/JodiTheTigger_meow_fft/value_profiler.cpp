@@ -49,7 +49,7 @@ output_temp_2["wn"] = output_temp_3;
 }
 std::vector<json> output_temp_7;
 if (data->wn_ordered != NULL) {
-	for (unsigned int i8 = 0; i8 < output_temp_1.stages.count; i8++) {
+	for (unsigned int i8 = 0; i8 < output_temp_1.N; i8++) {
 	Meow_FFT_Complex output_temp_9 = data->wn_ordered[i8];
 	json output_temp_10;
 
