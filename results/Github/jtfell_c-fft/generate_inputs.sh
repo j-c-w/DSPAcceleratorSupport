@@ -7,7 +7,7 @@ if [[ $# -ne 1 ]]; then
 	exit 1
 fi
 
-if (( $1 > 1024 )); then
+if (( $1 > 512 )); then
 	echo "Stop from generating inputs too large"
 	exit 0
 fi
