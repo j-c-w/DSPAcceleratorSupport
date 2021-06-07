@@ -45,7 +45,7 @@ if (data->wn != NULL) {
 	}
 output_temp_2["wn"] = output_temp_3;
 } else {
-	output_temp_2["wn"] = NULL;
+	output_temp_2["wn"] = output_temp_3;
 }
 std::vector<json> output_temp_7;
 if (data->wn_ordered != NULL) {
