@@ -3,12 +3,15 @@
 set -eu
 set -x
 
-if [[ $# -ne 1 ]]; then
-	echo "Usage: $0 <accelerator executable name (e.g. accelerated_fftw)>"
+if [[ $# -lt 1 ]]; then
+	echo "Usage: $0 <accelerator executable name (e.g. accelerated_fftw)> [optional bmark name]"
 	exit 1
 fi
 
 TIMES=2
+if [[ $# -gt 1 ]]; then
+	cd $2
+fi
 files=$(find -name $1)
 
 for file in ${files[@]}; do
