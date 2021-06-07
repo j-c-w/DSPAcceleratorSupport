@@ -12,7 +12,10 @@ exception CXXGenerationException of string
 
 let cxx_generate_imports filenames =
 	(String.concat ~sep:"\n" (List.map filenames (fun name ->
-		"#include \"" ^ name ^ "\""))) ^ "\n\n"
+		if (Filename.check_suffix name ".h") || (Filename.check_suffix name ".c") then
+			"extern \"C\" {\n#include \"" ^ name ^ "\"\n}\n"
+		else
+			"#include \"" ^ name ^ "\""))) ^ "\n\n"
 
 let cxx_gir_name_to_string nm =
 	match nm with
