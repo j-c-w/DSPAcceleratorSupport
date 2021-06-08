@@ -43,7 +43,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	let unified_type_maps = generate_unified_typemaps opts classmap iospec iospec_typemap api apispec_typemap apispec_alignment in
 	let () = if opts.print_synthesizer_numbers then
 		let () = Printf.printf "Generated the dimensions%!\n" in
-		let () = Printf.printf "Have %d possible annotated typemaps\n" (List.length unified_type_maps) in
+		let () = Printf.printf "Have %d possible annotated typemaps\n%!" (List.length unified_type_maps) in
 		()
 	else () in
     (* Generate the possible skeletons to consider *)

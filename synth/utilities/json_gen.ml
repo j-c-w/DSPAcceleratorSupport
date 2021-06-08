@@ -34,7 +34,7 @@ let main modename iospec_file output_file =
     (* Yes, this is a terrible hack I am 100% going to regret
     because I have no clear understanding why it needs both.  *)
 	let mode = get_mode modename in
-    let options = { default_options with generate_timing_code = true } in
+	let options = { default_options with generate_timing_code = true } in
     let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
 	let rec typemap = {
