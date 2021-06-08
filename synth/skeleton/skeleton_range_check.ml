@@ -231,12 +231,17 @@ let generate_range_check_skeleton options classmap iospec apispec pre_binding =
     in
     result
 
-let check_valid_map iomap =
+let check_valid_map rangemap validmap iomap =
 	let keys = Hashtbl.keys iomap in
 	let _ = List.map keys (fun key ->
 		let range = Hashtbl.find_exn iomap key in
 		if (empty_range_set range) then
 			let () = Printf.printf "Error generating for key %s\n" (key) in
+            let () = Printf.printf "Range for variable was %s\n" (match (Hashtbl.find rangemap key) with
+            | None -> "None"
+            | Some(r) -> range_set_to_string r
+            ) in
+            let () = Printf.printf "Validity range for variable was %s\n" (range_set_to_string (Hashtbl.find_exn validmap key)) in
 			raise (RangeCheckException "Error! A mapping with a zero-sized domain has been generated!  That should have been filtered earlier")
 		else
 			()
@@ -277,7 +282,7 @@ let generate_input_ranges_skeleton options rangemap validmap binding =
 		let _ = Hashtbl.set inputmap key input_range in
 		()
 	) in
-	let () = check_valid_map inputmap in
+	let () = check_valid_map rangemap transformed_io_validmap inputmap in
 	let () =
 		if options.debug_input_map_generation then
 			let () = Printf.printf "For pre skeleton %s\n" (flat_skeleton_type_binding_to_string binding) in

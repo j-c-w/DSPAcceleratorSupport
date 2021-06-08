@@ -12,14 +12,23 @@ open Utils;;
 
 exception SkeletonRangerException of string
 
+let getIdentityConversionFunction options r1 r2 =
+	let overlap_size = range_size (range_set_intersection r1 r2) in
+	let overlap_fraction = range_size_divide (range_size r1) overlap_size in
+	if (range_size_less_than overlap_fraction options.range_size_difference_factor) then
+		identityConversionFunction r1 r2
+	else
+		(* If there isn't enough direct overlap of the two range sets, then
+			we probably shouldn't do this assignment as an identity assignment. *)
+		[]
+
 (* There is a lot more we could do here, e.g.
    making ranges with 0 overlap unlikely etc.  *)
-
 (* Generate a conversion from r1 to r2.  *)
 (* We really only do a small subset of this right now ---
 handling the general case is obviously exponential,
 within an already exponential problem.. *)
-let range_conversion r1 r2 =
+let range_conversion options r1 r2 =
     let r1_size = range_size r1 in
     let r2_size = range_size r2 in
 	let po2_options =
@@ -41,9 +50,9 @@ let range_conversion r1 r2 =
         if (range_size_compare r1_size rangeConversionSizeLimit) = -1 then
             permutationConversionOptions r1 r2
         else
-            identityConversionFunction r1 r2
+            getIdentityConversionFunction options r1 r2
     else
-        identityConversionFunction r1 r2
+        getIdentityConversionFunction options r1 r2
 	in po2_options @ perm_options
 
 (* Various things are implausible, like the fromrange
@@ -124,7 +133,7 @@ let check_binds options from_rangemap to_rangemap (bind: flat_single_variable_bi
             in
             let compatible = range_compat_check options frange trange in
             if compatible then
-                let conv_fs = range_conversion frange trange in
+                let conv_fs = range_conversion options frange trange in
 				List.map conv_fs (fun conv_f -> {
 					fromvars_index_nesting = bind.fromvars_index_nesting;
 					tovar_index_nesting = bind.tovar_index_nesting;
