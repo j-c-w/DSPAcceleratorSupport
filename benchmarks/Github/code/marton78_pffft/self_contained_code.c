@@ -1,3 +1,55 @@
+  typedef struct PFFFT_Setup PFFFT_Setup;
+  typedef enum { PFFFT_FORWARD, PFFFT_BACKWARD } pffft_direction_t;
+  
+  /* type of transform */
+  typedef enum { PFFFT_REAL, PFFFT_COMPLEX } pffft_transform_t;
+  void pffft_destroy_setup(PFFFT_Setup *);
+#define MALLOC_V4SF_ALIGNMENT 64
+
+static void * Valigned_malloc(size_t nb_bytes) {
+  void *p, *p0 = malloc(nb_bytes + MALLOC_V4SF_ALIGNMENT);
+  if (!p0) return (void *) 0;
+  p = (void *) (((size_t) p0 + MALLOC_V4SF_ALIGNMENT) & (~((size_t) (MALLOC_V4SF_ALIGNMENT-1))));
+  *((void **) p - 1) = p0;
+  return p;
+}
+
+static void Valigned_free(void *p) {
+  if (p) free(*((void **) p - 1));
+}
+
+
+static int next_power_of_two(int N) {
+  /* https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2 */
+  /* compute the next highest power of 2 of 32-bit v */
+  unsigned v = N;
+  v--;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  v++;
+  return v;
+}
+
+static int is_power_of_two(int N) {
+  /* https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2 */
+  int f = N && !(N & (N - 1));
+  return f;
+}
+
+
+
+void *pffft_aligned_malloc(size_t nb_bytes) { return Valigned_malloc(nb_bytes); }
+void pffft_aligned_free(void *p) { Valigned_free(p); }
+int pffft_next_power_of_two(int N) { return next_power_of_two(N); }
+int pffft_is_power_of_two(int N) { return is_power_of_two(N); }
+
+void *pffftd_aligned_malloc(size_t nb_bytes) { return Valigned_malloc(nb_bytes); }
+void pffftd_aligned_free(void *p) { Valigned_free(p); }
+int pffftd_next_power_of_two(int N) { return next_power_of_two(N); }
+int pffftd_is_power_of_two(int N) { return is_power_of_two(N); }
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -2068,4 +2120,56 @@ void FUNC_TRANSFORM_UNORDRD(SETUP_STRUCT *setup, const float *input, float *outp
 
 void FUNC_TRANSFORM_ORDERED(SETUP_STRUCT *setup, const float *input, float *output, float *work, pffft_direction_t direction) {
   FUNC_TRANSFORM_INTERNAL(setup, input, output, (v4sf*)work, direction, 1);
+}
+// See notes - this is to re-sugar the enum types without
+// having to implement them in FACC>
+// This is basically emulating what the compiler would do
+// as it deconstructs the program.
+typedef struct {
+	int N;
+	int Ncvec;
+	int ifac1;
+	int ifac2;
+	int ifac3;
+	int ifac4;
+	int ifac5;
+	int ifac6;
+	int ifac7;
+	int ifac8;
+	int ifac9;
+	int ifac10;
+	int ifac11;
+	int ifac12;
+	int ifac13;
+	int ifac14;
+	int ifac15;
+	int transform;
+	v4sf *data;
+	float *e;
+	float *twiddle;
+} PFFFT_Setup_Desugar;
+
+void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input, float *output, float *work, int direction) {
+	struct PFFFT_Setup setup_struct = {
+		setup->N, setup->Ncvec,
+		setup->ifac1,
+		setup->ifac2,
+		setup->ifac3,
+		setup->ifac4,
+		setup->ifac5,
+		setup->ifac6,
+		setup->ifac7,
+		setup->ifac8,
+		setup->ifac9,
+		setup->ifac10,
+		setup->ifac11,
+		setup->ifac12,
+		setup->ifac13,
+		setup->ifac14,
+		setup->ifac15,
+		(setup->transform == 0 ? PFFFT_REAL : PFFFT_COMPLEX),
+		setup->data, setup->e, setup->twiddle
+	};
+
+	pffft_transform_ordered(&setup_struct, input, output, work, (direction == 0 ? PFFFT_FORWARD : PFFFT_BACKWARD));
 }
