@@ -2128,21 +2128,7 @@ void FUNC_TRANSFORM_ORDERED(SETUP_STRUCT *setup, const float *input, float *outp
 typedef struct {
 	int N;
 	int Ncvec;
-	int ifac1;
-	int ifac2;
-	int ifac3;
-	int ifac4;
-	int ifac5;
-	int ifac6;
-	int ifac7;
-	int ifac8;
-	int ifac9;
-	int ifac10;
-	int ifac11;
-	int ifac12;
-	int ifac13;
-	int ifac14;
-	int ifac15;
+	int *ifac;
 	int transform;
 	v4sf *data;
 	float *e;
@@ -2152,21 +2138,21 @@ typedef struct {
 void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input, float *output, float *work, int direction) {
 	struct PFFFT_Setup setup_struct = {
 		setup->N, setup->Ncvec,
-		setup->ifac1,
-		setup->ifac2,
-		setup->ifac3,
-		setup->ifac4,
-		setup->ifac5,
-		setup->ifac6,
-		setup->ifac7,
-		setup->ifac8,
-		setup->ifac9,
-		setup->ifac10,
-		setup->ifac11,
-		setup->ifac12,
-		setup->ifac13,
-		setup->ifac14,
-		setup->ifac15,
+		setup->ifac[1],
+		setup->ifac[2],
+		setup->ifac[3],
+		setup->ifac[4],
+		setup->ifac[5],
+		setup->ifac[6],
+		setup->ifac[7],
+		setup->ifac[8],
+		setup->ifac[9],
+		setup->ifac[10],
+		setup->ifac[11],
+		setup->ifac[12],
+		setup->ifac[13],
+		setup->ifac[14],
+		setup->ifac[15],
 		(setup->transform == 0 ? PFFFT_REAL : PFFFT_COMPLEX),
 		setup->data, setup->e, setup->twiddle
 	};
