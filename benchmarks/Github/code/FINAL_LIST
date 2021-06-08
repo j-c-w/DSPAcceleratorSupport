@@ -3,5 +3,5 @@ xiahouzouxin_fft: None
 mborgerding_kissfft: None
 cpuimage_FFTResampler: None
 jtfell_c-fft: None
-fakufaku_esp32-fft: Seems buggy (?)
-JodiTheTigger_meow_fft: In-Context Data, Null Arrays, Pointer Support
+JodiTheTigger_meow_fft: None
+liscio_fft: None
