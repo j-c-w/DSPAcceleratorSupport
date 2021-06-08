@@ -33,7 +33,7 @@
 				"e": "array(float32)",
 				"twiddle": "array(float32)"
 			},
-			"rangemap": {
+			"range": {
 				"transform": "set(0, 1)"
 			}
 		},
