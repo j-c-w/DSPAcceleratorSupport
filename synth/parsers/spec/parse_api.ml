@@ -27,11 +27,11 @@ let load_alignment_map json =
 
 let load_target_api options filename =
 	let json = Yojson.Basic.from_file filename in
-	let classmap = load_classmap_from_json (json |> member "classmap") in
+	let classmap = load_classmap_from_json options (json |> member "classmap") in
 	let livein = List.map (json |> member "livein" |> to_list) to_string in
 	let execcmd = json |> member "execcmd" |> to_string in
 	let liveout = List.map (json |> member "liveout" |> to_list) to_string in
-	let typemap = load_typemap json (livein @ liveout) in
+	let typemap = load_typemap options json (livein @ liveout) in
 	let funname = json |> member "functionname" |> to_string in
 	let funargs = List.map (json |> member "functionargs" |> to_list) to_string in
 	let alignment_requiremts = load_alignment_map (json |> member "alignment") in

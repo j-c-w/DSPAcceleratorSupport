@@ -24,9 +24,16 @@ let extract_typemap typemap vars =
 let load_value_profiles vprofile =
 	load_value_map_from (vprofile |> to_string)
 
+let check_has_not json values =
+	ignore(List.map values (fun m ->
+		match (json |> member m) with
+		| `Null -> ()
+		| _ -> raise (IOSpecError ("IOSpec has useless value " ^ m))
+	))
+
 let load_iospec options filename =
 	let json = Yojson.Basic.from_file filename in
-	let classmap = load_classmap_from_json (json |> member "classmap") in
+	let classmap = load_classmap_from_json options (json |> member "classmap") in
 	let livein = List.map (json |> member "livein" |> to_list) (fun j -> j |> to_string) in
 	let liveout = List.map (json |> member "liveout" |> to_list) (fun j -> j |> to_string) in
 	let retvars = List.map (match json |> member "returnvarname" with
@@ -48,6 +55,8 @@ let load_iospec options filename =
 	let range_tbl = load_rangetable options classmap typemap (json |> member "range") in
 	let valid_tbl = load_rangetable options classmap typemap (json |> member "valid") in
 	let const_tbl = load_consttable options (json |> member "consts") in
+	(* Check for a few common errors: TODO -- we should realy do a more conclusive check here.  *)
+	let _ = check_has_not json ["rangemap"; "validmap"] in
 	let iospec: iospec = {
 		livein=livein;
 		liveout=liveout;
