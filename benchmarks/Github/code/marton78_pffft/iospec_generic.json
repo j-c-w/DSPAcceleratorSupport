@@ -1,0 +1,48 @@
+{
+	"livein": ["setup", "input", "output", "work", "direction"],
+	"liveout": ["output"],
+	"execcmd": "../benchmarks/Github/code/marton78_pffft/exec",
+	"funname": "pffft_transform_ordered",
+	"funargs": ["setup", "input", "output", "work", "direction"],
+	"typemap": {
+		"setup": "pointer(PFFFT_Setup)",
+		"input": "array(float)",
+		"output": "array(float)",
+		"work": "array(float)",
+		"direction": "enum(pffft_direction_t)"
+	},
+	"required_includes": ["../../benchmarks/Github/code/JodiTheTigger_meow_fft/self_contained_code.c"],
+	"classmap": {
+		"PFFFT_Setup": {
+			"type": "struct",
+			"symbols": ["N", "Ncvec", "ifac", "transform", "data", "e", "twiddle"],
+			"typemap": {
+				"N": "int32",
+				"Ncvec": "int32",
+				"ifac": "array(int32#15)",
+				"transform": "pffft_transform_t",
+				"data", "array(v4sf)",
+				"e", "array(float)",
+				"tiwddle", "array(float)"
+			}
+		},
+		"pffft_transform_t": {
+			"type": "enum",
+			"symbols": ["PFFFT_REAL", "PFFFT_COMPLEX"]
+		},
+		"pffft_direction_t": {
+			"type": "enum",
+			"symbols": ["PFFFT_FORWARD", "PFFFT_COMPLEX"]
+		},
+		"v4sf": {
+			"type": "struct",
+			"symbols": ["v1", "v2", "v3", "v4"],
+			"typemap": {
+				"a": "float32",
+				"b": "float32",
+				"c": "float32",
+				"d": "float32"
+			}
+		}
+	}
+}
