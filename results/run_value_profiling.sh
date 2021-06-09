@@ -4,6 +4,10 @@ set -x
 
 # Assumes that the inputs have been generated and
 # things have been built.
+if [[ $# -eq 1 ]]; then
+	# Only run the one provided as arg. else run all
+	cd $1
+fi
 
 files=$(find -name value_profiler)
 
