@@ -75,17 +75,13 @@ float *setup_pointertwiddle = &setup_pointertwiddle_vec[0];
 PFFFT_Setup_Desugar setup_pointer = { setup_pointerN, setup_pointerNcvec, setup_pointerifac, setup_pointertransform, setup_pointerdata, setup_pointere, setup_pointertwiddle};
 PFFFT_Setup_Desugar* setup = &setup_pointer;
 std::vector<float> input_vec;
+int n = 0;
 for (auto& elem : input_json["input"]) {
 float input_inner = elem;
 input_vec.push_back(input_inner);
+n += 1;
 }
 float *input = &input_vec[0];
-std::vector<float> output_vec;
-for (auto& elem : input_json["output"]) {
-float output_inner = elem;
-output_vec.push_back(output_inner);
-}
-float *output = &output_vec[0];
 std::vector<float> work_vec;
 for (auto& elem : input_json["work"]) {
 float work_inner = elem;
@@ -93,6 +89,7 @@ work_vec.push_back(work_inner);
 }
 float *work = &work_vec[0];
 int direction = input_json["direction"];
+float output[n];
 clock_t begin = clock();
 desugared_transform_ordered(setup, input, output, work, direction);
 clock_t end = clock();

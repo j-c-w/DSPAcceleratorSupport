@@ -14,6 +14,20 @@
 	"range": {
 		"direction": "set(0, 1)"
 	},
+	"value_profiles": [
+		"../results/Github/marton78_pffft/value_profiles/2.json",
+		"../results/Github/marton78_pffft/value_profiles/4.json",
+		"../results/Github/marton78_pffft/value_profiles/8.json",
+		"../results/Github/marton78_pffft/value_profiles/16.json",
+		"../results/Github/marton78_pffft/value_profiles/32.json",
+		"../results/Github/marton78_pffft/value_profiles/64.json",
+		"../results/Github/marton78_pffft/value_profiles/128.json",
+		"../results/Github/marton78_pffft/value_profiles/256.json",
+		"../results/Github/marton78_pffft/value_profiles/512.json",
+		"../results/Github/marton78_pffft/value_profiles/1024.json",
+		"../results/Github/marton78_pffft/value_profiles/2048.json",
+		"../results/Github/marton78_pffft/value_profiles/4096.json"
+	],
 	"required_includes": ["../../benchmarks/Github/code/JodiTheTigger_meow_fft/self_contained_code.c"],
 	"classmap": {
 		"PFFFT_Setup_Desugar": {
