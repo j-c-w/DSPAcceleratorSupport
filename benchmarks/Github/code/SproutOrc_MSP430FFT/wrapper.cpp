@@ -67,7 +67,9 @@ Complex *factor = &factor_vec[0];
 int num = input_json["num"];
 int series = input_json["series"];
 clock_t begin = clock();
-FFT(data, factor, num, series);
+for (int i = 0; i < TIMES; i ++) {
+	FFT(data, factor, num, series);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
