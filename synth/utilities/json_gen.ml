@@ -73,6 +73,7 @@ let main modename iospec_file output_file =
         api_funname = "TODO";
 		fundefs = [];
 		inputmap = emptymaptbl;
+        original_pairs = None;
     } in
 	let returntype, _ = cxx_type_from_returnvar iotypemap iospec.returnvar in
 	(* Generate the JSON wrapper: *)

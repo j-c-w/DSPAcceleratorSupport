@@ -2,6 +2,7 @@ open Core_kernel;;
 open Spec_definition;;
 open Gir;;
 open Range_definition;;
+open Skeleton_definition;;
 
 type post_behavioural_program = {
 	(* Any includes required for the generated program.  *)
@@ -16,6 +17,7 @@ type range_program = {
 (* This should be a list of live-in variables, the function
 	and then the live out varaibles. *)
 type program = {
+	original_pairs: skeleton_pairs option;
 	funargs: string list;
     livein: string list;
     gir: gir;
@@ -32,6 +34,7 @@ type program = {
 }
 
 type gir_pair = {
+	original_pairs: skeleton_pairs;
 	pre: gir;
 	post: gir;
 	(* Which input ranges are good to test this? *)

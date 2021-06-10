@@ -7,6 +7,7 @@ open Utils;;
 open Gir;;
 open Program;;
 open Program_utils;;
+open Skeleton_utils;;
 
 exception CXXGenerationException of string
 
@@ -31,6 +32,12 @@ let generate_ivar_tmp () =
 let generate_generic_tmp () =
 	let () = output_variable_count := !output_variable_count + 1 in
 	"temp_" ^ (string_of_int !output_variable_count)
+
+let cxx_generate_skeleton_description skel = (* For debugging purposes, generate
+	the skeleton from which the GIR was generated.  *)
+	"/* Orignal skeleton is: \n" ^
+	(skeleton_pairs_to_string skel) ^
+	"\n*/\n"
 
 let accelerator_timer_functions = "
 
@@ -764,6 +771,10 @@ std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC <<
 	output_write_call; tail]
 
 let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_intermediates (program: program) =
+    let skeleton_description = match program.original_pairs with
+    | None -> "// No skeleton pairs specified"
+    | Some(s) -> cxx_generate_skeleton_description s
+    in
     (* C++ only allows for single return values.  *)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
@@ -802,7 +813,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
     let function_end = "}" in
 	let main_helper_funcs, post_accel_def_funcs, main_func = cxx_main_function options dump_intermediates function_type program in
     (* Generate the whole program.  *)
-	String.concat ~sep:"\n" [program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; post_accel_def_funcs; main_func]
+    String.concat ~sep:"\n" [skeleton_description; program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; post_accel_def_funcs; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)
