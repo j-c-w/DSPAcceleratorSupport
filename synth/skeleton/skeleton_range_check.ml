@@ -133,7 +133,7 @@ let execute_conversion_on_range direction conversion inp_ranges =
 (* This supports either forward or backward range analysis --- you need a forward
 analysis to generate the range-checking code, and you need a backward analysis to
 generate range restrictions for input-value generation.  *)
-let transform_rangemap_by options forward_range map bindings =
+let transform_rangemap_by options forward_range unassigned_map map bindings =
     let result_tbl = Hashtbl.create (module String) in
     let () = ignore(List.map bindings.flat_bindings (fun flat_binding ->
         let inputs_count = List.length flat_binding.fromvars_index_nesting in
@@ -209,11 +209,10 @@ let transform_rangemap_by options forward_range map bindings =
     )) in
 	(* Anything that doesn't have any bindings should still have it's value
 		restrictions propagated from the user code.  *)
-	(* But only if we are doing range forward --- if we are back-propagating,
-	then it becomes a bit challenging. *)
-	let rangekeys = Hashtbl.keys rangemap in
-	let () = ignore (List.map rangekeys (fun rkey ->
-		if Hashtbl.mem resulttbl rkey then
+	let umapkeys = Hashtbl.keys unassigned_map in
+	let () =
+		ignore (List.map umapkeys (fun rkey ->
+		if Hashtbl.mem result_tbl rkey then
 			(* This key already had a binding that we already entered.  *)
 			()
 		else
@@ -226,15 +225,18 @@ let transform_rangemap_by options forward_range map bindings =
 			of the rangemap means we provide unrealistic
 			inputs to the user code (i.e. it's just going to crash).
 			*)
-			Hashtbl.add resulttbl rkey (Hashtbl.find_exn rangemap rkey)
+			let res = Hashtbl.add result_tbl rkey (Hashtbl.find_exn unassigned_map rkey) in
+			match res with
+			| `Ok -> ()
+			| `Duplicate -> assert false
 	)) in
     result_tbl
 
 let generate_range_check_skeleton options classmap iospec apispec pre_binding =
     (* First, we need to generate what the real input/valid
     ranges are /after/ translation through the binding code. *)
-    let transformed_io_rangemap = transform_rangemap_by options RangeForward iospec.rangemap pre_binding in
-    let transformed_io_validmap = transform_rangemap_by options RangeForward iospec.validmap pre_binding in
+    let transformed_io_rangemap = transform_rangemap_by options RangeForward iospec.rangemap iospec.rangemap pre_binding in
+    let transformed_io_validmap = transform_rangemap_by options RangeForward iospec.validmap iospec.validmap pre_binding in
     (* Then, use these to call the range gen.  This generates
     some GIR conditions that are going to be used later, not
     any skeleton code --- perhaps they should generate
@@ -282,7 +284,7 @@ let generate_input_ranges_skeleton options rangemap validmap binding =
 			()
 		else ()
 	in
-	let transformed_io_validmap = transform_rangemap_by options RangeBackward validmap binding in
+	let transformed_io_validmap = transform_rangemap_by options RangeBackward rangemap validmap binding in
 	let () =
 		if options.debug_input_map_generation then
 			let () = Printf.printf "Have transformed io validmap %s\n" (range_map_to_string transformed_io_validmap) in
