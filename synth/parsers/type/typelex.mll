@@ -29,6 +29,7 @@ rule read =
     | ")" { RPAREN }
     | "(" { LPAREN }
 	| "#" { HASH }
+	| "." { DOT }
 	| integer as i { INTEGER (int_of_string i) }
 	| ident as id { IDENT id }
 	| eof {EOF}

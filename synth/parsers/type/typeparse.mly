@@ -19,6 +19,7 @@
 %token RPAREN
 %token ARROW
 %token HASH
+%token DOT
 %token EOF
 %token <string> IDENT
 %token <int> INTEGER
@@ -34,6 +35,15 @@ t:
  | tsub; ARROW; t {Fun($1, $3)}
  | tsub; EOF {$1};
 
+tident:
+ | IDENT { Name($1) }
+ | IDENT DOT tident {
+     match $3 with
+     | StructName(ns) -> StructName(Name($1) :: ns)
+     | Name(n) -> StructName([Name($1); Name(n)])
+     | AnonymousName -> Name($1)
+ }
+
 tsub:
  | BOOL { Bool }
  | INT16 { Int16 }
@@ -48,6 +58,6 @@ tsub:
  | UNIT { Unit }
  | ARRAY; LPAREN; tsub; RPAREN { Array($3, EmptyDimension) };
  | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, Dimension(DimConstant($5))) };
- | ARRAY; LPAREN; tsub; HASH; IDENT; RPAREN { Array($3, Dimension(DimVariable(Name($5)))) }
+ | ARRAY; LPAREN; tsub; HASH; tident; RPAREN { Array($3, Dimension(DimVariable($5))) }
  | POINTER; LPAREN; tsub; RPAREN { Pointer($3) };
  | IDENT {Struct($1)}
