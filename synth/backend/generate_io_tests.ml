@@ -9,6 +9,7 @@ open Utils;;
 open Range;;
 open Program;;
 open Range_checker_synth;;
+open Builtin_types;;
 
 let _ = Random.init 0
 
@@ -110,7 +111,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 				in
 				(* If this throws, there's an issue with the topo sorting below --- we
 				   expect that the dimvars will have been assigned.  *)
-				let arrlen =
+				let base_arrlen =
 						match dimvar_size with
 						| DimVariable(dimvar_name) ->
 								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
@@ -133,6 +134,8 @@ let rec generate_inputs_for options rangemap values_so_far name_string t structu
 							arrlen
 						| DimConstant(c) -> c
 				in
+				let arrlen_modifier = get_size_modifier_for subtype in
+                let arrlen = arrlen_modifier * base_arrlen in
 				if arrlen < options.array_length_threshold then
 					ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for options rangemap values_so_far name_string subtype structure_ordering))
 				else

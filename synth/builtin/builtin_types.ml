@@ -38,3 +38,10 @@ let builtin_struct_from_name name =
 	| "facc_2xf32_t" -> two_float32_type_metadata
 	| "facc_2xf64_t" -> two_float64_type_metadata
 	| _ -> raise (BuiltinTypeError ("No such type " ^ name))
+
+(* What is the size modifier for an underlying array of some length.   *)
+let get_size_modifier_for typ =
+	match typ with
+	| Struct("facc_2xf32_t") -> 2
+	| Struct("facc_2xf64_t") -> 2
+	| other -> 1
