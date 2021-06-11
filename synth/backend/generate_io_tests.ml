@@ -71,7 +71,7 @@ let generate_array_from_range rangemap namestring =
 (* TODO --- Could do with making this a bit more deterministic. *)
 let rec generate_inputs_for options rangemap values_so_far name_string t structure_ordering =
 	let () = if options.debug_generate_io_tests then
-		let () = Printf.printf "Generating value for %s...\n" (name_string) in
+		(* let () = Printf.printf "Generating value for %s...\n" (name_string) in *)
 		()
 	else ()
 	in

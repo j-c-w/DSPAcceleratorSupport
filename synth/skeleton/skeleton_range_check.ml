@@ -207,6 +207,27 @@ let transform_rangemap_by options forward_range map bindings =
                    rangemaps, then we can't do anything here.  *)
             ()
     )) in
+	(* Anything that doesn't have any bindings should still have it's value
+		restrictions propagated from the user code.  *)
+	(* But only if we are doing range forward --- if we are back-propagating,
+	then it becomes a bit challenging. *)
+	let rangekeys = Hashtbl.keys rangemap in
+	let () = ignore (List.map rangekeys (fun rkey ->
+		if Hashtbl.mem resulttbl rkey then
+			(* This key already had a binding that we already entered.  *)
+			()
+		else
+			(* This is a variable without a mapping, so it doesn't have
+			any validmap entry that can be applied.  Just propagate the
+			rangemap.  Of course, it is a very valid question
+			of why this matters if it doesn't have a binding: then
+				answer is that we use the inputs to compute the correct
+			answer form the user code, and skipping the application
+			of the rangemap means we provide unrealistic
+			inputs to the user code (i.e. it's just going to crash).
+			*)
+			Hashtbl.add resulttbl rkey (Hashtbl.find_exn rangemap rkey)
+	)) in
     result_tbl
 
 let generate_range_check_skeleton options classmap iospec apispec pre_binding =

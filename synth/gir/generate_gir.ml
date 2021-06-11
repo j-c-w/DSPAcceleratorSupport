@@ -496,7 +496,7 @@ let generate_gir_for options iospec (skeleton: skeleton_pairs) =
 		let new_typemap =
 			{ skeleton.typemap with variable_map = clone_typemap skeleton.typemap.variable_map }
 		in
-		(pre, post, new_typemap, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
+		(skeleton, pre, post, new_typemap, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
 
 
 let generate_gir (options:options) iospec api skeletons: ((gir_pair) list) =
@@ -504,11 +504,12 @@ let generate_gir (options:options) iospec api skeletons: ((gir_pair) list) =
 		generate_gir_for options iospec skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
-		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(pre, post, typemap, funs, range, map) ->
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(orig_skel, pre, post, typemap, funs, range, map) ->
 			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
 	else () in
-	List.map result (fun (pre, post, typemap, fundefs, range_checker, inputmap) ->
+	List.map result (fun (original_skeleton, pre, post, typemap, fundefs, range_checker, inputmap) ->
 		{
+			original_pairs = original_skeleton;
 			pre = pre;
             post = post;
 			typemap = typemap;
