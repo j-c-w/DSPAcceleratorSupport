@@ -14,7 +14,7 @@
 	"range": {
 		"direction": "set(0, 1)"
 	},
-	"required_includes": ["../../benchmarks/Github/code/JodiTheTigger_meow_fft/self_contained_code.c"],
+	"required_includes": ["../../benchmarks/Github/code/marton78_pffft/self_contained_code.c"],
 	"classmap": {
 		"PFFFT_Setup_Desugar": {
 			"type": "struct",

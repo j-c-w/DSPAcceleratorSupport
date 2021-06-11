@@ -1,3 +1,8 @@
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <math.h>
+#include <assert.h>
   typedef struct PFFFT_Setup PFFFT_Setup;
   typedef enum { PFFFT_FORWARD, PFFFT_BACKWARD } pffft_direction_t;
   
@@ -50,11 +55,6 @@ void *pffftd_aligned_malloc(size_t nb_bytes) { return Valigned_malloc(nb_bytes);
 void pffftd_aligned_free(void *p) { Valigned_free(p); }
 int pffftd_next_power_of_two(int N) { return next_power_of_two(N); }
 int pffftd_is_power_of_two(int N) { return is_power_of_two(N); }
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <math.h>
-#include <assert.h>
 #  define ALWAYS_INLINE(return_type) inline return_type __attribute__ ((always_inline))
 #  define NEVER_INLINE(return_type) return_type __attribute__ ((noinline))
 #  define RESTRICT __restrict

@@ -68,7 +68,7 @@ output_temp_13.push_back(output_temp_15);
 output_temp_2["twiddle"] = output_temp_13;
 output_json["setup"] = output_temp_2;
 std::vector<json> output_temp_22;
-for (unsigned int i23 = 0; i23 < output_temp_1.N; i23++) {
+for (unsigned int i23 = 0; i23 < 2 * output_temp_1.N; i23++) {
 float output_temp_24 = work[i23];
 
 output_temp_22.push_back(output_temp_24);

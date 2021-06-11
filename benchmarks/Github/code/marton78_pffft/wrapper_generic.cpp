@@ -91,7 +91,9 @@ float *work = &work_vec[0];
 int direction = input_json["direction"];
 float output[n];
 clock_t begin = clock();
-desugared_transform_ordered(setup, input, output, work, direction);
+for (int i = 0; i < TIMES; i ++) {
+	desugared_transform_ordered(setup, input, output, work, direction);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
