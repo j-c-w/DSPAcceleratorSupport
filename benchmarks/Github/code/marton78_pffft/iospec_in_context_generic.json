@@ -50,13 +50,6 @@
 			"range": {
 				"transform": "set(0, 1)"
 			}
-		},
-		"v4sf": {
-			"type": "struct",
-			"symbols": ["a"],
-			"typemap": {
-				"a": "float32"
-			}
 		}
 	}
 }

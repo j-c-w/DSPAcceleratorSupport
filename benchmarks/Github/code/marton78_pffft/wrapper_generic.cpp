@@ -55,7 +55,7 @@ int *setup_pointerifac = &setup_pointerifac_vec[0];
 int setup_pointertransform = input_json["setup"]["transform"];
 std::vector<v4sf> setup_pointerdata_vec;
 for (auto& elem : input_json["setup"]["data"]) {
-float setup_pointerdata_innera = elem["a"];
+float setup_pointerdata_innera = elem;
 v4sf setup_pointerdata_inner = { setup_pointerdata_innera};
 setup_pointerdata_vec.push_back(setup_pointerdata_inner);
 }

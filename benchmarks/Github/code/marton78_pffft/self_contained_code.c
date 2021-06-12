@@ -437,6 +437,7 @@ static NEVER_INLINE(void) passf2_ps(int ido, int l1, const v4sf *cc, v4sf *ch, c
   } else {
     for (k=0; k < l1ido; k += ido, ch += ido, cc += 2*ido) {
       for (i=0; i<ido-1; i+=2) {
+		  printf("%d , %d\n", i, i + ido);
         v4sf tr2 = VSUB(cc[i+0], cc[i+ido+0]);
         v4sf ti2 = VSUB(cc[i+1], cc[i+ido+1]);
         v4sf wr = LD_PS1(wa1[i]), wi = VMUL(LD_PS1(fsign), LD_PS1(wa1[i+1]));
@@ -2138,6 +2139,7 @@ typedef struct {
 void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input, float *output, float *work, int direction) {
 	struct PFFFT_Setup setup_struct = {
 		setup->N, setup->Ncvec,
+		setup->ifac[0],
 		setup->ifac[1],
 		setup->ifac[2],
 		setup->ifac[3],
@@ -2152,7 +2154,6 @@ void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input,
 		setup->ifac[12],
 		setup->ifac[13],
 		setup->ifac[14],
-		setup->ifac[15],
 		(setup->transform == 0 ? PFFFT_REAL : PFFFT_COMPLEX),
 		setup->data, setup->e, setup->twiddle
 	};

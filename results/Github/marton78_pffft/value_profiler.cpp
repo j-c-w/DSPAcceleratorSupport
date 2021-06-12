@@ -44,23 +44,20 @@ output_temp_2["ifac"] = output_temp_3;
 
 output_temp_2["transform"] = (output_temp_1.transform == PFFFT_COMPLEX ? 1 : 0);
 std::vector<json> output_temp_6;
-for (unsigned int i7 = 0; i7 < output_temp_1.N; i7++) {
+for (unsigned int i7 = 0; i7 < 2 * output_temp_1.N; i7++) {
 v4sf output_temp_8 = setup->data[i7];
-json output_temp_9;
-
-output_temp_9["a"] = output_temp_8;
-output_temp_6.push_back(output_temp_9);
+output_temp_6.push_back(output_temp_8);
 }
 output_temp_2["data"] = output_temp_6;
 std::vector<json> output_temp_10;
-for (unsigned int i11 = 0; i11 < output_temp_1.N / 4 * 3; i11++) {
+for (unsigned int i11 = 0; i11 < 2 * output_temp_1.N; i11++) {
 float output_temp_12 = setup->e[i11];
 
 output_temp_10.push_back(output_temp_12);
 }
 output_temp_2["e"] = output_temp_10;
 std::vector<json> output_temp_13;
-for (unsigned int i14 = 0; i14 < output_temp_1.N / 4; i14++) {
+for (unsigned int i14 = 0; i14 < 2 * output_temp_1.N; i14++) {
 float output_temp_15 = setup->twiddle[i14];
 
 output_temp_13.push_back(output_temp_15);
