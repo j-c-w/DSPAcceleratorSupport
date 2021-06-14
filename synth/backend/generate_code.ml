@@ -820,10 +820,12 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 
 let generate_code (options: options) apispec (iospec: iospec) dump_intermediates (programs: program list) =
 	let codes = match options.target with
-	| CXX -> List.map programs (generate_cxx options apispec iospec dump_intermediates)
+	| CXX -> List.map programs (fun prog ->
+			(prog, generate_cxx options apispec iospec dump_intermediates prog)
+	)
 	in
 	let () =
 		if options.dump_generate_program then
-            Printf.printf "Generated codes are %s\n" (String.concat ~sep:"\nNEWPROGRAM\n\n" codes)
+            Printf.printf "Generated codes are %s\n" (String.concat ~sep:"\nNEWPROGRAM\n\n" (List.map codes (fun (_, c) -> c)))
         else () in
     codes

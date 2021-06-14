@@ -6,6 +6,8 @@ open Options;;
 open Utils;;
 open Spec_definition;;
 open Float_compare;;
+open Json_utils;;
+open Program;;
 
 (* Largely, we assume taht j1 and j2 have the same members
 this will sometimes crash and sometimes spuriously go true
@@ -54,6 +56,8 @@ and compare_json_elts options fcomp e1 e2 =
 	  | `Null, `Null -> assert false
 	  | `String(s1), `String(s2) ->
 			  (String.compare s1 s2) = 0
+	  | `Null, _ -> assert false
+	  | _, `Null -> assert false
 	  | _ -> false
 	in
 	if result then
@@ -77,7 +81,7 @@ let compare_outputs options f1 f2 =
 	(* let () = Printf.printf "Comparison finished\n%!" in *)
 	result
 
-let check_if_code_works (options:options) execname test_no generated_io_tests correct_answer_files =
+let check_if_code_works (options:options) (program: program) execname test_no generated_io_tests correct_answer_files =
 	(* TODO --- perhaps a parmap here?  Need to make sure the output files don't overlap if so. *)
     (* This might also end up being limited by disk performance.  Perhaps using
     a ramdisk would help? *)
@@ -188,9 +192,9 @@ let find_working_code (options:options) generated_executables generated_io_tests
 		() else () in
 	let groups = List.zip_exn generated_executables (List.zip_exn generated_io_tests correct_answer_files) in
 	let test_no = ref 0 in
-	let result = List.map groups (fun (executable, (inps, outps)) ->
+	let result = List.map groups (fun ((program, executable), (inps, outps)) ->
 		test_no := !test_no + 1;
-		check_if_code_works options executable !test_no inps outps
+		check_if_code_works options program executable !test_no inps outps
 	) in
 	let () = if options.debug_test then
 		Printf.printf "Done executing tests\n"
@@ -204,7 +208,7 @@ let print_working_code options (apispec: apispec) working_list =
     let result = Sys.command ("mkdir -p " ^ output_dir) in
     let () = assert (result = 0) in
     let numbers = Build_code.generate_file_numbers (List.length working_list) in
-    let fnames = List.map (List.zip_exn working_list numbers) (fun (code, number) ->
+    let fnames = List.map (List.zip_exn working_list numbers) (fun ((prog, code), number) ->
         let filename = output_dir ^ "/option_" ^ number ^ extension in
         let () = Out_channel.write_all filename ~data:code in
         filename
