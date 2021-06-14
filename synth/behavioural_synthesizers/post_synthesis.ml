@@ -7,7 +7,7 @@ open Gir_utils;;
 (* Expect one set of IO pairs for each program to consider.  *)
 let run_post_synthesis options iospec apispec programs io_files =
     let prog_io_pairs = List.zip_exn programs io_files in
-    List.map prog_io_pairs (fun ((prog: program), (iopairs, passed)) ->
+    Utils.parmap options (fun ((prog: program), (iopairs, passed)) ->
         if passed then
             let () =
                 if options.dump_behavioural_synth then
@@ -31,4 +31,4 @@ let run_post_synthesis options iospec apispec programs io_files =
                 prog with
 				post_behavioural = post_program
             }, passed
-        )
+        ) prog_io_pairs
