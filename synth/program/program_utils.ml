@@ -178,3 +178,8 @@ let generate_includes_list_from program =
 	match program.post_behavioural with
 	| Some(p) -> p.includes
 	| None -> []
+
+let get_io_typemap (program: program) =
+	match program.typemap.original_typemap with
+	| Some(t) -> t
+	| None -> program.typemap

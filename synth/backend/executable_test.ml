@@ -8,6 +8,7 @@ open Spec_definition;;
 open Float_compare;;
 open Json_utils;;
 open Program;;
+open Program_utils;;
 
 (* Largely, we assume taht j1 and j2 have the same members
 this will sometimes crash and sometimes spuriously go true
@@ -56,7 +57,9 @@ and compare_json_elts options fcomp e1 e2 =
 	  | `Null, `Null -> assert false
 	  | `String(s1), `String(s2) ->
 			  (String.compare s1 s2) = 0
-	  | `Null, _ -> assert false
+	  | `Null, other ->
+			  let () = Printf.printf "Comparing %s and Null!" (Yojson.Basic.pretty_to_string other) in
+			  assert false
 	  | _, `Null -> assert false
 	  | _ -> false
 	in
@@ -113,10 +116,7 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
             let result =
                 if options.skip_test then
                     if Sys.file_exists experiment_outname then
-                        (* Assume the test would pass if the output
-                        file exists, and that it would fail
-                        otherwise.  *)
-                        0
+						0
                     else
                         1
                 else
@@ -124,6 +124,24 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
 			let () = if options.debug_test then
 				Printf.printf "Done\n%!"
 			else ()
+			in
+			let output_checked_result = 
+				if result = 0 then
+				(* Check if there is any UB in this.  Note that
+				this may have to be language-depedent.  *)
+				if outfile_has_errors options (get_io_typemap program) experiment_outname then
+					let () = if options.debug_test then
+						let () = Printf.printf "File %s seems to have errors: marking as failed.  " experiment_outname in
+						()
+					else ()
+					in
+					(* Failure code if the JSON does't checkout. *)
+					1
+				else
+					0
+				else
+					(* Already failed --- just propagate that.  *)
+					result
 			in
             let same_res = match testout with
             | RunFailure -> 
@@ -143,7 +161,9 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
 					passed=true;
 				}
             | RunSuccess(outf) ->
-                    if result = 0 then
+					let () = assert (not (outfile_has_errors options (get_io_typemap program) outf)) in
+                    if output_checked_result = 0 then
+						let () = assert (not (outfile_has_errors options (get_io_typemap program) experiment_outname)) in
                         {
                             input=testin;
                             true_output=Some(outf);
@@ -186,13 +206,13 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
 	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous: luck pass is %b) \n%!" (execname) (passed_count) (total_count) (total_count - valid_passes) (lucky_pass) in
 	res, (passed && (not lucky_pass))
 
-let find_working_code (options:options) generated_executables generated_io_tests correct_answer_files =
+let find_working_code (options:options) (generated_executables: (program * string) list) generated_io_tests correct_answer_files =
 	let () = if options.debug_test then
 		let () = Printf.printf "Number of tests is %d\n" (List.length generated_executables) in
 		() else () in
 	let groups = List.zip_exn generated_executables (List.zip_exn generated_io_tests correct_answer_files) in
 	let test_no = ref 0 in
-	let result = List.map groups (fun ((program, executable), (inps, outps)) ->
+	let result = List.map groups (fun ((program, executable), ((_, inps), outps)) ->
 		test_no := !test_no + 1;
 		check_if_code_works options program executable !test_no inps outps
 	) in

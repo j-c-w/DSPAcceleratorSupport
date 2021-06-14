@@ -5,6 +5,8 @@ open Yojson;;
 open Yojson.Basic.Util;;
 
 exception JSONException of string
+exception JSONCheckException of string
+exception JSONCheckFailed
 
 let rec load_json j =
 	let mempairs = List.map j (fun (name, elt) ->
@@ -46,3 +48,77 @@ let load_value_map_from file =
         (mem, json |> member mem)
     ) in
 	load_json json_elts
+
+
+let rec check_elts_for_uninitialized_reads typemap elts =
+	List.map elts (fun (name, typ, json) ->
+		check_elt_for_uninitialized_read typemap name typ json 
+	)
+and check_elt_for_uninitialized_read typemap name typ json =
+	match json, typ with
+	| `Assoc(d), Struct(n) ->
+			let subtmap = get_class_typemap (Hashtbl.find_exn typemap.classmap n) in
+			(* TODO -- we could also check that all memebrs
+			are present.  *)
+			let subelts = List.map d (fun (subname, subjson) ->
+				(subname, (Hashtbl.find_exn subtmap subname), subjson)
+			) in
+			let new_typemap = {typemap with variable_map = subtmap } in
+			ignore(check_elts_for_uninitialized_reads new_typemap subelts)
+	| `Bool(b), Bool -> ()
+	| `Float(f), Float16 -> ()
+	| `Float(f), Float32 -> ()
+	| `Float(f), Float64 -> ()
+	| `Int(i), Int16 -> ()
+	| `Int(i), Int32 -> ()
+	| `Int(i), Int64 -> ()
+	| `Int(i), UInt16 -> ()
+	| `Int(i), UInt32 -> ()
+	| `Int(i), UInt64 -> ()
+	| `List(l), Array(t, EmptyDimension) -> raise (JSONCheckException "Unexpected empty dim")
+	| `List(l), Array(t, Dimension(d)) ->
+			(* Check the length first. *)
+			let () =
+				match d with
+				| DimConstant(c) ->
+						if c = (List.length l) then
+							()
+						else
+							raise JSONCheckFailed
+				| DimVariable(d) ->
+						(* TODO --- we could do a more thorough check here... *)
+						()
+			in
+			ignore(List.map l (check_elt_for_uninitialized_read typemap name t))
+	| `Null, Float16 -> raise JSONCheckFailed
+	| `Null, Float32 -> raise JSONCheckFailed
+	| `Null, Float64 -> raise JSONCheckFailed
+	(* We could just thrwo the JSON check fialed in these cases
+	I expect -- just trying to avoid the weird silent failures that
+	this thing is going to create... *)
+	| `Null, _ -> raise (JSONCheckException ("Unexpected Null json (" ^ name ^ ")with type " ^ (synth_type_to_string typ)))
+	| `String(s), _ -> raise (JSONCheckException ("Unexpected String json with type " ^ (synth_type_to_string typ)))
+	| _, _ -> raise (JSONCheckException ("Unexpected value for type " ^ (synth_type_to_string typ)))
+
+let check_for_uninitialized_reads options typemap outfile =
+	let json = Yojson.Basic.from_file outfile in
+	let json_elts = List.map (keys json) (fun mem ->
+		(mem, Hashtbl.find_exn typemap.variable_map mem, json |> member mem)
+	) in
+	let result = try (ignore(check_elts_for_uninitialized_reads typemap json_elts); false)
+	with JSONCheckFailed -> true in
+	result
+(* OK, so this aims to find failures where the executable exited
+	correctly.  There are a couple ways we can try to pickup
+	failures, and ultimately, they'll depend on the target language.
+
+	In C, we use the address sanitizer to catch out-of-bound accesses,
+	but this doesn't catch uninitialized reads, which are a symptom
+	of incorrect length assumptions.  Those aren't a problem
+	in themselves, since they'd be caught by any correctness
+	checking, but they can cause crashes in the JSON loader
+	because Nulls can appear where they are not expected
+	(e.g. in FP paramters).
+	*)
+let outfile_has_errors options typemap outfile =
+	check_for_uninitialized_reads options typemap outfile

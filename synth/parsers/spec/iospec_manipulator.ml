@@ -3,10 +3,13 @@ open Spec_definition;;
 open Spec_utils;;
 open Run_definition;;
 open Options;;
+open Json_utils;;
+open Program;;
+open Program_utils;;
 
 exception SparsityException of string
 
-let generate_results_for (opts: options) (iospec: iospec) inp_files =
+let generate_results_for (opts: options) typemap (iospec: iospec) inp_files =
 	(* Perhaps this should be parallelized? *)
 	let progexec = iospec.execcmd in
 	let results = Utils.parmap opts (fun infile ->
@@ -26,7 +29,10 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
         if res <> 0 then
             RunFailure
         else
-            RunSuccess(outfile)
+			if outfile_has_errors opts typemap outfile then
+				RunFailure
+			else
+				RunSuccess(outfile)
 	) inp_files
 	in
 	let success_count = List.count results (fun r -> match r with
@@ -35,9 +41,9 @@ let generate_results_for (opts: options) (iospec: iospec) inp_files =
 	) in
 	results, success_count
 
-let compute_default_results opts iospec inp_files =
-	let results = List.map inp_files (fun inp_file_set ->
-		let results, succ_count = generate_results_for opts iospec inp_file_set in
+let compute_default_results opts iospec (inp_files: (program * string list) list) =
+	let results = List.map inp_files (fun (program, inp_file_set) ->
+		let results, succ_count = generate_results_for opts (get_io_typemap program) iospec inp_file_set in
 		let () = if succ_count = 0 then
 				let () = Printf.printf "Can't find any working inputs to user code: likely too sparse (try more inputs?)" in
                 ()
