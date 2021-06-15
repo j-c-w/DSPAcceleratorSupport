@@ -52,8 +52,8 @@ let main specname num =
     let number_tested = ref 0 in
 	let duplicate_count = ref 0 in
     (* Could make this int and have more false collisions for less memory footprint. *)
-    let tbl = Hashtbl.create (module String) in
-    let outtbl = Hashtbl.create (module String) in
+    let tbl = Hashtbl.create (module Int) in
+    let outtbl = Hashtbl.create (module Int) in
     (* Generate the IO tests in batches to avoid too much overhead.  *)
     let () =
     while !number_tested < num do
@@ -74,8 +74,8 @@ let main specname num =
             match result with
             | RunFailure -> ()
             | RunSuccess(outfile) ->
-                let inp_md5 = Option.value_exn (In_channel.input_line (Unix.open_process_in ("md5sum -z " ^ test ^ " | cut -f1 -d ' '"))) in
-                let out_md5 = Option.value_exn (In_channel.input_line (Unix.open_process_in ("md5sum -z " ^ outfile ^ " | cut -f1 -d' '"))) in
+					let inp_md5 = Md5.hash (Md5.digest_file_blocking test) in
+					let out_md5 = Md5.hash (Md5.digest_file_blocking outfile) in
                 match Hashtbl.find tbl inp_md5 with
                 | Some(t) ->
                         (* Skip -- this md5 has already been tested.  *)

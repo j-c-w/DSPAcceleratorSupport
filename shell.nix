@@ -3,12 +3,12 @@
 with pkgs;
 mkShell {
 	buildInputs = [
-		cloc ocaml gdb racket valgrind splint linuxPackages-libre.perf
+		cloc ocaml gdb racket valgrind splint linuxPackages-libre.perf gnumake
 		# Ocaml packages
 		ocamlPackages.findlib ocamlPackages.ocamlbuild ocamlPackages.yojson
 		ocamlPackages.core_kernel opam ocamlPackages.cmdliner
 		ocamlPackages.ppx_expect ocamlPackages.parmap
-		ocamlPackages.alcotest
+		ocamlPackages.alcotest ocamlPackages.core
 		# C++ deps for the synnthesizer
 		gcc10 nlohmann_json clang
 		# Other indirect deps for the synthesizer.
