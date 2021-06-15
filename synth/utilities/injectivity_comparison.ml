@@ -25,7 +25,6 @@ let main specname num =
     } in
     let iospec, iotypemap, classspec = load_iospec options specname in
     let empty_alignmenttbl = Hashtbl.create (module String) in
-	let emptymaptbl = Hashtbl.create (module String) in
     let rec typemap = {
         variable_map = iotypemap;
         classmap = classspec;
@@ -45,7 +44,7 @@ let main specname num =
         generated_funname = "TODO";
         api_funname = "TODO";
         fundefs = [];
-        inputmap = emptymaptbl;
+        inputmap = iospec.rangemap;
         original_pairs = None;
     } in
     (* Keep a hashtable of the generated results. *)
@@ -57,6 +56,14 @@ let main specname num =
     (* Generate the IO tests in batches to avoid too much overhead.  *)
     let () =
     while !number_tested < num do
+		(* Seed RNG repeatedly since this method uses a lot
+		of randomness.  *)
+		let () =
+		if !number_tested % 100000 = 0 then
+			let () = Printf.printf "Seedng %d\n" (!number_tested) in
+			Random.init !number_tested
+		else ()
+		in
         (* Generate a new batch: *)
         let test_batch =
             match generate_io_tests options iospec [dummy_program] with
@@ -71,15 +78,15 @@ let main specname num =
         (* Run failures not allowed here, since we are looking for failure-free duplication.  *)
         (* Duplication check dubiously done with a md5sum command. *)
         ignore(List.map (List.zip_exn results test_batch) (fun (result, test) ->
-            match result with
-            | RunFailure -> ()
+			let resoutfile = match result with
+            | RunFailure -> ""
             | RunSuccess(outfile) ->
 					let inp_md5 = Md5.hash (Md5.digest_file_blocking test) in
 					let out_md5 = Md5.hash (Md5.digest_file_blocking outfile) in
                 match Hashtbl.find tbl inp_md5 with
                 | Some(t) ->
                         (* Skip -- this md5 has already been tested.  *)
-                        ()
+						outfile
                 | None ->
                         let () = ignore(Hashtbl.add tbl inp_md5 true) in
                         let () = match Hashtbl.add outtbl out_md5 true with
@@ -88,7 +95,10 @@ let main specname num =
                                 duplicate_count := !duplicate_count + 1
                         in
                         let () = number_tested := !number_tested + 1 in
-                        ()
+						outfile
+			in
+			let _ = Sys.command ("rm " ^ resoutfile ^ " " ^ test) in
+			()
         )
         )
     done in
@@ -98,11 +108,11 @@ let main specname num =
 
 let iospec =
 	let doc = "IO Spec for the Function" in
-	Arg.(required & pos 1 (some string) None & info [] ~docv:"IOSpec" ~doc)
+	Arg.(required & pos 0 (some string) None & info [] ~docv:"IOSpec" ~doc)
 
 let number =
     let doc = "Number of Examples" in
-    Arg.(required & pos 2 (some int) None & info [] ~docv:"Number" ~doc)
+    Arg.(required & pos 1 (some int) None & info [] ~docv:"Number" ~doc)
 
 let info =
 	let doc = "Compute the epsilon-injectivity of a function" in
