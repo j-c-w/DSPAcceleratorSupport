@@ -2,3 +2,4 @@ _build
 *.native
 *.byte
 synthethizer_temps/
+injectivity_comparison_temps/
