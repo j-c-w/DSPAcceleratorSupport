@@ -11,8 +11,6 @@ open Program;;
 open Range_checker_synth;;
 open Builtin_types;;
 
-let _ = Random.init 0
-
 exception TypeException of string
 exception GenerationFailure
 

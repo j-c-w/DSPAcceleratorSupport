@@ -8,6 +8,7 @@ open Options
 open Spec_utils
 
 let () = Printexc.record_backtrace true;;
+let _ = Random.init 0
 
 let main options iospec_file api_file  =
 	let () = Printf.printf "Loading specifications...\n" in
