@@ -420,11 +420,16 @@ let is_integer_type typ =
 let type_of typmap classmap k =
     let rec typeloop currtypmap tps = match tps with
     (* Think this isn't possible anyway.  *)
-    | [] -> raise (SpecException "Cant have empty type")
+    | [] -> raise (SpecException "Cannae have empty type")
     | x :: y :: ys ->
             (* Get the next typmap *)
             let current_typ = Hashtbl.find_exn currtypmap x in
-            let class_name = (synth_type_to_string current_typ) in
+            let class_name = match current_typ with
+			| Pointer(Struct(sname)) -> sname (* Treat pointers as invisible. *)
+			(* Note -- that should probably support nested pointers (wtf would anyone want that? *)
+			| Struct(sname) -> sname
+			| other -> raise (SpecException ("Cannae have a class of type " ^ (synth_type_to_string other)))
+			in
             let this_classmap = get_class_typemap (Hashtbl.find_exn classmap class_name) in
             typeloop this_classmap (y :: ys)
     | x :: xs -> 
