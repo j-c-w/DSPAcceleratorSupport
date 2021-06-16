@@ -66,6 +66,18 @@ char *pre_accel_dump_file; // optional dump file.
 using json = nlohmann::json;
 const char* __asan_default_options() { return "detect_leaks=0"; }
 
+
+clock_t AcceleratorStart;
+clock_t AcceleratorTotalNanos = 0;
+void StartAcceleratorTimer() {
+	AcceleratorStart = clock();
+}
+
+void StopAcceleratorTimer() {
+	AcceleratorTotalNanos +=
+		(clock()) - AcceleratorStart;
+}
+
 void write_output(PFFFT_Setup_Desugar * setup, float * input, float * output, float * work, int direction) {
 
     json output_json;
@@ -93,7 +105,9 @@ int adi_acc_n;;
 	};
 	
 if ((PRIM_EQUAL(adi_acc_n, 524288)) || ((PRIM_EQUAL(adi_acc_n, 262144)) || ((PRIM_EQUAL(adi_acc_n, 131072)) || ((PRIM_EQUAL(adi_acc_n, 65536)) || ((PRIM_EQUAL(adi_acc_n, 32768)) || ((PRIM_EQUAL(adi_acc_n, 16384)) || ((PRIM_EQUAL(adi_acc_n, 8192)) || ((PRIM_EQUAL(adi_acc_n, 4096)) || ((PRIM_EQUAL(adi_acc_n, 2048)) || ((PRIM_EQUAL(adi_acc_n, 1024)) || ((PRIM_EQUAL(adi_acc_n, 512)) || ((PRIM_EQUAL(adi_acc_n, 256)) || ((PRIM_EQUAL(adi_acc_n, 128)) || ((PRIM_EQUAL(adi_acc_n, 64)) || ((PRIM_EQUAL(adi_acc_n, 32)) || ((PRIM_EQUAL(adi_acc_n, 16)) || ((PRIM_EQUAL(adi_acc_n, 8)) || ((PRIM_EQUAL(adi_acc_n, 4)) || ((PRIM_EQUAL(adi_acc_n, 2)) || (PRIM_EQUAL(adi_acc_n, 1))))))))))))))))))))) {
-accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
+StartAcceleratorTimer();;
+	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
+	StopAcceleratorTimer();;
 	for (int i84 = 0; i84 < setup->N; i84++) {
 		output[i84].f32_1 = adi_acc_output[i84].re;
 	};
@@ -113,54 +127,30 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
-int setup_pointerN = input_json["setup"]["N"];
-int setup_pointerNcvec = input_json["setup"]["Ncvec"];
-std::vector<int> setup_pointerifac_vec;
-for (auto& elem : input_json["setup"]["ifac"]) {
-int setup_pointerifac_inner = elem;
-setup_pointerifac_vec.push_back(setup_pointerifac_inner);
-}
-int *setup_pointerifac = &setup_pointerifac_vec[0];
-int setup_pointertransform = input_json["setup"]["transform"];
-std::vector<float> setup_pointerdata_vec;
-for (auto& elem : input_json["setup"]["data"]) {
-float setup_pointerdata_inner = elem;
-setup_pointerdata_vec.push_back(setup_pointerdata_inner);
-}
-float *setup_pointerdata = &setup_pointerdata_vec[0];
-std::vector<float> setup_pointere_vec;
-for (auto& elem : input_json["setup"]["e"]) {
-float setup_pointere_inner = elem;
-setup_pointere_vec.push_back(setup_pointere_inner);
-}
-float *setup_pointere = &setup_pointere_vec[0];
-std::vector<float> setup_pointertwiddle_vec;
-for (auto& elem : input_json["setup"]["twiddle"]) {
-float setup_pointertwiddle_inner = elem;
-setup_pointertwiddle_vec.push_back(setup_pointertwiddle_inner);
-}
-float *setup_pointertwiddle = &setup_pointertwiddle_vec[0];
-PFFFT_Setup_Desugar setup_pointer = { setup_pointerN, setup_pointerNcvec, setup_pointerifac, setup_pointertransform, setup_pointerdata, setup_pointere, setup_pointertwiddle};
-PFFFT_Setup_Desugar* setup = &setup_pointer;
 std::vector<float> input_vec;
 for (auto& elem : input_json["input"]) {
 float input_inner = elem;
 input_vec.push_back(input_inner);
 }
 float *input = &input_vec[0];
-std::vector<float> work_vec;
-for (auto& elem : input_json["work"]) {
-float work_inner = elem;
-work_vec.push_back(work_inner);
-}
-float *work = &work_vec[0];
-int direction = input_json["direction"];
-float output[setup->N* 2];
+float work[n];
+float output[n];
+n /= 2;
 
+clock_t begin = clock();
+PFFFT_Setup *setup = pffft_new_setup(n, PFFFT_COMPLEX);
+
+pffft_direction_t direction = PFFFT_FORWARD;
+// This is just to achieve a compiler-internal representation
+// of the struct without enums.
+PFFFT_Setup_Desugar dsetup;
+desugar_setup(setup, &dsetup);
+clock_t begin = clock();
 for (int i = 0; i < TIMES; i ++) {
-	desugared_transform_ordered_accel(setup, input, output, work, direction);
+	desugared_transform_ordered_accel(&dsetup, input, output, work, direction);
 }
-
-
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
+std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
 write_output(setup, input, output, work, direction);
 }

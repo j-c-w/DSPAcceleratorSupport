@@ -3,47 +3,47 @@ Pre: SKELETON:
 
 With the array index wrappers adi_acc_output,Annon
 And (fromvars) []
-Under dimensions [adi_acc_n = data.N]
+Under dimensions [adi_acc_n = n]
 With conversion function IdentityConversion
 
 >(new binding): 
 
 With the array index wrappers adi_acc_n
-And (fromvars) [data.N]
+And (fromvars) [n]
 Under dimensions []
 With conversion function IdentityConversion
 
 >(new binding): 
 
 With the array index wrappers adi_acc_input,re
-And (fromvars) [in, r]
-Under dimensions [adi_acc_n = data.N]
+And (fromvars) [input, real]
+Under dimensions [adi_acc_n = n]
 With conversion function IdentityConversion
 
 >(new binding): 
 
 With the array index wrappers adi_acc_input,im
-And (fromvars) [in, j]
-Under dimensions [adi_acc_n = data.N]
+And (fromvars) [input, imag]
+Under dimensions [adi_acc_n = n]
 With conversion function IdentityConversion
 Post: SKELETON:
 
-With the array index wrappers out,j
+With the array index wrappers output,imag
 And (fromvars) [adi_acc_output, im]
-Under dimensions [data.N = adi_acc_n]
+Under dimensions [n = adi_acc_n]
 With conversion function IdentityConversion
 
 >(new binding): 
 
-With the array index wrappers out,r
+With the array index wrappers output,real
 And (fromvars) [adi_acc_output, re]
-Under dimensions [data.N = adi_acc_n]
+Under dimensions [n = adi_acc_n]
 With conversion function IdentityConversion
 */
 
 
 extern "C" {
-#include "../../../benchmarks/Github/code/JodiTheTigger_meow_fft/self_contained_code.c"
+#include "../../../benchmarks/Github/code/cpuimage_FFTResampler/self_contained_code.c"
 }
 
 
@@ -78,52 +78,52 @@ void StopAcceleratorTimer() {
 		(clock()) - AcceleratorStart;
 }
 
-void write_output(Meow_FFT_Workset * data, Meow_FFT_Complex * in, Meow_FFT_Complex * out) {
+void write_output(cmplx * input, cmplx * output, int n) {
 
     json output_json;
-std::vector<json> output_temp_133;
-for (unsigned int i134 = 0; i134 < data->N; i134++) {
-Meow_FFT_Complex output_temp_135 = out[i134];
-json output_temp_136;
+std::vector<json> output_temp_33;
+for (unsigned int i34 = 0; i34 < n; i34++) {
+cmplx output_temp_35 = output[i34];
+json output_temp_36;
 
-output_temp_136["r"] = output_temp_135.r;
+output_temp_36["real"] = output_temp_35.real;
 
-output_temp_136["j"] = output_temp_135.j;
-output_temp_133.push_back(output_temp_136);
+output_temp_36["imag"] = output_temp_35.imag;
+output_temp_33.push_back(output_temp_36);
 }
-output_json["out"] = output_temp_133;
+output_json["output"] = output_temp_33;
 std::ofstream out_str(output_file); 
 out_str << std::setw(4) << output_json << std::endl;
 }
 
-void meow_fft_accel_internal(Meow_FFT_Workset * data,Meow_FFT_Complex * in,Meow_FFT_Complex * out) {
+void STB_FFT_accel_internal(cmplx * input,cmplx * output,int n) {
 int adi_acc_n;;
-	adi_acc_n = data->N;;
+	adi_acc_n = n;;
 	complex_float adi_acc_output[adi_acc_n] __attribute((aligned(32)));;
 	complex_float adi_acc_input[adi_acc_n] __attribute((aligned(32)));;
-	for (int i47 = 0; i47 < adi_acc_n; i47++) {
-		adi_acc_input[i47].re = in[i47].r;
+	for (int i7 = 0; i7 < adi_acc_n; i7++) {
+		adi_acc_input[i7].re = input[i7].real;
 	};
-	for (int i48 = 0; i48 < adi_acc_n; i48++) {
-		adi_acc_input[i48].im = in[i48].j;
+	for (int i8 = 0; i8 < adi_acc_n; i8++) {
+		adi_acc_input[i8].im = input[i8].imag;
 	};
 	
 if ((PRIM_EQUAL(adi_acc_n, 524288)) || ((PRIM_EQUAL(adi_acc_n, 262144)) || ((PRIM_EQUAL(adi_acc_n, 131072)) || ((PRIM_EQUAL(adi_acc_n, 65536)) || ((PRIM_EQUAL(adi_acc_n, 32768)) || ((PRIM_EQUAL(adi_acc_n, 16384)) || ((PRIM_EQUAL(adi_acc_n, 8192)) || ((PRIM_EQUAL(adi_acc_n, 4096)) || ((PRIM_EQUAL(adi_acc_n, 2048)) || ((PRIM_EQUAL(adi_acc_n, 1024)) || ((PRIM_EQUAL(adi_acc_n, 512)) || ((PRIM_EQUAL(adi_acc_n, 256)) || ((PRIM_EQUAL(adi_acc_n, 128)) || ((PRIM_EQUAL(adi_acc_n, 64)) || ((PRIM_EQUAL(adi_acc_n, 32)) || ((PRIM_EQUAL(adi_acc_n, 16)) || ((PRIM_EQUAL(adi_acc_n, 8)) || ((PRIM_EQUAL(adi_acc_n, 4)) || ((PRIM_EQUAL(adi_acc_n, 2)) || (PRIM_EQUAL(adi_acc_n, 1))))))))))))))))))))) {
 StartAcceleratorTimer();;
 	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
 	StopAcceleratorTimer();;
-	for (int i49 = 0; i49 < data->N; i49++) {
-		out[i49].j = adi_acc_output[i49].im;
+	for (int i9 = 0; i9 < n; i9++) {
+		output[i9].imag = adi_acc_output[i9].im;
 	};
-	for (int i50 = 0; i50 < data->N; i50++) {
-		out[i50].r = adi_acc_output[i50].re;
+	for (int i10 = 0; i10 < n; i10++) {
+		output[i10].real = adi_acc_output[i10].re;
 	}
 } else {
-meow_fft(data, in, out);
+STB_FFT(input, output, n);
 }
 }
-void meow_fft_accel(Meow_FFT_Workset * data, Meow_FFT_Complex * in, Meow_FFT_Complex * out) {
-meow_fft_accel_internal((Meow_FFT_Workset *) data, (Meow_FFT_Complex *) in, (Meow_FFT_Complex *) out);
+void STB_FFT_accel(cmplx * input, cmplx * output, int n) {
+STB_FFT_accel_internal((cmplx *) input, (cmplx *) output, (int) n);
 }
 int main(int argc, char **argv) {
     char *inpname = argv[1]; 
@@ -131,25 +131,22 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
-std::vector<Meow_FFT_Complex> in_vec;
-for (auto& elem : input_json["in"]) {
-float in_innerr = elem["r"];
-float in_innerj = elem["j"];
-Meow_FFT_Complex in_inner = { in_innerr, in_innerj};
-in_vec.push_back(in_inner);
+std::vector<cmplx> input_vec;
+for (auto& elem : input_json["input"]) {
+float input_innerreal = elem["real"];
+float input_innerimag = elem["imag"];
+cmplx input_inner = { input_innerreal, input_innerimag};
+input_vec.push_back(input_inner);
 }
-Meow_FFT_Complex *in = &in_vec[0];
-size_t workset_bytes = meow_fft_generate_workset(n, NULL);
-Meow_FFT_Workset* data =
-	(Meow_FFT_Workset *) malloc(workset_bytes);
-meow_fft_generate_workset(n, data);
-Meow_FFT_Complex out[data->N];
+cmplx *input = &input_vec[0];
+int n = input_json["n"];
+cmplx output[n];
 clock_t begin = clock();
 for (int i = 0; i < TIMES; i ++) {
-	meow_fft_accel(data, in, out);
+	STB_FFT_accel(input, output, n);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
-write_output(data, in, out);
+write_output(input, output, n);
 }
