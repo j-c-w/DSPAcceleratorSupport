@@ -16,47 +16,47 @@ With conversion function IdentityConversion
 >(new binding): 
 
 With the array index wrappers adi_acc_input,re
-And (fromvars) [x, im]
+And (fromvars) [x, re]
 Under dimensions [adi_acc_n = N]
 With conversion function IdentityConversion
 
 >(new binding): 
 
 With the array index wrappers adi_acc_input,im
-And (fromvars) [x, re]
+And (fromvars) [x, im]
 Under dimensions [adi_acc_n = N]
 With conversion function IdentityConversion
 Post: SKELETON:
 
-With the array index wrappers returnvar,Annon
+With the array index wrappers returnv,Annon
 And (fromvars) []
 Under dimensions [N = adi_acc_n]
 With conversion function IdentityConversion
 
 >(new binding): 
 
-With the array index wrappers returnvar,im
-And (fromvars) [adi_acc_output, re]
+With the array index wrappers returnv,im
+And (fromvars) [adi_acc_output, im]
 Under dimensions [N = adi_acc_n]
 With conversion function IdentityConversion
 
 >(new binding): 
 
-With the array index wrappers returnvar,re
-And (fromvars) [adi_acc_output, im]
+With the array index wrappers returnv,re
+And (fromvars) [adi_acc_output, re]
 Under dimensions [N = adi_acc_n]
 With conversion function IdentityConversion
 */
 
 
 extern "C" {
-#include "../../../benchmarks/Github/code/liscio_fft/self_contained_code.h"
+#include "../../benchmarks/Github/code/jtfell_c-fft/self_contained_code.c"
 }
 
 
 
 extern "C" {
-#include "../../../benchmarks/Accelerators/FFTA/adi_emulation.c"
+#include "../../benchmarks/Accelerators/FFTA/adi_emulation.c"
 }
 
 
@@ -85,12 +85,12 @@ void StopAcceleratorTimer() {
 		(clock()) - AcceleratorStart;
 }
 
-void write_output(_complex_double_ * x, int N, _complex_double_ * returnvar) {
+void write_output(complex * x, int N, complex * returnv) {
 
     json output_json;
 std::vector<json> output_temp_33;
 for (unsigned int i34 = 0; i34 < N; i34++) {
-_complex_double_ output_temp_35 = returnvar[i34];
+complex output_temp_35 = returnv[i34];
 json output_temp_36;
 
 output_temp_36["re"] = output_temp_35.re;
@@ -98,43 +98,43 @@ output_temp_36["re"] = output_temp_35.re;
 output_temp_36["im"] = output_temp_35.im;
 output_temp_33.push_back(output_temp_36);
 }
-output_json["returnvar"] = output_temp_33;
+output_json["returnv"] = output_temp_33;
 std::ofstream out_str(output_file); 
 out_str << std::setw(4) << output_json << std::endl;
 }
 
-_complex_double_ * FFT_wrapper_accel_internal(_complex_double_ * x,int N) {
+complex * DFT_naive_accel_internal(complex * x,int N) {
 int adi_acc_n;;
 	adi_acc_n = N;;
 	complex_float adi_acc_output[adi_acc_n] __attribute((aligned(32)));;
 	complex_float adi_acc_input[adi_acc_n] __attribute((aligned(32)));;
-	for (int i14 = 0; i14 < adi_acc_n; i14++) {
-		adi_acc_input[i14].re = x[i14].im;
+	for (int i8 = 0; i8 < adi_acc_n; i8++) {
+		adi_acc_input[i8].re = x[i8].re;
 	};
-	for (int i15 = 0; i15 < adi_acc_n; i15++) {
-		adi_acc_input[i15].im = x[i15].re;
+	for (int i9 = 0; i9 < adi_acc_n; i9++) {
+		adi_acc_input[i9].im = x[i9].im;
 	};
 	
 if ((PRIM_EQUAL(adi_acc_n, 524288)) || ((PRIM_EQUAL(adi_acc_n, 262144)) || ((PRIM_EQUAL(adi_acc_n, 131072)) || ((PRIM_EQUAL(adi_acc_n, 65536)) || ((PRIM_EQUAL(adi_acc_n, 32768)) || ((PRIM_EQUAL(adi_acc_n, 16384)) || ((PRIM_EQUAL(adi_acc_n, 8192)) || ((PRIM_EQUAL(adi_acc_n, 4096)) || ((PRIM_EQUAL(adi_acc_n, 2048)) || ((PRIM_EQUAL(adi_acc_n, 1024)) || ((PRIM_EQUAL(adi_acc_n, 512)) || ((PRIM_EQUAL(adi_acc_n, 256)) || ((PRIM_EQUAL(adi_acc_n, 128)) || ((PRIM_EQUAL(adi_acc_n, 64)) || ((PRIM_EQUAL(adi_acc_n, 32)) || ((PRIM_EQUAL(adi_acc_n, 16)) || ((PRIM_EQUAL(adi_acc_n, 8)) || ((PRIM_EQUAL(adi_acc_n, 4)) || ((PRIM_EQUAL(adi_acc_n, 2)) || (PRIM_EQUAL(adi_acc_n, 1))))))))))))))))))))) {
 StartAcceleratorTimer();;
 	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
 	StopAcceleratorTimer();;
-	_complex_double_* returnvar = (_complex_double_*) malloc (sizeof(_complex_double_)*N);;;
-	for (int i17 = 0; i17 < N; i17++) {
-		returnvar[i17].im = adi_acc_output[i17].re;
+	complex* returnv = (complex*) malloc (sizeof(complex)*N);;;
+	for (int i11 = 0; i11 < N; i11++) {
+		returnv[i11].im = adi_acc_output[i11].im;
 	};
-	for (int i18 = 0; i18 < N; i18++) {
-		returnvar[i18].re = adi_acc_output[i18].im;
+	for (int i12 = 0; i12 < N; i12++) {
+		returnv[i12].re = adi_acc_output[i12].re;
 	};
 	
-return returnvar;
+return returnv;
 } else {
 
-return FFT_wrapper(x, N);;
+return DFT_naive(x, N);;
 }
 }
-_complex_double_ * FFT_wrapper_accel(_complex_double_ * x, int N) {
-return (_complex_double_ *)FFT_wrapper_accel_internal((_complex_double_ *) x, (int) N);
+complex * DFT_naive_accel(complex * x, int N) {
+return (complex *)DFT_naive_accel_internal((complex *) x, (int) N);
 }
 int main(int argc, char **argv) {
     char *inpname = argv[1]; 
@@ -142,21 +142,19 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
-std::vector<_complex_double_> x_vec;
+std::vector<complex> x_vec;
 for (auto& elem : input_json["x"]) {
 double x_innerre = elem["re"];
 double x_innerim = elem["im"];
-_complex_double_ x_inner = { x_innerre, x_innerim};
+complex x_inner = { x_innerre, x_innerim};
 x_vec.push_back(x_inner);
 }
-_complex_double_ *x = &x_vec[0];
+complex *x = &x_vec[0];
 int N = input_json["N"];
 clock_t begin = clock();
-for (int i = 0; i < TIMES; i ++) {
-	_complex_double_ * returnvar = FFT_wrapper_accel(x, N);
-}
+complex * returnv = DFT_naive_accel(x, N);
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
-write_output(x, N, returnvar);
+write_output(x, N, returnv);
 }
