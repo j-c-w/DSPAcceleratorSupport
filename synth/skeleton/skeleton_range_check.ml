@@ -234,16 +234,15 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
 
 let generate_range_check_skeleton options classmap iospec apispec pre_binding =
     (* First, we need to generate what the real input/valid
-    ranges are /after/ translation through the binding code. *)
-    let transformed_io_rangemap = transform_rangemap_by options RangeForward iospec.rangemap iospec.rangemap pre_binding in
-    let transformed_io_validmap = transform_rangemap_by options RangeForward iospec.validmap iospec.validmap pre_binding in
+    ranges are /before/ translation through the binding code. *)
+    let transformed_io_rangemap = transform_rangemap_by options RangeBackward iospec.rangemap apispec.validmap pre_binding in
     (* Then, use these to call the range gen.  This generates
     some GIR conditions that are going to be used later, not
     any skeleton code --- perhaps they should generate
     some skeleton stuff instead?  Not sure there's any
     benefit to doing that, but it would perhaps
     be cleaner.  *)
-    let result = generate_range_check options apispec.livein apispec.validmap transformed_io_rangemap transformed_io_validmap in
+    let result = generate_range_check options iospec.livein transformed_io_rangemap iospec.rangemap iospec.validmap in
     let () = if options.dump_range_check then
         let () = Printf.printf "Generated range check (%s)\n" (match result with
         | None -> "None"
@@ -315,7 +314,31 @@ let generate_input_ranges_skeleton options rangemap validmap binding =
 	in
 	inputmap
 
+let generate_post_check_ranges options rangemap validmap binding =
+	let transformed_rangemap = transform_rangemap_by options RangeForward rangemap validmap binding in
+	(* Now, do the intersection of the transformed rangemap
+		and the validmap.  *)
+	let keys = Hashtbl.keys validmap in
+	let reachable_validmap = Hashtbl.create (module String) in
+	let _ = List.map keys (fun key ->
+		let validrange = Hashtbl.find_exn validmap key in
+		let inputrange = Hashtbl.find transformed_rangemap key in
+		let resultset = match inputrange with
+			| Some(s) -> range_set_intersection validrange s
+			| None -> validrange
+		in
+		let _ = Hashtbl.set reachable_validmap key resultset in
+		()
+	) in
+	reachable_validmap
+
 (* Given some pre-mapping, and some api value restrictions, generate
 the range of inputs that we should be testing with.  *)
 let generate_input_ranges options rangemap validmap pre_bindings =
 	List.map pre_bindings (generate_input_ranges_skeleton options rangemap validmap)
+
+(* Given some pre-mapping, api valud restrictions, generate
+the set of values that each variable can take /after/ the
+valid-check is complete.  *)
+let generate_post_check_ranges options rangemap validmap pre_bindings =
+	List.map pre_bindings (generate_post_check_ranges options rangemap validmap)

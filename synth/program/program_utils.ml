@@ -23,53 +23,37 @@ let generate_cast_reference (program: program) v =
 			infered typemap to use.  *)
 			Variable(Name(v))
 
-(* Helper function to wrap the accelerator in a conditional.  *)
-let rec split_on_condition cond program (sequence_elements: gir list) =
-    match sequence_elements with
-    | (Expression(FunctionCall(FunctionRef(Name(n)), args)) as fcall) :: rest ->
-            if (String.compare n program.api_funname) = 0 then
-				let raw_call =
-							FunctionCall(
-								FunctionRef(
-									Name(program.user_funname)
-								),
-								VariableList(List.map program.funargs (generate_cast_reference program))
-							)
-				in
-				(* Not all code needs return parameters *)
-				let user_code_call =
-					if (List.length program.returnvar) > 0 then
-						Return(raw_call)
-					else
-						Expression(raw_call)
-				in
-                (* This is the call to the accelerator --- so wrap it in an if statement with a return.  *)
-                [
-                IfCond(cond,
-                    (* If the condition passes, then proceed as normal. *)
-                    Sequence(fcall :: rest),
-                    (* If false, then call to the user
-                    code.  *)
-					user_code_call
-                )
-                ]
-            else (* This is some unrelated funcall.  *)
-                fcall :: (split_on_condition cond program rest)
-    (* TODO --- would like to have a more concrete handlig
-    of cases where the user call function is non-void.  *)
-    | [] -> raise (ProgramException "Failed to find call to accelerator!")
-    | x :: xs -> x :: (split_on_condition cond program xs)
-
 (* Insert the range reduction wrapper if it exists *)
 let insert_conditional_call options gir (program: program) =
     match program.range_checker with
     | Some(rcheck) ->
-            (
-            match gir with
-            | Sequence(elems) ->
-                    Sequence(split_on_condition rcheck.condition program elems)
-            | _ -> raise (ProgramException "Unexpected program structure!")
-            )
+			let raw_call =
+						FunctionCall(
+							FunctionRef(
+								Name(program.user_funname)
+							),
+							VariableList(List.map program.funargs (generate_cast_reference program))
+						)
+			in
+			(* Not all code needs return parameters *)
+			let user_code_call =
+				if (List.length program.returnvar) > 0 then
+					Return(raw_call)
+				else
+					Expression(raw_call)
+			in
+
+			(* This is the call to the accelerator --- so wrap it in an if statement with a return.  *)
+			IfCond(rcheck.condition,
+				(* If the condition passes, then proceed as normal. *)
+				gir,
+				(* If false, then call to the user
+				code.  *)
+				(* The frees will exist in the rest of
+				the code already, so we just need to put
+				them in here.  *)
+				Sequence([user_code_call])
+			)
     | None -> gir
 
 (* This inserts a call into a function to dump the vlaues of the variables
@@ -165,14 +149,15 @@ let generate_single_gir_body_from options apispec dump_intermediates program =
 		else
 			post_behavioural_addition
 	in
-	let range_checked = insert_conditional_call options intermediate_dump_addition program in
 	let wrapper_timing_addition =
 		if options.generate_timing_code then
-			insert_wrapper_timing_code apispec range_checked program
+			insert_wrapper_timing_code apispec intermediate_dump_addition program
 		else
-			range_checked
+			intermediate_dump_addition
 	in
-	wrapper_timing_addition
+	let range_checked = insert_conditional_call options wrapper_timing_addition program in
+	
+	range_checked
 
 let generate_includes_list_from program =
 	match program.post_behavioural with

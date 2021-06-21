@@ -598,16 +598,19 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
 	let range_progs = generate_range_checks_skeleton options typemap iospec apispec range_checked_pre_skeletons in
 	(* Generate the range maps that can be used for input generation.  *)
 	let input_maps = generate_input_ranges options iospec.rangemap apispec.validmap range_checked_pre_skeletons in
+	let post_check_validmaps = generate_post_check_ranges options iospec.rangemap apispec.validmap range_checked_pre_skeletons in
+    let maps = List.zip_exn input_maps post_check_validmaps in
     (* Do skeleton pairing *)
 	let pre_skeletons_with_ranges = List.zip_exn range_progs range_checked_pre_skeletons in
-	let pre_skeletons_with_ranges_and_inputs = List.zip_exn pre_skeletons_with_ranges input_maps in
+	let pre_skeletons_with_ranges_and_inputs = List.zip_exn pre_skeletons_with_ranges maps in
     let all_skeleton_paris = List.cartesian_product pre_skeletons_with_ranges_and_inputs range_checked_post_skeletons in
-    let skeleton_pair_objects = List.map all_skeleton_paris (fun (((rangecheck, pre), inputmap), post) ->
+    let skeleton_pair_objects = List.map all_skeleton_paris (fun (((rangecheck, pre), (inputmap, post_check_valid)), post) ->
         {
             pre = pre;
             post = post;
             rangecheck = rangecheck;
 			inputmap = inputmap;
+            post_check_validmap = post_check_valid;
 			typemap = typemap;
         }
     ) in

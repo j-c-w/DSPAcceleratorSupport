@@ -12,6 +12,7 @@ open Iospec_manipulator;;
 open Executable_test;;
 open Post_synthesis;;
 open Options;;
+open Code_checker;;
 
 exception TypeException of string
 
@@ -117,6 +118,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	let () = Printf.printf "=================================\n" in
 	let working_programs_code = generate_code opts api iospec false working_programs in
     let () = print_working_code opts api working_programs_code in
+	let () = print_working_code_warnings opts working_programs_code in
     let () = Printf.printf "Done!\n" in
     ()
 	)

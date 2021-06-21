@@ -1,4 +1,4 @@
-FLAGS = -pkg core_kernel -pkg yojson -pkg cmdliner -pkg parmap -pkg str -pkg core -cflag -g -lflag -g -r
+FLAGS = -pkg core_kernel -pkg yojson -pkg cmdliner -pkg parmap -pkg str -cflag -g -lflag -g -r
 INCLUDES = -I utilities/
 PARALLELISM = 4
 

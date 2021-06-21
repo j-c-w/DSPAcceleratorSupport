@@ -188,10 +188,9 @@ let is_supported_type s1 s2 s3 =
 
 	s1_supported && s2_supported && s3_supported
 
-(* Note that these ranges have to be over the same variables
- --- we use the accelerator input variables, since we have
- a prospective transformation from the user code variables
- to the accelerator input variables.  *)
+(* This should be able to generate range checks either
+   on the accelerator variables or on the user code
+   variables.  *)
 let generate_range_check options vars accel_valid input_range input_valid =
 	let wrapped_vars = List.map vars (fun var -> Variable(Name(var))) in
 	let range_checks: conditional list = List.filter_map wrapped_vars (fun var ->

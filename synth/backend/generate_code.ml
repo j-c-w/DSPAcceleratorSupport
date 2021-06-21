@@ -169,20 +169,28 @@ let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_
 let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dimratio_modifier =
     match typ with
     | Array(stype, dimtype) ->
-            let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
+            let prefix, subsize = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
             let dim = cxx_dimtype_to_name typemap dimtype in
             (* THe concept is this will be expanded as:
                 prefix NAME = (prefix) malloc(size);
                But, we only use malloc if this is actually
                an array.
                 *)
-            prefix ^ "*", subsize ^ "*" ^ dim, true
+            prefix ^ "*", subsize ^ "*" ^ dim
 	| Pointer(stype) ->
-			let prefix, subsize, uses_malloc = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
-			prefix ^ "*", subsize, true
+			let prefix, subsize = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
+			prefix ^ "*", subsize
     | othertyp ->
             let tyname = cxx_type_signature_synth_type_to_string othertyp in
-            tyname, "sizeof(" ^ tyname ^ ")" ^ dimratio_modifier, false
+            tyname, "sizeof(" ^ tyname ^ ")" ^ dimratio_modifier
+
+(* This is like a question of: if we are trying to return this
+variable, does it have to be malloced?*)
+let is_malloc_type typemap typ =
+	match typ with
+	| Array(stype, _) -> true
+	| Pointer(_) -> true
+	| other -> false
 
 (* This is basically saying: if we are allocating
 space for t1, but then cast to an array of length
@@ -216,40 +224,95 @@ let compute_dimension_ratio_modifier t1 t2 =
 
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
-let rec cxx_definition_synth_type_to_string typemap alignment escapes typ base_type name =
+let rec cxx_definition_synth_type_to_string options typemap alignment escapes typ base_type name =
 	let dim_ratio_modifier =
 		compute_dimension_ratio_modifier typ base_type in
-	let defin = if escapes then
-            (* If the variable escapes, then we need to malloc it.  *)
-            let (prefix, asize, usemalloc) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dim_ratio_modifier in
-            if usemalloc then
-                prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") malloc (" ^ asize ^ ");"
-            else
-                prefix ^ " " ^ name ^ ";"
-        else
-            let (prefix, postfix) =
-                cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier in
-            (* Prefix is like the type name, 'name' is the variable name,
-               postfix is array markings like [n], and then we need
-               to add a semi colon. *)
-            prefix ^ " " ^ name ^ postfix
+	let alignment_value = match alignment with
+	| None -> "0"
+	| Some(a) -> (string_of_int a)
 	in
-	match alignment with
-	| None -> defin ^ ";"
-	| Some(a) ->
-			defin ^ " __attribute((aligned(" ^ (string_of_int a) ^ ")));"
+	let static_prefix = match options.compile_settings.allocation_mode with
+	| StaticAllocationMode -> "static "
+	| HeapAllocationMode | StackAllocationMode -> ""
+	in
+	let assignment =
+		match options.compile_settings.allocation_mode with
+				(* While sometimes it doesn't matter
+				if the variable escapes if it's static, in practice, 
+				if this is an escaping variable, then it sill
+				needs to be malloc'ed, as that's what the user
+				code will have done (so it'll be freed) *)
+				(* I think that the analysis about whether
+				this can be done is likely to be too complicated
+				to be successful in anything but trivial
+				cases, so we'll make sure to malloc anything
+				that escapes here.
+
+				The analysis would  be a dataflow analysis
+				on the return value, which tracks 
+				whether the array can be accessed after
+				the data is overwritten.  
+
+				In reality, we might have some embedded systems
+				where the original FFT was written with
+				a statically allocated array, although
+				in those cases, I'd expect that to
+				be presented to FACC as a liveout
+				'function parameter'. *)
+		| StackAllocationMode | StaticAllocationMode ->
+				let align_postfix = match alignment with
+						| None -> ";"
+						| Some(a) ->
+							"__attribute__((__aligned__(" ^ (string_of_int a) ^ ")));"
+				in
+				if escapes then
+					(* If the variable escapes, then we need to malloc it.  *)
+					let usemalloc = is_malloc_type typemap typ in
+					let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dim_ratio_modifier in
+					if usemalloc then
+						(* Malloc'ed values are not static.  *)
+						prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") facc_malloc (" ^ alignment_value ^ ", " ^ asize ^ ");"
+					else
+						(* Unless it is a primitive *)
+						static_prefix ^ prefix ^ " " ^ name ^ align_postfix
+				else
+					let (prefix, postfix) =
+						cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier in
+					(* Prefix is like the type name, 'name' is the variable name,
+					   postfix is array markings like [n], and then we need
+					   to add a semi colon. *)
+					static_prefix ^ prefix ^ " " ^ name ^ postfix ^ align_postfix
+		| HeapAllocationMode ->
+				let usemalloc = is_malloc_type typemap typ in
+				let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dim_ratio_modifier in
+				if usemalloc then
+					(* Malloc'ed values are not static.  *)
+					prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") facc_malloc (" ^ alignment_value ^ ", " ^ asize ^ ");"
+				else
+					let align_postfix = match alignment with
+					| None -> ";"
+					| Some(a) ->
+							"__attribute__((__aligned__(" ^ alignment_value ^ ")));"
+					in
+					(* Do not malloc if this is a primitive *)
+					static_prefix ^ prefix ^ " " ^ name ^ align_postfix
+	in
+	assignment
 
 let cxx_names_to_type_definition variable_map names =
     List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn variable_map name)) ^ " " ^ name)
 
-let rec cxx_generate_from_gir (typemap: typemap) gir =
+let rec cxx_generate_from_gir options (typemap: typemap) gir =
     match gir with
-    | Definition(nref, escapes) ->
-            let defntype = (Hashtbl.find_exn typemap.variable_map (cxx_gir_name_to_string nref)) in
+    | Definition(nref, escapes, definition_type) ->
 			let alignment = Hashtbl.find typemap.alignment_map (cxx_gir_name_to_string nref) in
-            cxx_definition_synth_type_to_string typemap alignment escapes defntype defntype (cxx_gir_name_to_string nref)
+			let definition_type = match definition_type with
+			| Some(x) -> x
+			| None -> raise (CXXGenerationException "Error: untyped def: see generate_gir:get_definition_type_for ")
+			in
+            cxx_definition_synth_type_to_string options typemap alignment escapes definition_type definition_type (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
-            String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir typemap))
+            String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir options typemap))
     | Assignment(fromv, tov) ->
 			let pre_from_code, fromv_name = cxx_generate_from_lvalue typemap fromv in
 			let pre_to_code, tov_name = cxx_generate_from_rvalue typemap tov in
@@ -260,19 +323,33 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
             let pre_loopmax_code, loopmax_name, _ = (cxx_generate_from_variable_reference typemap loopmax) in
 			(trim pre_loopmax_code) ^
             "for (int " ^ indvar_name ^ " = 0; " ^ indvar_name ^ " < " ^ loopmax_name ^ "; " ^ indvar_name ^ "++) {\n\t\t" ^
-            (cxx_generate_from_gir typemap gir) ^
+            (cxx_generate_from_gir options typemap gir) ^
             "\n\t}"
     | Expression(expression) ->
 			let pre_code, expr_code = (cxx_generate_from_expression typemap expression) in
 			String.concat [(trim pre_code); expr_code]
 	| IfCond(cond, iftrue, iffalse) ->
 			let pre_cond_code, cond_code = cxx_generate_from_conditional typemap cond in
-			let true_code = cxx_generate_from_gir typemap iftrue in
-			let false_code = cxx_generate_from_gir typemap iffalse in
+			let true_code = cxx_generate_from_gir options typemap iftrue in
+			let false_code = cxx_generate_from_gir options typemap iffalse in
 			(trim pre_cond_code ^ "\n") ^
 			"if (" ^ cond_code ^ ") {\n" ^
 			true_code ^ "\n} else {\n" ^
 			false_code ^ "\n}"
+	| Free(v) ->
+			(* Depending on the mode, this may not expand into anything.  *)
+			let precode, postcode, typ = cxx_generate_from_variable_reference typemap v in
+			let free =
+				match options.compile_settings.allocation_mode with
+					| StaticAllocationMode | StackAllocationMode -> ""
+					| HeapAllocationMode ->
+							if is_malloc_type typemap typ then
+								"facc_free(" ^ (postcode) ^ ")"
+							else
+								""
+			in
+			(* note that precode should basically always be empty.  *)
+			precode ^ "\n" ^ free
 	| Return(v) ->
 			let precode, expr_code = cxx_generate_from_expression typemap v in
 			(trim precode ^ "\n") ^
@@ -297,7 +374,7 @@ let rec cxx_generate_from_gir (typemap: typemap) gir =
 				alignment_map = emptymap;
 				original_typemap = None;
 			} in
-			let body_code = cxx_generate_from_gir fun_typemap body in
+			let body_code = cxx_generate_from_gir options fun_typemap body in
 			String.concat [
 				funtyp_name; " "; (cxx_gir_name_to_string name);
 				" ("; args_def; ") {\n"; body_code;
@@ -529,7 +606,7 @@ let rec generate_assign_to typemap assname fieldname typ json_ref =
 those IO values from a JSON file and puts them into values.
 Returns boht the code, and a list of function args to apply.
 *)
-let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
+let rec generate_input_assigns options (typemap: typemap) inps livein json_ref =
 	(* If there are infered types, use the original typemap.  *)
 	let iotypemap = match typemap.original_typemap with
 			| Some(t) -> t
@@ -560,7 +637,7 @@ let rec generate_input_assigns (typemap: typemap) inps livein json_ref =
         let typ = Hashtbl.find_exn iotypemap.variable_map inp in
 		let alignment = Hashtbl.find iotypemap.alignment_map inp in
 		(* Things that go into the API are assumed to be dead-in.  *)
-		cxx_definition_synth_type_to_string typemap alignment false typ infered_type inp
+		cxx_definition_synth_type_to_string options typemap alignment false typ infered_type inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)
@@ -714,7 +791,7 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 	in
 	let load_file =      "    std::ifstream ifs(inpname); " in
 	let load_json =      "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns program.typemap program.funargs program.livein json_var_name in
+	let parse_args, argnames = generate_input_assigns options program.typemap program.funargs program.livein json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
@@ -791,7 +868,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 		(* Note that the typemap and lenvar bindings aren't
 		(/shouldn't be) used in this call anyway, they're replaced
 		by the ones in the program unit. *)
-		(List.map program.fundefs (cxx_generate_from_gir program.typemap))
+		(List.map program.fundefs (cxx_generate_from_gir options program.typemap))
 		@ (intermediate_dump_function)
 	) in
     (* Generate the function header *)
@@ -805,7 +882,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
 	let program_gir = generate_single_gir_body_from options apispec dump_intermediates program in
 	(* TODO -- probabloy need to augment the typemap and lenvar bindings with
 	those from the post-behaviour/range checker.  *)
-    let program_string = cxx_generate_from_gir program.typemap program_gir in
+    let program_string = cxx_generate_from_gir options program.typemap program_gir in
 	let program_includes =
 		String.concat ~sep:"\n" (generate_includes_list_from program) in
 	let ioimports = cxx_generate_imports iospec.required_includes in

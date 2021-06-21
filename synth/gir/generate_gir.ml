@@ -181,12 +181,12 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 			)
 		)
 
-let get_define_for define_internal_before_assign escaping_vars vnameref =
+let get_define_for definition_type define_internal_before_assign escaping_vars vnameref =
     let escapes = List.mem escaping_vars (variable_reference_to_string vnameref) Utils.string_equal in
 	if (define_internal_before_assign || escapes) then
 		match vnameref with
 		| Variable(nam) ->
-			Definition(nam, escapes)
+			Definition(nam, escapes, definition_type)
 		(* It's hard to say for sure what to do here --- eg.
 		if you have
 		struct {
@@ -285,7 +285,7 @@ let generate_conversion_function conv = match conv with
             let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun(ftype, ttype)) in
             FunctionDef(fname, [argname],
                 Sequence([
-					Definition(returnvar, true);
+					Definition(returnvar, true, Some(ttype));
 					Assignment(
 						LVariable(Variable(returnvar)),
 						Expression(GIRMap(argname, to_from_list_synths))
@@ -296,7 +296,72 @@ let generate_conversion_function conv = match conv with
                 typelookup
             ), fname
 
-let generate_gir_for_binding (iospec: iospec) define_internal_before_assign insert_return (options: options) (skeleton: flat_skeleton_binding) =
+let get_definition_type_for options escapes validmap typemap v =
+	match options.compile_settings.allocation_mode with
+    | StackAllocationMode -> (* Variable length supported. *)
+            Some(Hashtbl.find_exn typemap.variable_map v)
+    | HeapAllocationMode -> (* Also have variable length.  *)
+            Some(Hashtbl.find_exn typemap.variable_map v)
+    | StaticAllocationMode ->
+			if escapes then
+				(* Right now, we still heap allocated
+				escaping variables.  Need to fix the skeleton
+				range map generator to change this
+				(as user variables need to have range
+				maxes to use this).   See
+                skeleton_range_checker/generate_post_check_ranges
+                which needs to be expanded to include the user types.
+                *)
+				Some(Hashtbl.find_exn typemap.variable_map v)
+			else
+            (* We need to allocate the biggest
+            array that might have been used.  *)
+            let rec size_concreteization ty =
+                match ty with
+                | Array(sb, dim) ->
+                        let stype_new = size_concreteization sb in
+                        let dimmax = match dim with
+                        | Dimension(DimConstant(c)) -> Some(DimConstant(c))
+                        | Dimension(DimVariable(dimv)) ->
+                                let range = Hashtbl.find validmap (name_reference_to_string dimv) in
+								(
+                                match range with
+                                | None ->
+										(* This should really be the below exception, but
+										we sometimes generate defines
+										for things that shouldn't have defines.
+										This is the next-best way to do this I suppose.  *)
+										None
+										(* let () = Printf.printf "For array %s with dim variable %s could not find ranges\n" (v) (name_reference_to_string dimv) in *)
+										(* raise (GenerateGIRException "Error: when in static allocation mode, array parameters must have length restrictions (try specifying in accelerator file") *)
+                                | Some(r) ->
+                                        match range_max r with
+                                        | RangeInteger(i) -> Some(DimConstant(i))
+                                        | _ -> assert false (* Can't have non-integer array length *)
+								)
+                        | EmptyDimension -> assert false
+                        in
+                        Option.join (Option.map dimmax (fun m -> Option.map stype_new (fun s -> Array(s, Dimension(m)))))
+                | Pointer(sp) ->
+						Option.map (size_concreteization sp) (fun p -> Pointer(p))
+                | other -> Some(other)
+                (* Perhaps we should handle structs specially here.  *)
+                (* Note: I don't think that we will have to, since
+                 those don't have variable length. *)
+            in
+            size_concreteization (Hashtbl.find_exn typemap.variable_map v)
+
+(* Definitions should be for the outer-most variable I think. 
+ (e.g. if we have a complex[].real, we just need to define
+ the complex[] part.  *)
+let get_definition_type_for_tovar options validmap typemap escaping_variables tovars =
+	match tovars with
+	| [] -> raise (GenerateGIRException "Defining empty variable")
+	| x :: xs ->
+            let escapes = List.mem escaping_variables (name_reference_to_string x) Utils.string_equal in
+			get_definition_type_for options escapes validmap typemap (name_reference_to_string x)
+
+let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_internal_before_assign insert_return (options: options) validmap (skeleton: flat_skeleton_binding) =
 	(* First, compute the expression options for each
 	   binding, e.g. it may be that we could do
 	   x = cos(y) or x = sin(y) or x = y. 
@@ -305,6 +370,9 @@ let generate_gir_for_binding (iospec: iospec) define_internal_before_assign inse
     (* Escaping variables must be defined differently in C-like
     targets.  *)
     let escaping_variables = Utils.set_difference Utils.string_equal iospec.returnvar iospec.funargs in
+    (* Not sure this is right -- it should also include
+    the return value when that feature is added.  *)
+	let unescaping_variables = apispec.funargs in
 	let expression_options, required_fun_defs = List.unzip (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
 		(* There may be more than one valid dimension value.
 		   generate assignments based on all the dimension values. *)
@@ -325,6 +393,7 @@ let generate_gir_for_binding (iospec: iospec) define_internal_before_assign inse
             in the bindings into real variable refs.  *)
 		(* Generate the possible assignments *)
 		let assign_funcs = generate_assign_functions conversion_function_name fvars_indexes tovar_indexes in
+		let definition_type = get_definition_type_for_tovar options validmap typemap escaping_variables tovar_indexes in
 		(* Get the define if required.  *)
 		let define =
 			let () = if options.debug_generate_gir then
@@ -334,7 +403,7 @@ let generate_gir_for_binding (iospec: iospec) define_internal_before_assign inse
 			() else () in
 			(* This returns an empty GIR if the define shouldn't be made
 			(e.g. this is a post code and doesn't escape.)  *)
-			get_define_for define_internal_before_assign escaping_variables (define_name_of (generate_gir_names_for tovar_indexes))
+			get_define_for definition_type define_internal_before_assign escaping_variables (define_name_of (generate_gir_names_for tovar_indexes))
 		in
         let () =
             if options.debug_generate_gir then
@@ -385,10 +454,20 @@ let generate_gir_for_binding (iospec: iospec) define_internal_before_assign inse
 	   to a sequence.  *)
 	let returnstatement =
 		if insert_return then
+			let frees =
+				(* Don't free everything --- only things that
+				don't escape.  *)
+                List.map unescaping_variables (fun v ->
+                    Free(Variable(Name(v)))
+                )
+			in
 			match iospec.returnvar with
-			| [] -> EmptyGIR
+			| [] -> Sequence(frees)
 			| [x] ->
-					Return(VariableReference(Variable(Name(x))))
+                    Sequence(
+                        frees @
+						[Return(VariableReference(Variable(Name(x))))]
+                    )
 			| _ ->
 					(* We should really suppor this at this point -- but since C/C++ is the
 					only supported backend right now, we dont really need
@@ -448,7 +527,7 @@ let rec toposort names =
 			(toposort befores) @ (nm :: (toposort afters))
 
 
-let generate_define_statemens_for options typemap (iospec: iospec) api =
+let generate_define_statemens_for options validmap typemap (iospec: iospec) api =
 	(* Need to make sure that types that are dependent on each
 	   other are presented in the right order.  *)
 	(* Compute any defines that are needed for the returnvars. *)
@@ -464,15 +543,19 @@ let generate_define_statemens_for options typemap (iospec: iospec) api =
 	else
 		()
 	in
+	let typed_sorted_names = List.map sorted_names (fun n ->
+        let escapes = List.mem unpassed_returnvars (gir_name_to_string n) Utils.string_equal in
+		(n, get_definition_type_for options escapes validmap typemap (gir_name_to_string n))
+	) in
     (* Generate a define for each input variable in the API *)
-	List.map sorted_names (fun x ->
+	List.map typed_sorted_names (fun (x, xtyp) ->
 		if List.mem unpassed_returnvars (gir_name_to_string x) Utils.string_equal then
-			Definition(x, true)
+			Definition(x, true, xtyp)
 		else
-			Definition(x, false)
+			Definition(x, false, xtyp)
 	)
 
-let generate_gir_for options iospec (skeleton: skeleton_pairs) =
+let generate_gir_for options apispec iospec (skeleton: skeleton_pairs) =
 	let () = if options.debug_generate_gir then
 		let () = Printf.printf "Starting generation for new skeleton pair\n" in
 		let () = Printf.printf "Pair is\n %s \n" (skeleton_pairs_to_string skeleton) in
@@ -480,8 +563,8 @@ let generate_gir_for options iospec (skeleton: skeleton_pairs) =
 	else () in
     (* Get the define statements required for the API inputs.  *)
 	(* Define the variables before assign in the pre-skeleton case.  *)
-	let pre_gir, pre_required_fun_defs = generate_gir_for_binding iospec true false options skeleton.pre in
-	let post_gir, post_required_fun_defs = generate_gir_for_binding iospec false true options skeleton.post in
+	let pre_gir, pre_required_fun_defs = generate_gir_for_binding apispec iospec skeleton.typemap true false options skeleton.post_check_validmap skeleton.pre in
+	let post_gir, post_required_fun_defs = generate_gir_for_binding apispec iospec skeleton.typemap false true options skeleton.post_check_validmap skeleton.post in
     (* Keep track of the variable length assignments that have been made. *)
 	let all_fundefs = pre_required_fun_defs @ post_required_fun_defs in
 	let res = List.cartesian_product pre_gir post_gir in
@@ -501,7 +584,7 @@ let generate_gir_for options iospec (skeleton: skeleton_pairs) =
 
 let generate_gir (options:options) iospec api skeletons: ((gir_pair) list) =
 	let result = List.concat ((List.map skeletons (fun skel ->
-		generate_gir_for options iospec skel))) in
+		generate_gir_for options api iospec skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
 		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(orig_skel, pre, post, typemap, funs, range, map) ->

@@ -1,4 +1,5 @@
 open Range_definition;;
+open Compile_settings;;
 
 exception OptionsException of string
 
@@ -19,7 +20,7 @@ let get_compiler_flags target =
 	match target with
 	| CXX -> [
 		(* Include the clibs.  *)
-		"-Ilibs -fsanitize=address"
+		"libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address"
 	]
 
 type behavioural_synthesizer =
@@ -38,6 +39,8 @@ let range_factor_from_option o =
             | None -> Infinite;
 
 type options = {
+	compile_settings: compile_settings;
+
 	(* Generic configuration *)
 	target: backend_target; (* Language target *)
 	execution_folder: string; (* Where to keep the executables for testing *)
@@ -120,6 +123,8 @@ type options = {
 (* this is a dirty hack --- fix the multiple frontends
    one opt parser issue is a better way to deal with this. *)
 let default_options = {
+	compile_settings = default_compile_settings;
+
 	(* Generic configuration *)
 	target = CXX;
 	execution_folder = "synth_temps";

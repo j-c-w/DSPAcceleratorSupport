@@ -73,11 +73,13 @@ let rec reduce_gir (options: options) gir: gir =
             Expression(reduce_expression options expr)
     | Assignment(ton, fromn) ->
             Assignment(ton, reduce_rvalue options fromn)
-    | Definition(_, _) -> gir
+    | Definition(_, _, _) -> gir
 	| IfCond(c, iftrue, iffalse) ->
 			(* Could/should reduce the cond here --- don't think
 			   we generate loads of redundant stuff though. *)
 			IfCond(c, reduce_gir options iftrue, reduce_gir options iffalse)
+	| Free(v) ->
+			gir
     | Return(rval) ->
 			Return(reduce_expression options rval)
     | EmptyGIR -> EmptyGIR

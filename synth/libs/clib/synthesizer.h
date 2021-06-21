@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 // Conditions
 #define POWER_OF_TWO(x) ((x & (x - 1)) == 0)
 #define GREATER_THAN(x, y) x > y
@@ -14,3 +16,7 @@
 // Builtin types
 typedef struct { float f32_1; float f32_2; } facc_2xf32_t;
 typedef struct { float f64_1; float f64_2; } facc_2xf64_t;
+
+// FACC aligned memory functions
+void *facc_malloc(size_t alignment, size_t size);
+void facc_free(void* pointer);

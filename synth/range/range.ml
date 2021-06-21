@@ -283,7 +283,6 @@ let rec range_value_to_synth_value rvalue =
 	| RArray(t, arr) ->
 			ArrayV(List.map arr range_value_to_synth_value)
 
-
 let rec synth_type_to_range_type stype =
 	match stype with
 	| Int16 -> RangeIntegerType

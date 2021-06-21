@@ -1,5 +1,6 @@
 open Cmdliner
 open Gir
+open Parse_compile_settings
 open Parse_iospec
 open Parse_classmap
 open Parse_api
@@ -19,7 +20,7 @@ let main options iospec_file api_file  =
     let _ = run_synthesis options classspec iotypemap iospec apitypemap apialignment api in
 	()
 
-let optswrapper iospec_file api_file dump_skeletons
+let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         debug_generate_skeletons dump_assigned_dimensions debug_assign_dimensions
 		debug_load debug_generate_gir dump_generate_gir
 		debug_generate_program dump_generate_program
@@ -41,8 +42,11 @@ let optswrapper iospec_file api_file dump_skeletons
         debug_gir_generate_define_statements debug_infer_structs
 		debug_expand_typemaps =
     (* First make the options object, then call the normal main function.  *)
+	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
     let options = {
+		compile_settings = compile_settings;
+
         target = target_type;
 		execution_folder = execution_folder;
 		compiler_cmd = (match compiler_cmd with
@@ -126,13 +130,17 @@ let optswrapper iospec_file api_file dump_skeletons
 
 (* Deal with the commandline arguments. *)
 (* Required positional args *)
+let compile_settings =
+	let doc = "Compile Settings" in
+	Arg.(required & pos 0 (some string) None & info [] ~docv:"CompileSettings" ~doc)
+
 let iospec =
 	let doc = "IO Specification for the Function" in
-	Arg.(required & pos 0 (some string) None & info [] ~docv:"IOSpec" ~doc)
+	Arg.(required & pos 1 (some string) None & info [] ~docv:"IOSpec" ~doc)
 
 let apispec =
     let doc = "IO Specification for the target API" in
-    Arg.(required & pos 1 (some string) None & info [] ~docv:"APISpec" ~doc)
+    Arg.(required & pos 2 (some string) None & info [] ~docv:"APISpec" ~doc)
 
 (* Configuration flags *)
 let target =
@@ -326,7 +334,7 @@ let info =
 
 (* This command line parser is a shitshow, or I don't know how to use it.
    In any case, this has to stay in the right order.  *)
-let args_t = Term.(const optswrapper $ iospec $ apispec $ dump_skeletons $
+let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dump_skeletons $
     debug_generate_skeletons $ dump_assigned_dimensions $ debug_assign_dimensions $ debug_load $
 	debug_generate_gir $ dump_generate_gir $ debug_generate_program $ dump_generate_program
 	$ print_synth_option_numbers $ target $ execution_folder $ compiler_cmd $ debug_build_code $
