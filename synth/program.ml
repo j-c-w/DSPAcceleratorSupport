@@ -30,6 +30,7 @@ type program = {
 	user_funname: string;
 	generated_funname: string;
 	api_funname: string;
+	allocated_variables: string list;
 	fundefs: gir list;
 }
 
