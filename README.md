@@ -9,3 +9,8 @@ Building:
 - [optional] Build the evaluation executables: cd benchmarks/; ./make.sh
 
 Run FACC using main.byte, e.g. ./main.byte <compile settings file> <io specification> <api specification>.  examples of all three exist in the benchmarks directory.
+
+Licensing:
+All code in the synth/ directory is licensed under the Apache 2.0 license.
+
+All code in benchmarks/ or results/ is licensed as it is in the originating repositories (specified for each).
