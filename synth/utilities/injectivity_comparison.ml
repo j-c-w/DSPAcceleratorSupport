@@ -47,6 +47,7 @@ let main specname num =
         fundefs = [];
         inputmap = emptymaptbl;
         original_pairs = None;
+		allocated_variables = [];
     } in
     (* Keep a hashtable of the generated results. *)
     let number_tested = ref 0 in

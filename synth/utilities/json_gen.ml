@@ -74,6 +74,7 @@ let main modename iospec_file output_file =
 		fundefs = [];
 		inputmap = emptymaptbl;
         original_pairs = None;
+		allocated_variables = [];
     } in
 	let returntype, _ = cxx_type_from_returnvar iotypemap iospec.returnvar in
 	(* Generate the JSON wrapper: *)
