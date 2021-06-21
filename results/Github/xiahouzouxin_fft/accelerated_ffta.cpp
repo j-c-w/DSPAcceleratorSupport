@@ -43,13 +43,13 @@ With conversion function IdentityConversion
 
 
 extern "C" {
-#include "../../../benchmarks/Github/code/xiahouzouxin_fft/self_contained_code.c"
+#include "../../benchmarks/Github/code/xiahouzouxin_fft/self_contained_code.c"
 }
 
 
 
 extern "C" {
-#include "../../../benchmarks/Accelerators/FFTA/adi_emulation.c"
+#include "../../benchmarks/Accelerators/FFTA/adi_emulation.c"
 }
 
 
@@ -97,19 +97,19 @@ out_str << std::setw(4) << output_json << std::endl;
 }
 
 void fft_accel_internal(COMPLEX * x,int N) {
-int adi_acc_n;;
+
+if ((PRIM_EQUAL(N, 16384)) || ((PRIM_EQUAL(N, 8192)) || ((PRIM_EQUAL(N, 4096)) || ((PRIM_EQUAL(N, 2048)) || ((PRIM_EQUAL(N, 1024)) || ((PRIM_EQUAL(N, 512)) || ((PRIM_EQUAL(N, 256)) || ((PRIM_EQUAL(N, 128)) || ((PRIM_EQUAL(N, 64)) || ((PRIM_EQUAL(N, 32)) || ((PRIM_EQUAL(N, 16)) || ((PRIM_EQUAL(N, 8)) || ((PRIM_EQUAL(N, 4)) || ((PRIM_EQUAL(N, 2)) || (PRIM_EQUAL(N, 1)))))))))))))))) {
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
+	static int adi_acc_n;;
 	adi_acc_n = N;;
-	complex_float adi_acc_output[adi_acc_n] __attribute((aligned(32)));;
-	complex_float adi_acc_input[adi_acc_n] __attribute((aligned(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i2 = 0; i2 < adi_acc_n; i2++) {
 		adi_acc_input[i2].re = x[i2].real;
 	};
 	for (int i3 = 0; i3 < adi_acc_n; i3++) {
 		adi_acc_input[i3].im = x[i3].imag;
 	};
-	
-if ((PRIM_EQUAL(adi_acc_n, 524288)) || ((PRIM_EQUAL(adi_acc_n, 262144)) || ((PRIM_EQUAL(adi_acc_n, 131072)) || ((PRIM_EQUAL(adi_acc_n, 65536)) || ((PRIM_EQUAL(adi_acc_n, 32768)) || ((PRIM_EQUAL(adi_acc_n, 16384)) || ((PRIM_EQUAL(adi_acc_n, 8192)) || ((PRIM_EQUAL(adi_acc_n, 4096)) || ((PRIM_EQUAL(adi_acc_n, 2048)) || ((PRIM_EQUAL(adi_acc_n, 1024)) || ((PRIM_EQUAL(adi_acc_n, 512)) || ((PRIM_EQUAL(adi_acc_n, 256)) || ((PRIM_EQUAL(adi_acc_n, 128)) || ((PRIM_EQUAL(adi_acc_n, 64)) || ((PRIM_EQUAL(adi_acc_n, 32)) || ((PRIM_EQUAL(adi_acc_n, 16)) || ((PRIM_EQUAL(adi_acc_n, 8)) || ((PRIM_EQUAL(adi_acc_n, 4)) || ((PRIM_EQUAL(adi_acc_n, 2)) || (PRIM_EQUAL(adi_acc_n, 1))))))))))))))))))))) {
-StartAcceleratorTimer();;
+	StartAcceleratorTimer();;
 	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
 	StopAcceleratorTimer();;
 	for (int i4 = 0; i4 < N; i4++) {
@@ -117,7 +117,13 @@ StartAcceleratorTimer();;
 	};
 	for (int i5 = 0; i5 < N; i5++) {
 		x[i5].imag = adi_acc_output[i5].im;
-	}
+	};
+	
+;
+	
+;
+	
+
 } else {
 fft(x, N);
 }
@@ -141,9 +147,7 @@ x_vec.push_back(x_inner);
 COMPLEX *x = &x_vec[0];
 int N = input_json["N"];
 clock_t begin = clock();
-for (int i = 0; i < TIMES; i ++) {
-	fft_accel(x, N);
-}
+fft_accel(x, N);
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;

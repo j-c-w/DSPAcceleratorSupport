@@ -43,13 +43,13 @@ With conversion function IdentityConversion
 
 
 extern "C" {
-#include "../../../benchmarks/Github/code/marton78_pffft/self_contained_code.c"
+#include "../../benchmarks/Github/code/marton78_pffft/self_contained_code.c"
 }
 
 
 
 extern "C" {
-#include "../../../benchmarks/Accelerators/FFTA/adi_emulation.c"
+#include "../../benchmarks/Accelerators/FFTA/adi_emulation.c"
 }
 
 
@@ -93,19 +93,19 @@ out_str << std::setw(4) << output_json << std::endl;
 }
 
 void desugared_transform_ordered_accel_internal(PFFFT_Setup_Desugar * setup,facc_2xf32_t * input,facc_2xf32_t * output,facc_2xf32_t * work,int direction) {
-int adi_acc_n;;
+
+if ((PRIM_EQUAL(direction, 1)) || (PRIM_EQUAL(direction, 0))) {
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
+	static int adi_acc_n;;
 	adi_acc_n = setup->N;;
-	complex_float adi_acc_output[adi_acc_n] __attribute((aligned(32)));;
-	complex_float adi_acc_input[adi_acc_n] __attribute((aligned(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i82 = 0; i82 < adi_acc_n; i82++) {
 		adi_acc_input[i82].re = input[i82].f32_1;
 	};
 	for (int i83 = 0; i83 < adi_acc_n; i83++) {
 		adi_acc_input[i83].im = input[i83].f32_2;
 	};
-	
-if ((PRIM_EQUAL(adi_acc_n, 524288)) || ((PRIM_EQUAL(adi_acc_n, 262144)) || ((PRIM_EQUAL(adi_acc_n, 131072)) || ((PRIM_EQUAL(adi_acc_n, 65536)) || ((PRIM_EQUAL(adi_acc_n, 32768)) || ((PRIM_EQUAL(adi_acc_n, 16384)) || ((PRIM_EQUAL(adi_acc_n, 8192)) || ((PRIM_EQUAL(adi_acc_n, 4096)) || ((PRIM_EQUAL(adi_acc_n, 2048)) || ((PRIM_EQUAL(adi_acc_n, 1024)) || ((PRIM_EQUAL(adi_acc_n, 512)) || ((PRIM_EQUAL(adi_acc_n, 256)) || ((PRIM_EQUAL(adi_acc_n, 128)) || ((PRIM_EQUAL(adi_acc_n, 64)) || ((PRIM_EQUAL(adi_acc_n, 32)) || ((PRIM_EQUAL(adi_acc_n, 16)) || ((PRIM_EQUAL(adi_acc_n, 8)) || ((PRIM_EQUAL(adi_acc_n, 4)) || ((PRIM_EQUAL(adi_acc_n, 2)) || (PRIM_EQUAL(adi_acc_n, 1))))))))))))))))))))) {
-StartAcceleratorTimer();;
+	StartAcceleratorTimer();;
 	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
 	StopAcceleratorTimer();;
 	for (int i84 = 0; i84 < setup->N; i84++) {
@@ -113,7 +113,13 @@ StartAcceleratorTimer();;
 	};
 	for (int i85 = 0; i85 < setup->N; i85++) {
 		output[i85].f32_2 = adi_acc_output[i85].im;
-	}
+	};
+	
+;
+	
+;
+	
+
 } else {
 desugared_transform_ordered(setup, (float *)input, (float *)output, (float *)work, direction);
 }
@@ -127,28 +133,51 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
+int setup_pointerN = input_json["setup"]["N"];
+int setup_pointerNcvec = input_json["setup"]["Ncvec"];
+std::vector<int> setup_pointerifac_vec;
+for (auto& elem : input_json["setup"]["ifac"]) {
+int setup_pointerifac_inner = elem;
+setup_pointerifac_vec.push_back(setup_pointerifac_inner);
+}
+int *setup_pointerifac = &setup_pointerifac_vec[0];
+int setup_pointertransform = input_json["setup"]["transform"];
+std::vector<float> setup_pointerdata_vec;
+for (auto& elem : input_json["setup"]["data"]) {
+float setup_pointerdata_inner = elem;
+setup_pointerdata_vec.push_back(setup_pointerdata_inner);
+}
+float *setup_pointerdata = &setup_pointerdata_vec[0];
+std::vector<float> setup_pointere_vec;
+for (auto& elem : input_json["setup"]["e"]) {
+float setup_pointere_inner = elem;
+setup_pointere_vec.push_back(setup_pointere_inner);
+}
+float *setup_pointere = &setup_pointere_vec[0];
+std::vector<float> setup_pointertwiddle_vec;
+for (auto& elem : input_json["setup"]["twiddle"]) {
+float setup_pointertwiddle_inner = elem;
+setup_pointertwiddle_vec.push_back(setup_pointertwiddle_inner);
+}
+float *setup_pointertwiddle = &setup_pointertwiddle_vec[0];
+PFFFT_Setup_Desugar setup_pointer = { setup_pointerN, setup_pointerNcvec, setup_pointerifac, setup_pointertransform, setup_pointerdata, setup_pointere, setup_pointertwiddle};
+PFFFT_Setup_Desugar* setup = &setup_pointer;
 std::vector<float> input_vec;
 for (auto& elem : input_json["input"]) {
 float input_inner = elem;
 input_vec.push_back(input_inner);
 }
 float *input = &input_vec[0];
-float work[n];
-float output[n];
-n /= 2;
-
-clock_t begin = clock();
-PFFFT_Setup *setup = pffft_new_setup(n, PFFFT_COMPLEX);
-
-pffft_direction_t direction = PFFFT_FORWARD;
-// This is just to achieve a compiler-internal representation
-// of the struct without enums.
-PFFFT_Setup_Desugar dsetup;
-desugar_setup(setup, &dsetup);
-clock_t begin = clock();
-for (int i = 0; i < TIMES; i ++) {
-	desugared_transform_ordered_accel(&dsetup, input, output, work, direction);
+std::vector<float> work_vec;
+for (auto& elem : input_json["work"]) {
+float work_inner = elem;
+work_vec.push_back(work_inner);
 }
+float *work = &work_vec[0];
+int direction = input_json["direction"];
+float output[setup->N* 2];
+clock_t begin = clock();
+desugared_transform_ordered_accel(setup, input, output, work, direction);
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;

@@ -104,22 +104,22 @@ out_str << std::setw(4) << output_json << std::endl;
 }
 
 complex * DFT_naive_accel_internal(complex * x,int N) {
-int adi_acc_n;;
+
+if ((PRIM_EQUAL(N, 16384)) || ((PRIM_EQUAL(N, 8192)) || ((PRIM_EQUAL(N, 4096)) || ((PRIM_EQUAL(N, 2048)) || ((PRIM_EQUAL(N, 1024)) || ((PRIM_EQUAL(N, 512)) || ((PRIM_EQUAL(N, 256)) || ((PRIM_EQUAL(N, 128)) || ((PRIM_EQUAL(N, 64)) || ((PRIM_EQUAL(N, 32)) || ((PRIM_EQUAL(N, 16)) || ((PRIM_EQUAL(N, 8)) || ((PRIM_EQUAL(N, 4)) || ((PRIM_EQUAL(N, 2)) || (PRIM_EQUAL(N, 1)))))))))))))))) {
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
+	static int adi_acc_n;;
 	adi_acc_n = N;;
-	complex_float adi_acc_output[adi_acc_n] __attribute((aligned(32)));;
-	complex_float adi_acc_input[adi_acc_n] __attribute((aligned(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i8 = 0; i8 < adi_acc_n; i8++) {
 		adi_acc_input[i8].re = x[i8].re;
 	};
 	for (int i9 = 0; i9 < adi_acc_n; i9++) {
 		adi_acc_input[i9].im = x[i9].im;
 	};
-	
-if ((PRIM_EQUAL(adi_acc_n, 524288)) || ((PRIM_EQUAL(adi_acc_n, 262144)) || ((PRIM_EQUAL(adi_acc_n, 131072)) || ((PRIM_EQUAL(adi_acc_n, 65536)) || ((PRIM_EQUAL(adi_acc_n, 32768)) || ((PRIM_EQUAL(adi_acc_n, 16384)) || ((PRIM_EQUAL(adi_acc_n, 8192)) || ((PRIM_EQUAL(adi_acc_n, 4096)) || ((PRIM_EQUAL(adi_acc_n, 2048)) || ((PRIM_EQUAL(adi_acc_n, 1024)) || ((PRIM_EQUAL(adi_acc_n, 512)) || ((PRIM_EQUAL(adi_acc_n, 256)) || ((PRIM_EQUAL(adi_acc_n, 128)) || ((PRIM_EQUAL(adi_acc_n, 64)) || ((PRIM_EQUAL(adi_acc_n, 32)) || ((PRIM_EQUAL(adi_acc_n, 16)) || ((PRIM_EQUAL(adi_acc_n, 8)) || ((PRIM_EQUAL(adi_acc_n, 4)) || ((PRIM_EQUAL(adi_acc_n, 2)) || (PRIM_EQUAL(adi_acc_n, 1))))))))))))))))))))) {
-StartAcceleratorTimer();;
+	StartAcceleratorTimer();;
 	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
 	StopAcceleratorTimer();;
-	complex* returnv = (complex*) malloc (sizeof(complex)*N);;;
+	complex* returnv = (complex*) facc_malloc (0, sizeof(complex)*N);;
 	for (int i11 = 0; i11 < N; i11++) {
 		returnv[i11].im = adi_acc_output[i11].im;
 	};
@@ -127,7 +127,13 @@ StartAcceleratorTimer();;
 		returnv[i12].re = adi_acc_output[i12].re;
 	};
 	
-return returnv;
+return returnv;;
+	
+;
+	
+;
+	
+
 } else {
 
 return DFT_naive(x, N);;
