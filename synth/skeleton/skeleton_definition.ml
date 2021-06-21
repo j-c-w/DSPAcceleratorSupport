@@ -78,5 +78,6 @@ type skeleton_pairs = {
 	post: flat_skeleton_binding;
 	rangecheck: Gir.conditional option;
 	inputmap: (string, range_set) Hashtbl.t;
+	post_check_validmap: (string, range_set) Hashtbl.t;
 	typemap: typemap;
 }

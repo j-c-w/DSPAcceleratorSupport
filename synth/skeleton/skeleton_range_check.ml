@@ -315,7 +315,33 @@ let generate_input_ranges_skeleton options rangemap validmap binding =
 	in
 	inputmap
 
+let generate_post_check_ranges options rangemap validmap binding =
+	let transformed_rangemap = transform_rangemap_by options RangeForward rangemap validmap binding in
+	(* Now, do the intersection of the transformed rangemap
+		and the validmap.  *)
+	let keys = Hashtbl.keys validmap in
+	let reachable_validmap = Hashtbl.create (module String) in
+	let () = Printf.printf "Creating new map\n" in
+	let _ = List.map keys (fun key ->
+		let () = Printf.printf "Adding %s\n" (key) in
+		let validrange = Hashtbl.find_exn validmap key in
+		let inputrange = Hashtbl.find transformed_rangemap key in
+		let resultset = match inputrange with
+			| Some(s) -> range_set_intersection validrange s
+			| None -> validrange
+		in
+		let _ = Hashtbl.set reachable_validmap key resultset in
+		()
+	) in
+	reachable_validmap
+
 (* Given some pre-mapping, and some api value restrictions, generate
 the range of inputs that we should be testing with.  *)
 let generate_input_ranges options rangemap validmap pre_bindings =
 	List.map pre_bindings (generate_input_ranges_skeleton options rangemap validmap)
+
+(* Given some pre-mapping, api valud restrictions, generate
+the set of values that each variable can take /after/ the
+valid-check is complete.  *)
+let generate_post_check_ranges options rangemap validmap pre_bindings =
+	List.map pre_bindings (generate_post_check_ranges options rangemap validmap)

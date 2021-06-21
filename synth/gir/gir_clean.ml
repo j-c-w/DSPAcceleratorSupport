@@ -13,7 +13,7 @@ let copy_table oldtbl =
 
 let rec gir_double_define_clean_internal deftbl gir =
 	match gir with
-	| Definition(n, escapes) ->
+	| Definition(n, escapes, defn_type) ->
 			(* See if already defined *)
 			let defined =
 				Hashtbl.find deftbl (gir_name_to_string n) in
@@ -50,6 +50,7 @@ let rec gir_double_define_clean_internal deftbl gir =
 			names internally, this is a 'different' function
 			so it should have a different cleaning I think. *)
 			FunctionDef(name, argslist, gir_double_define_clean body, typmap)
+	| Free(_) -> gir
 	| Return(_) ->
 			gir
 	| EmptyGIR -> EmptyGIR
@@ -84,6 +85,7 @@ let rec check_function_calls tbl gir =
                not sure we want to support functions
                that call other functions yet anyway... *)
             ()
+	| Free(_) -> ()
     | Return(_) -> ()
     | EmptyGIR -> ()
 and check_function_calls_cond tbl (cond: conditional) =

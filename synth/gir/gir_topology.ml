@@ -279,8 +279,11 @@ let get_uses_defining_variable typemap name =
 
 let rec compute_use_def_assign_for_node typemap gir =
 	match gir with
-	| Definition(ndefed, escapes) -> {
-		uses = get_uses_defining_variable typemap ndefed;
+	| Definition(ndefed, escapes, defn_type) ->
+			(* if this option.value crashes, a definition that wasn't expected
+			to work didn't get cleaned up.  See generate_gir: get_definition_type_for *)
+	{
+		uses = get_uses_defining_type (Option.value_exn defn_type);
 		defs = [UDName(ndefed)];
 		assigns = [];
 		gir = gir
@@ -322,6 +325,14 @@ let rec compute_use_def_assign_for_node typemap gir =
 		let expr_use_defs = compute_use_def_assign_for_expr expr in
 		{
 			uses = expr_use_defs.uses;
+			defs = [];
+			assigns = [];
+			gir = gir;
+		}
+	| Free(v) ->
+		let vuses = compute_use_def_assign_for_vref v in
+		{
+			uses = vuses.uses;
 			defs = [];
 			assigns = [];
 			gir = gir;

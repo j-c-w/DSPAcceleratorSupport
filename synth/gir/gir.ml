@@ -51,7 +51,7 @@ and unary_comparator =
 and gir =
 	(* Keep track of the name to define, and whether
 	it escapes the function e.g. is a return value.  *)
-	| Definition of gir_name * bool
+	| Definition of gir_name * bool * (synth_type option)
 	| IfCond of conditional * gir * gir
 	| Sequence of gir list
 	(* This can eitehr assign lists to lists, of variables to
@@ -62,6 +62,9 @@ and gir =
 	| Expression of expression
     (* Function definition, has a name, a list of args, and a body.  *)
     | FunctionDef of gir_name * (gir_name list) * gir * ((string, synth_type) Hashtbl.t)
+    (* Depending on the allocation mode, this may or may
+    not expand to anything.  *)
+	| Free of variable_reference
     | Return of expression
 	| EmptyGIR
 	(* (why?) Todo --- add a lambda here *)

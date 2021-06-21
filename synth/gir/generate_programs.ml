@@ -12,7 +12,7 @@ exception GenerateProgramException of string
 
 let rec add_index_variables_to_typemap typemap gir =
     match gir with
-	| Definition(nref, escapes) -> ()
+	| Definition(nref, escapes, deftype) -> ()
 	| Sequence(girs) -> ignore(List.map girs (add_index_variables_to_typemap typemap))
 	(* This can eitehr assign lists to lists, of variables to
 	   variables.  *)
@@ -38,6 +38,7 @@ let rec add_index_variables_to_typemap typemap gir =
 			let () = add_index_variables_to_typemap typemap iftrue in
 			let () = add_index_variables_to_typemap typemap iffalse in
 			()
+	| Free(_) -> ()
     | Return(_) -> ()
 
 let rec member x ys =
@@ -128,6 +129,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 		generated_funname = iospec.funname ^ "_accel";
 		inputmap = girpair.inputmap;
         original_pairs = Some(girpair.original_pairs);
+        allocated_variables = (Utils.set_difference Utils.string_equal iospec.returnvar iospec.funargs) @ apispec.funargs;
     }
 
 (* Given a set of pre/post pairs, fill thsee out into whole programs

@@ -17,9 +17,9 @@ let gir_name_equal n1 n2 =
 
 let rec gir_to_string gir =
 	match gir with
-    | Definition(nref, escapes) ->
+    | Definition(nref, escapes, defn_type) ->
 			let deftype =
-				if escapes then "DefineMalloc"
+				if escapes then "EscapingDefine(UseMalloc)"
 				else "Define"
 			in
 			deftype ^ " " ^ (gir_name_to_string nref)
@@ -35,6 +35,8 @@ let rec gir_to_string gir =
 			"{\n" ^ (gir_to_string body) ^ "}"
 	| Expression(expr) ->
 			(expression_to_string expr)
+	| Free(v) ->
+			"free " ^ (variable_reference_to_string v)
 	| Return(v) ->
 			"return " ^ (expression_to_string v)
 	| FunctionDef(n, args, body, typmap) ->
