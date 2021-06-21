@@ -27,12 +27,14 @@ def get_lines_from(set):
 
     return x, y
 
-def plot(lines, names, style):
+def plot(group, lines, names, style):
     plt.clf()
     plt.cla()
     fix, ax = plt.subplots()
     ax.set_xscale('log', basex=2)
-    ax.set_yscale('log', basey=10)
+    if group == 'all':
+        ## DFTs are /really/ slow, so show on log.
+        ax.set_yscale('log', basey=10)
     for lineset, name in zip(lines, names):
         x, y = get_lines_from(lineset)
         plt.plot(x, y, label=name)
@@ -40,7 +42,8 @@ def plot(lines, names, style):
 
     if style == 'speedup':
         plt.plot([minx, maxx], [1.0, 1.0], label="Speedup Threshold")
-        plt.ylabel("Speedup Ratio (log) ")
+        appendix = "(log)" if group == "all" else ""
+        plt.ylabel("Speedup Ratio " + appendix)
         plt.title("Speed Comparison Across Different Sizes")
         plt.xlabel("Input size")
     elif style == 'overhead':
@@ -51,7 +54,7 @@ def plot(lines, names, style):
 
     plt.legend()
 
-    plt.savefig(style + "_output.eps")
+    plt.savefig(style + "_" + group + "_output.eps")
     plt.close()
 
 def load_result_maps(base_folder, folder, postfix):
@@ -69,6 +72,7 @@ def load_result_maps(base_folder, folder, postfix):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="FFT Result Plotter")
 
+    parser.add_argument("group")
     parser.add_argument("OriginalResultsFolder")
     parser.add_argument("AcceleratedResultsFolder")
     parser.add_argument("Folders", nargs='+')
@@ -87,7 +91,7 @@ if __name__ == "__main__":
         lines.append(res)
         names.append(folder)
 
-    plot(lines, names, 'speedup')
+    plot(args.group, lines, names, 'speedup')
 
     # Plot the overhead graph
     lines = []
@@ -105,4 +109,4 @@ if __name__ == "__main__":
         lines.append(res)
         names.append(folder)
 
-    plot(lines, names, 'overhead')
+    plot(args.group, lines, names, 'overhead')

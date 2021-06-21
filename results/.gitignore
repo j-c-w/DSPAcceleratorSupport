@@ -1,5 +1,5 @@
 */*/inputs/*.json
-*/*/accelerated_fftw
+*/*/accelerated_fftw*
 */*/tmpout
 */*/original
 */*/value_profiler
@@ -8,3 +8,4 @@
 **/perf.data*
 *_output.eps
 open_source_project_distribution.eps
+__pycache__
