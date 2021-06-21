@@ -9,6 +9,7 @@ open Range_definition;;
 open Range_checker_synth;;
 open Options;;
 open Utils;;
+open Skeleton_range_check;;
 
 exception SkeletonRangerException of string
 
