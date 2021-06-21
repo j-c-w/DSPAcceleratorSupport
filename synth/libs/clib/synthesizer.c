@@ -48,7 +48,7 @@ void facc_free(void* pointer) {
 	uintptr_t pointer_value = (uintptr_t) pointer;
 	for (int i = 0; i < facc_malloc_count; i ++) {
 		if (pointer_map[i].returned == pointer_value) {
-			free(pointer_map[i].original);
+			free((void *) pointer_map[i].original);
 
 			// Shuffle everyting back down
 			for (int j = i; j < facc_malloc_count - 1; j ++) {

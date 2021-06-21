@@ -20,7 +20,7 @@ let get_compiler_flags target =
 	match target with
 	| CXX -> [
 		(* Include the clibs.  *)
-		"-Ilibs -fsanitize=address"
+		"libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address"
 	]
 
 type behavioural_synthesizer =
