@@ -30,15 +30,21 @@ pointer_map_pair pointer_map[8];
 // accelerated function, then all frees that are
 // reachable by that pointer must be replaced with
 // facc_free.
-void *facc_malloc(size_t alignment, unsigned long size) {
+void *facc_malloc(size_t alignment, size_t size) {
 	char* ptr = (char*) malloc(size + alignment);
 
 	uintptr_t original_pointer = (uintptr_t) ptr;
-	uintptr_t offset_pointer =
-		original_pointer + (original_pointer % alignment);
-	pointer_map[facc_malloc_count].original = original_pointer;
-	pointer_map[facc_malloc_count].returned = offset_pointer;
-	facc_malloc_count += 1;
+	uintptr_t offset_pointer = original_pointer;
+	if (alignment != 0) {
+		offset_pointer += (original_pointer % alignment);
+		// If the offset is zero, we don't have to use
+		// the facc malloc.  Really, we should do
+		// this statically in FACC (i.e. turn into a normal
+		// malloc)
+		pointer_map[facc_malloc_count].original = original_pointer;
+		pointer_map[facc_malloc_count].returned = offset_pointer;
+		facc_malloc_count += 1;
+	}
 
 	return (void*) offset_pointer;
 }
