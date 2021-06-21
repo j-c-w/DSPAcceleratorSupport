@@ -236,7 +236,6 @@ let generate_range_check_skeleton options classmap iospec apispec pre_binding =
     (* First, we need to generate what the real input/valid
     ranges are /before/ translation through the binding code. *)
     let transformed_io_rangemap = transform_rangemap_by options RangeBackward iospec.rangemap apispec.validmap pre_binding in
-    let transformed_io_validmap = transform_rangemap_by options RangeForward iospec.validmap iospec.validmap pre_binding in
     (* Then, use these to call the range gen.  This generates
     some GIR conditions that are going to be used later, not
     any skeleton code --- perhaps they should generate
