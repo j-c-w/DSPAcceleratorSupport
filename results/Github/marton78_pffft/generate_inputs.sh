@@ -7,13 +7,15 @@ if [[ $# -ne 1 ]]; then
 	exit 1
 fi
 
+inputlen=$(( $1 * 2 ))
+
 mkdir -p inputs
 # I haven't yet seen a data-dependent FFT algorithm,
 # so we'll just use a constnat input.
 contents="2.510045379820, 21.72443302820"
 typeset -a inputs
 inputs=("$contents")
-for i in $(seq 1 $(( $1 - 1 ))); do
+for i in $(seq 1 $(( $inputlen - 1 ))); do
 	inputs+=(",$contents")
 done
 
@@ -24,4 +26,4 @@ template="{
 	]
 }"
 
-echo $template > inputs/$1.json
+echo $template > inputs/$inputlen.json
