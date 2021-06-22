@@ -632,12 +632,22 @@ let rec generate_input_assigns options (typemap: typemap) inps livein json_ref =
 	need to be allocated (e.g. output arrays), but they don't
 	need to be filled.  Call those 'deadin' values. *)
 	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) inps livein in
+	(* No matter the assignment mode, read defs can't be static,
+	or rather, I'm not going to implement that.
+	THis is just testing code, so doesn't have anything
+	to do with the real defs.  *)
+	let deadin_assignment_options = {
+		options with compile_settings = {
+			allocation_mode = StackAllocationMode
+		}
+	}
+	in
     let deadin_defs = List.map deadin (fun inp ->
 		let infered_type = Hashtbl.find_exn typemap.variable_map inp in
         let typ = Hashtbl.find_exn iotypemap.variable_map inp in
 		let alignment = Hashtbl.find iotypemap.alignment_map inp in
 		(* Things that go into the API are assumed to be dead-in.  *)
-		cxx_definition_synth_type_to_string options typemap alignment false typ infered_type inp
+		cxx_definition_synth_type_to_string deadin_assignment_options typemap alignment false typ infered_type inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)
