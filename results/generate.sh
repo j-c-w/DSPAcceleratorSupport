@@ -1,6 +1,10 @@
 #!/bin/bash
 set -eu
 
+if [[ $# -eq 1 ]]; then
+	cd $1
+fi
+
 # Generates all the inputs for every benchmark
 generators=( $(find -name generate_inputs.sh) )
 # Only testing powers of two right now.
