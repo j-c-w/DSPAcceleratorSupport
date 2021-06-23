@@ -39,6 +39,12 @@ let cxx_generate_skeleton_description skel = (* For debugging purposes, generate
 	(skeleton_pairs_to_string skel) ^
 	"\n*/\n"
 
+let cxx_generate_typemap_description tmap =
+	(* Also for debugging, generate the typemap, with infered
+	info on it. *)
+	"/* Typemap is :\n " ^
+	(typemap_to_string tmap) ^ "\n*/\n"
+
 let accelerator_timer_functions = "
 
 clock_t AcceleratorStart;
@@ -862,6 +868,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
     | None -> "// No skeleton pairs specified"
     | Some(s) -> cxx_generate_skeleton_description s
     in
+	let typemap_description = cxx_generate_typemap_description program.typemap in
     (* C++ only allows for single return values.  *)
     (* This could be ammened to auto-add a struct,
     but can't imagine we'd need that.  *)
@@ -900,7 +907,7 @@ let generate_cxx (options: options) (apispec: apispec) (iospec: iospec) dump_int
     let function_end = "}" in
 	let main_helper_funcs, post_accel_def_funcs, main_func = cxx_main_function options dump_intermediates function_type program in
     (* Generate the whole program.  *)
-    String.concat ~sep:"\n" [skeleton_description; program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; post_accel_def_funcs; main_func]
+	String.concat ~sep:"\n" [skeleton_description; typemap_description; program_includes; ioimports; apiimports; otherimports; main_helper_funcs; helper_funcs; function_header; program_string; function_end; post_accel_def_funcs; main_func]
     (* TODO --- need to include a bunch of unchanging crap, e.g. 
     arg parsing.   I expect that to change /a little/ with
     the argtypes but not much.  *)
