@@ -70,6 +70,7 @@ type options = {
 	use_parmap: bool;
 
 	(* IR Dumps *)
+	dump_typemaps: bool;
 	dump_assigned_dimensions: bool;
     dump_skeletons: bool;
 	dump_range_check: bool;
@@ -155,6 +156,7 @@ let default_options = {
 	use_parmap = true;
 
 	(* IR Dumps *)
+	dump_typemaps = false;
 	dump_assigned_dimensions = false;
 	dump_skeletons = false;
 	dump_range_check = false;

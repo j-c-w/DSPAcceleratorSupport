@@ -40,7 +40,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         debug_input_map_generation generate_timing_code
 		array_length_threshold no_parmap
         debug_gir_generate_define_statements debug_infer_structs
-		debug_expand_typemaps =
+		debug_expand_typemaps dump_typemaps =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -77,6 +77,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		
 		only_test = only_test;
 
+		dump_typemaps = dump_typemaps;
 		dump_assigned_dimensions = dump_assigned_dimensions;
         dump_skeletons = dump_skeletons;
         dump_range_check = dump_range_check;
@@ -218,6 +219,9 @@ let skip_test =
 let dump_skeletons =
     let doc = "Dump skeletons" in
     Arg.(value & flag & info ["dump-skeletons"] ~docv:"DumpSkeletons" ~doc)
+let dump_typemaps =
+	let doc = "Dump typemaps" in
+	Arg.(value & flag & info ["dump-typemaps"] ~docv:"DumpTypemaps" ~doc)
 let dump_range_check =
 	let doc = "Dump Range checks" in
 	Arg.(value & flag & info ["dump-range-check"] ~docv:"DumpRangeCheck" ~doc)
@@ -349,5 +353,5 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
-	debug_infer_structs $ debug_expand_typemaps)
+	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps)
 let () = Term.exit @@ Term.eval (args_t, info)
