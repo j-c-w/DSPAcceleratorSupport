@@ -276,7 +276,6 @@ let generate_conversion_function conv = match conv with
             *)
             EmptyGIR, Name("identity")
 	| PowerOfTwoConversion ->
-			let () = Printf.printf "Propagating po2 conversion\n" in
 			EmptyGIR, Name("Pow2")
     | Map(ftype, ttype, to_from_list) ->
 			let to_from_list_synths = List.map to_from_list (fun (tov, fromv) ->

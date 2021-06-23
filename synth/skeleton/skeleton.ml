@@ -101,7 +101,6 @@ let dimvar_match x y =
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimEqualityRelation) ->
             Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
     | DimVariable(vname1, DimPo2Relation), DimVariable(vname2, DimPo2Relation) ->
-			let () = Printf.printf "Generating p02 mapping (%s to %s) \n" (name_reference_to_string vname1) (name_reference_to_string vname2) in
             Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
     | DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimPo2Relation) ->
             Some(DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation)))
