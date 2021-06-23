@@ -128,7 +128,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 				   expect that the dimvars will have been assigned.  *)
 				let base_arrlen =
 						match dimvar_size with
-						| DimVariable(dimvar_name) ->
+						| DimVariable(dimvar_name, relation) ->
 								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
 								let () = if options.debug_generate_io_tests then
 									Printf.printf "Getting dimension %s\n" (name_reference_to_string dimvar_name)
@@ -146,7 +146,11 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 										about what it means. *)
 										raise (TypeException "Unexpected list dimension type (non-int) ")
 								in
-							arrlen
+                                (
+								match relation with
+								| DimEqualityRelation -> arrlen
+								| DimPo2Relation -> Utils.power_of_two arrlen
+                                )
 						| DimConstant(c) -> c
 				in
 				let arrlen_modifier = get_size_modifier_for infered_subtype in

@@ -52,15 +52,22 @@ let rec name_reference_top_level_name n =
 let name_reference_list_concat ns =
 	List.fold ~init:AnonymousName ~f:name_reference_concat ns
 
+let dim_relation_to_string dimrel =
+    match dimrel with
+    | DimEqualityRelation -> " (=) "
+    | DimPo2Relation -> " (^2) "
+
 let dimension_value_to_string (dim: dimension_value) =
 	match dim with
 	| DimConstant(i) -> (string_of_int i)
-	| DimVariable(n) -> (name_reference_to_string n)
+	| DimVariable(n, rel) -> (name_reference_to_string n) ^ (dim_relation_to_string rel)
+
+let dim_relation_equal r1 r2 = (r1 = r2)
 	
 let dimension_value_equal d1 d2 =
 	match d1, d2 with
 	| DimConstant(c1), DimConstant(c2) -> c1 = c2
-	| DimVariable(v1), DimVariable(v2) -> name_reference_equal v1 v2
+	| DimVariable(v1, r1), DimVariable(v2, r2) -> (name_reference_equal v1 v2) && (dim_relation_equal r1 r2)
 	| _, _ -> false
 
 let rec dimension_type_to_string dim =
@@ -87,7 +94,7 @@ let dimension_type_equal d1 d2 = match d1, d2 with
 let is_constant_dimension d =
 	match d with
 	| DimConstant(c) -> true
-	| DimVariable(v) -> false
+	| DimVariable(v, _) -> false
 	
 let is_constant_dimension_variable d =
 	match d with
@@ -98,7 +105,7 @@ let is_constant_dimension_variable d =
 let constant_dimension_size d =
 	match d with
 	| DimConstant(c) -> Some(c)
-	| DimVariable(_) -> None
+	| DimVariable(_, _) -> None
 
 let rec synth_type_to_string t =
     match t with
@@ -544,3 +551,11 @@ let clear_map (t: ('a, 'b) Hashtbl.t) =
 		Hashtbl.remove t key
 	) in
 	()
+
+let typemap_to_string typemap =
+	(* TODO -- expand to the other components.  *)
+	String.concat ~sep:"\n" (List.map (Hashtbl.keys typemap.variable_map) (fun key ->
+		let typ = Hashtbl.find_exn typemap.variable_map key in
+		key ^ ": " ^ (synth_type_to_string typ)
+	)
+	)

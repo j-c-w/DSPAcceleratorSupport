@@ -58,6 +58,6 @@ tsub:
  | UNIT { Unit }
  | ARRAY; LPAREN; tsub; RPAREN { Array($3, EmptyDimension) };
  | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, Dimension(DimConstant($5))) };
- | ARRAY; LPAREN; tsub; HASH; tident; RPAREN { Array($3, Dimension(DimVariable($5))) }
+ | ARRAY; LPAREN; tsub; HASH; tident; RPAREN { Array($3, Dimension(DimVariable($5, DimEqualityRelation))) }
  | POINTER; LPAREN; tsub; RPAREN { Pointer($3) };
  | IDENT {Struct($1)}

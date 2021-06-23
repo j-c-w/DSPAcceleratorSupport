@@ -66,7 +66,7 @@ let rec reduce_gir (options: options) gir: gir =
 			else
 				Sequence(filtered)
 	| LoopOver(gir, ind, max) ->
-			LoopOver((reduce_gir options gir), ind, max)
+			LoopOver((reduce_gir options gir), ind, (reduce_expression options max))
 	| FunctionDef(name, args, body, typmap) ->
 			FunctionDef(name, args, (reduce_gir options body), typmap)
     | Expression(expr) ->

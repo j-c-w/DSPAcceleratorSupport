@@ -42,7 +42,7 @@ let rec dimconsts_from_types typ =
 			| EmptyDimension -> []
 			| Dimension(dim) ->
 					match dim with
-						| DimVariable(_) -> []
+						| DimVariable(_, _) -> []
 						| DimConstant(c) -> [Int64V(c)]
 			in
 			subconsts @ this_consts

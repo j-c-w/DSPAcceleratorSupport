@@ -39,8 +39,8 @@ let range_conversion options r1 r2 =
 			let r1_max = range_max r1 in
 			let r2_max = range_max r2 in
             if ((range_compare r1_max (RangeInteger(64))) < 0) && ((range_compare r2_max (RangeInteger(64))) > 0) then
-                (* [PowerOfTwoConversion] *)
-				[]
+				let () = Printf.printf "Generating Po2 Conversion\n" in
+                [PowerOfTwoConversion]
             else
                 []
         else

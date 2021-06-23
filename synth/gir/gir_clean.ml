@@ -58,7 +58,7 @@ let rec gir_double_define_clean_internal deftbl gir =
 (* Given some GIR, remove things that are defined more than once.
 This is produced as an artifact of the generate_gir phase.
 *)
-and gir_double_define_clean gir =
+and gir_double_define_clean (gir: gir) =
 	let deftbl = Hashtbl.create (module String) in
 	gir_double_define_clean_internal deftbl gir
 
@@ -77,7 +77,7 @@ let rec check_function_calls tbl gir =
             check_function_calls_rval tbl rval
     | LoopOver(body, _, maxval) ->
             let () = check_function_calls tbl body in
-            check_function_calls_vref tbl maxval
+            check_function_calls_expr tbl maxval
     | Expression(expr) ->
             check_function_calls_expr tbl expr
     | FunctionDef(_, _, _, _) ->

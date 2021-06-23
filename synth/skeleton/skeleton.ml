@@ -18,6 +18,10 @@ open Utils;;
 
 exception SkeletonGenerationException of string
 
+type binding_mode =
+	| PostBinding (* from api variables to user code variables *)
+	| PreBinding (* from user code variables to api variables.  *)
+
 (* THis function turns a SType into a list of types
    by flattening them.  (i.e. SType(A,B,C) -> A,B,C*)
 let rec flatten_stype_list stype =
@@ -94,40 +98,59 @@ let rec prepend_all_name_refs prep all =
 let dimvar_match x y =
 	(* x is the accelerator var, y is the input var *)
     let result = match x, y with
-	| DimVariable(vname1), DimVariable(vname2) ->
-		Some(DimvarOneDimension(ExactVarMatch(vname1, vname2)))
+	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimEqualityRelation) ->
+            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
+    | DimVariable(vname1, DimPo2Relation), DimVariable(vname2, DimPo2Relation) ->
+			let () = Printf.printf "Generating p02 mapping (%s to %s) \n" (name_reference_to_string vname1) (name_reference_to_string vname2) in
+            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
+    | DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimPo2Relation) ->
+            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation)))
+            (* TODO -- do we need an inverse po2 relation? *)
+    | DimVariable(vname1, _), DimVariable(vname2, _) ->
+            (* TODO --- does it do us any good to do a
+            conversion here?  not sure.  *)
+            None
 	| DimConstant(c1), DimConstant(c2) ->
 		if c1 = c2 then
 			(* TODO --- somehting? *)
 			None
 		else
 			None
-	| DimVariable(v1), DimConstant(c2) ->
+	| DimVariable(v1, r1), DimConstant(c2) ->
 			Some(DimvarOneDimension(ConstantMatch(c2)))
-	| DimConstant(c1), DimVariable(v2) ->
+	| DimConstant(c1), DimVariable(v2, r1) ->
 			(* TODO -- should work with the range
 			checker to support this case? *)
 			Some(DimvarOneDimension(ConstantMatch(c1)))
     in
     result
 
-let rec dimvar_contains x y =
+let rec dimvar_contains direction x y =
 	match y with
 	| [] -> []
 	| y :: ys ->
-			let assvar = dimvar_match x y in
+			let (x', y') =
+				(* Flip as appropriate for the pre or post
+				binding.  *)
+				match direction with
+				| PreBinding ->
+						x, y
+				| PostBinding ->
+						y, x
+			in
+			let assvar = dimvar_match x' y' in
 			match assvar with
-			| None -> dimvar_contains x ys
-			| Some(v) -> v :: (dimvar_contains x ys)
+			| None -> dimvar_contains direction x ys
+			| Some(v) -> v :: (dimvar_contains direction x ys)
 
-let rec dim_has_overlap x y =
-	List.concat (List.map x (fun xel -> dimvar_contains xel y ))
+let rec dim_has_overlap direction x y =
+	List.concat (List.map x (fun xel -> dimvar_contains direction xel y ))
 
-let rec dimensions_overlap x y =
+let rec dimensions_overlap direction x y =
 	match x, y with
 	| EmptyDimension, _ -> []
 	| _, EmptyDimension -> []
-	| Dimension(nrefs), Dimension(nrefs2) -> dim_has_overlap [nrefs] [nrefs2]
+	| Dimension(nrefs), Dimension(nrefs2) -> dim_has_overlap direction [nrefs] [nrefs2]
 
 let add_name_nr name ty =
 	match ty with
@@ -297,7 +320,7 @@ and bindings_for (typesets_in: skeleton_type list) (output: skeleton_type): assi
 
    Need to get a set of assignments for each
    output. *)
-and possible_bindings options constant_options_map (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
+and possible_bindings options direction constant_options_map (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
     List.concat (List.map types_out (fun type_out ->
 		(*  Make sure that all the possible assingments
 		    have the same dimension.  *)
@@ -313,7 +336,7 @@ and possible_bindings options constant_options_map (typesets_in: skeleton_dimens
 							(* Get the set of possible typevar
 							   bindings that would make this mapping
 							   possible.  *)
-                            let dimoverlap = dimensions_overlap dim_options in_dim_options in
+                            let dimoverlap = dimensions_overlap direction dim_options in_dim_options in
 							Some(intype, dimoverlap)
 					(* non-dimension types can't be included. *)
 					| _ -> None
@@ -348,7 +371,7 @@ and possible_bindings options constant_options_map (typesets_in: skeleton_dimens
                         let () = assert ((List.length dim_mapping) > 0) in
 						(* Get the possible bindings.  *)
 						let poss_bindings: single_variable_binding_option_group list list =
-							possible_bindings options constant_options_map flattened_undimensioned_typeset flattened_arr_stypes in
+							possible_bindings options direction constant_options_map flattened_undimensioned_typeset flattened_arr_stypes in
 						let () = verify_single_binding_option_groups poss_bindings in
 						(* Now add the required dimension mappings.  *)
 						(* For each variable assignment *)
@@ -454,13 +477,13 @@ I'm not sure.  Doing it the simple way, may have
 to flatten the define list and do it the more complicated
 way (ie. work out which defs actually need to be defed
 ).  *)
-let rec define_bindings_for valid_dimvars vs =
+let rec define_bindings_for direction valid_dimvars vs =
 	List.map vs (fun v ->
 		match v with
         | SArray(_, _, EmptyDimension) ->
                 raise (SkeletonGenerationException "Can't have empty dim")
 		| SArray(arnam, _, Dimension(dms)) ->
-                let dimvar_bindings = dim_has_overlap [dms] valid_dimvars in
+                let dimvar_bindings = dim_has_overlap direction [dms] valid_dimvars in
 				[{
 					(* May have to properly
 					deal with array childer. *)
@@ -489,7 +512,7 @@ let rec define_bindings_for valid_dimvars vs =
         | STypes(ts) ->
                 (* Think we can get away with nly defing
                 the top level one.  Not 100% sure.  *)
-                let sbase_names = (define_bindings_for valid_dimvars ts) in
+                let sbase_names = (define_bindings_for direction valid_dimvars ts) in
                 List.concat(
                     List.map sbase_names (remove_duplicates single_variable_binding_equal)
                 )
@@ -511,7 +534,7 @@ let get_dimvars_used typeset =
         )in
     remove_duplicates dimension_value_equal with_dups
 
-let assign_and_define_bindings options constant_options_map typesets_in typesets_out typesets_define_only =
+let assign_and_define_bindings options direction constant_options_map typesets_in typesets_out typesets_define_only =
 	(* Need to flatten the output typesets to make sure we only
 	   look for one type at a type --- this takes the STypes([...])
 	   and converts it to [...] *)
@@ -519,7 +542,7 @@ let assign_and_define_bindings options constant_options_map typesets_in typesets
 	(* Get a list of list of possible inputs for each
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
-	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options constant_options_map typesets_in flattened_typesets_out in
+	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options direction constant_options_map typesets_in flattened_typesets_out in
 	let () = verify_single_binding_option_groups possible_bindings_list in
 	(* Now, generate a set of empty assigns for the variables
 	that don't have to have anything assigned to them.
@@ -528,15 +551,15 @@ let assign_and_define_bindings options constant_options_map typesets_in typesets
     (* Toplevel dimvars.  *)
     let valid_dimvars = get_dimvars_used typesets_in in
 	let define_bindings =
-		define_bindings_for valid_dimvars typesets_define_only in
+		define_bindings_for direction valid_dimvars typesets_define_only in
 	List.concat [
 			possible_bindings_list; define_bindings
 		]
 
 (* The algorithm should produce bindings from the inputs
    the outputs. *)
-let binding_skeleton options typemap constant_options_map typesets_in typesets_out typesets_define =
-	let possible_bindings_list = assign_and_define_bindings options constant_options_map typesets_in typesets_out typesets_define in
+let binding_skeleton options direction typemap constant_options_map typesets_in typesets_out typesets_define =
+	let possible_bindings_list = assign_and_define_bindings options direction constant_options_map typesets_in typesets_out typesets_define in
 	(* Verify that there is exactly one variable per list, and that
 	   there is not more than one list per variable.  *)
 	(* Then, filter out various bindings that might not make any sense.  *)
@@ -586,8 +609,8 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
        on success. *)
     let post_constant_options_map = Hashtbl.create (module String) in
     (* Now use these to create skeletons.  *)
-	let pre_skeletons: skeleton_type_binding list = binding_skeleton options typemap constant_options_map livein_types livein_api_types define_only_api_types in
-    let post_skeletons = binding_skeleton options typemap post_constant_options_map liveout_api_types liveout_types define_only_return_types in
+	let pre_skeletons: skeleton_type_binding list = binding_skeleton options PreBinding typemap constant_options_map livein_types livein_api_types define_only_api_types in
+    let post_skeletons = binding_skeleton options PostBinding typemap post_constant_options_map liveout_api_types liveout_types define_only_return_types in
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in

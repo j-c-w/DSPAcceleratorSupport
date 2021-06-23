@@ -38,7 +38,7 @@ let rec get_dependencies_for typemap typ =
 			| Dimension(x) -> (match x with
                 (* We only consider non-interlooping structs here, although we could support
                 more complex things with a more complex algorihtm.  *)
-				| DimVariable(v) -> [name_reference_top_level_name v]
+				| DimVariable(v, relation) -> [name_reference_top_level_name v]
 				| DimConstant(_) -> []
 			)
 			| EmptyDimension -> raise (STopologyException "Unhandled")

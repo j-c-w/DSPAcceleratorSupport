@@ -25,7 +25,7 @@ let filter_dimvar_set dms =
 	in
     let filtered = List.filter dms (fun dm ->
         match dm with
-        | DimvarOneDimension(ExactVarMatch(f, t)) -> (
+        | DimvarOneDimension(VarMatch(f, t, mode)) -> (
 			(tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t))
 		)
         (* TODO -- do we also need to do some filtering here? *)
@@ -199,6 +199,8 @@ let dim_assign_equal dimlist dimvar =
     name_reference_equal (name_reference_list_concat dimlist) dimvar
 
 let check_assignment_compatability options skel dimensions =
+	(* Build up a table of the conversion functions
+	   used to assign between variables.  *)
 	List.for_all skel.flat_bindings (fun bind ->
         let conversion_function = bind.conversion_function in
         let fromvars = match bind.fromvars_index_nesting with
@@ -222,7 +224,12 @@ let check_assignment_compatability options skel dimensions =
         those could be (easily) fixed on their own. *)
         (* As a result, we aren't trying to handle anything complex
         here. *)
+
+        (* Iterate over all the dimensions used in this skeleton.  *)
+		(* These are gathered together by another function. *)
         List.for_all dimensions (fun dim ->
+			(* Now, for that dimension assignment, check that
+			it is compatible with this particular assignment.  *)
             let () = 
                 if options.debug_skeleton_multiple_lengths_filter then
                     let () = Printf.printf "Looking at assignment %s to %s with conversion %s and dimvar assumption %s\n"
@@ -234,26 +241,25 @@ let check_assignment_compatability options skel dimensions =
                 else ()
             in
             let result = match dim with
-            | DimvarOneDimension(ExactVarMatch(fromv, tov)) ->
-                    (* TODO --- ideally we would do a conversion
-                    function check in here to make sure that
-                    the conversion function is appropriately
-                    represnted by the dimension mapping.  *)
+            | DimvarOneDimension(VarMatch(tov, fromv, DimEqualityRelation)) ->
+					(* In theory, the order of this doesn't matter,
+					although the order should be normalized. *)
                     if dim_assign_equal tovars tov then
-                        (* Basically, say if we are assigning
-                        to the variable then make sure that
-                        the from variables are equal.  *)
-                        dim_assign_equal fromvars fromv
-                    else if dim_assign_equal tovars fromv then
-                        (* It doesn't matter which way around
-                        this is --- the ExactVarMatch is
-                        more a mathemtaical assertion
-                        of equality than an assignment per-sey. *)
-                        dim_assign_equal fromvars tov
+						(* conversion function must preserve the dimension relation.  *)
+						(dim_assign_equal fromvars fromv) &&
+						(conversion_function = IdentityConversion)
                     else
                         (* This dimension has no overlap with
                         the assignment we are considering. *)
                         true
+			| DimvarOneDimension(VarMatch(tov, fromv, DimPo2Relation)) ->
+					if dim_assign_equal tovars tov then
+						(* as above.  *)
+						(dim_assign_equal fromvars fromv) &&
+						(conversion_function = PowerOfTwoConversion)
+					else
+						(* no overlap.  *)
+						true
             | DimvarOneDimension(ConstantMatch(_)) ->
                     true
             in

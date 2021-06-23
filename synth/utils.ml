@@ -124,3 +124,5 @@ let rec unzip3 ls =
 	| (a, b, c) :: ls ->
 			let xs, ys, zs = unzip3 ls in
 			(a :: xs, b :: ys, c :: zs)
+
+let power_of_two i = 1 lsr i

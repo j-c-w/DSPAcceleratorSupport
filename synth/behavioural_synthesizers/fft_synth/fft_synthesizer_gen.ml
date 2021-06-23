@@ -20,8 +20,23 @@ let fft_generate_gir_from_dimension (x: dimension_type) =
     | Dimension(x) ->
 			(
 			match x with
-			| DimVariable(x) -> Variable(Name(name_reference_to_string x))
-			| DimConstant(c) -> Constant(Int64V(c))
+			| DimVariable(x, dimension_relation) ->
+					(
+					match dimension_relation with
+					| DimEqualityRelation ->
+							EmptyGIR, Variable(Name(name_reference_to_string x))
+					| DimPo2Relation ->
+							let tmpvar = generate_ind_name () in
+							Sequence([Definition(Name(tmpvar), false, Some(Int64));
+							Assignment(
+								LVariable(Variable(Name(tmpvar))),
+								Expression(FunctionCall(FunctionRef(Name("Pow2")),
+								VariableList([Variable(Name(name_reference_to_string x))])
+								)
+							))]),
+							Variable(Name(tmpvar))
+					)
+			| DimConstant(c) -> EmptyGIR, Constant(Int64V(c))
 			)
 
 let rec generate_gir_program options typemap fft_behaviour =
@@ -75,7 +90,7 @@ let rec generate_gir_program options typemap fft_behaviour =
                 (* Dont know about supporting this one though. *)
                 | _ -> raise (GenerationError("Unsupported"))
             in
-            let length_name = fft_generate_gir_from_dimension loop_length in
+            let precode, length_name = fft_generate_gir_from_dimension loop_length in
             let calls = List.map vnames (fun (pre, post) ->
                 let funname =
                     match operator with
@@ -100,10 +115,13 @@ let rec generate_gir_program options typemap fft_behaviour =
                 let fref = FunctionRef(Name(funname)) in
                 (* These are technically macros, but should
                 end up being the smae.   *)
-                Expression(FunctionCall(
-                    fref,
-                    VariableList([vname; post_index; length_name])
-                ))
+				Sequence([
+					precode;
+					Expression(FunctionCall(
+						fref,
+						VariableList([vname; post_index; length_name])
+					))
+				])
             ) in
             Sequence(calls)
     | FSSeq(elems) ->
@@ -139,3 +157,7 @@ and generate_gir_variable v =
 	   we don't actually need those right now.  *)
 	| FSConstant(v) -> Constant(v)
 	| _ -> raise (CXXHoleError "Had a hole")
+
+let generate_gir_for options typemap fft_behaviour =
+    let result = generate_gir_program options typemap fft_behaviour in
+    Gir_reduce.reduce_gir options result

@@ -136,7 +136,10 @@ let rec cxx_name_reference_to_string typemap n =
 let cxx_dimension_value_to_string typemap dvalue =
 	match dvalue with
 	| DimConstant(i) -> (string_of_int i)
-	| DimVariable(n) -> cxx_name_reference_to_string typemap n
+	| DimVariable(n, DimEqualityRelation) ->
+			cxx_name_reference_to_string typemap n
+	| DimVariable(n, DimPo2Relation) ->
+			"(1 << (" ^ (cxx_name_reference_to_string typemap n) ^ "))"
 
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)
@@ -326,7 +329,7 @@ let rec cxx_generate_from_gir options (typemap: typemap) gir =
 			fromv_name ^ " = " ^ tov_name ^ ";"
     | LoopOver(gir, indvariable, loopmax) ->
             let indvar_name = (cxx_gir_name_to_string indvariable) in
-            let pre_loopmax_code, loopmax_name, _ = (cxx_generate_from_variable_reference typemap loopmax) in
+            let pre_loopmax_code, loopmax_name = (cxx_generate_from_expression typemap loopmax) in
 			(trim pre_loopmax_code) ^
             "for (int " ^ indvar_name ^ " = 0; " ^ indvar_name ^ " < " ^ loopmax_name ^ "; " ^ indvar_name ^ "++) {\n\t\t" ^
             (cxx_generate_from_gir options typemap gir) ^

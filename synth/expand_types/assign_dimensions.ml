@@ -3,6 +3,7 @@ open Spec_definition;;
 open Spec_utils;;
 open Options;;
 open Utils;;
+open Range;;
 
 exception AssignDimensionsException of string
 
@@ -59,7 +60,14 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 					let () = Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," (List.map all_vars_at_level name_reference_to_string))) in
 					Printf.printf "%s\n" ("These are possible: " ^ (String.concat ~sep:"," (List.map possible_len_vars name_reference_to_string)))
 				else () in
-				let possible_len_vars = List.map possible_len_vars (fun lv -> DimVariable(lv)) in
+				let possible_len_vars =
+					List.concat
+						(List.map possible_len_vars (fun lv ->
+							[
+								DimVariable(lv, DimEqualityRelation);
+								DimVariable(lv, DimPo2Relation)
+							]
+							)) in
                 let newarrtyp =
 					List.concat (
 						List.map newsubtyps (fun newsubtyp ->
@@ -166,11 +174,84 @@ let carry_other_elements oldtbl expanded_elements =
             Some(key, [Hashtbl.find_exn oldtbl key])
     )
 
+(* We apply an heuristic that looks at whether
+   variables that have been assigned power2 lengths
+   could plausibly be that size.  *)
+let assign_dimensions_apply_heuristics options rangemap (typename, types) =
+	(typename, List.filter types (fun typ ->
+		let rec check_typ t =
+			(
+			match t with
+			| Pointer(sty) -> check_typ sty
+			| Array(sty, dim) ->
+					(check_typ sty) && (
+						match dim with
+						| EmptyDimension -> assert false (* We literally just assigned these.  *)
+						| Dimension(DimConstant(c)) -> true
+						| Dimension(DimVariable(v, DimEqualityRelation)) ->
+								let vrange = Hashtbl.find rangemap (name_reference_to_string v) in
+								(
+								match vrange with
+								| None -> true (* if there is no range hints, then just go for it.  *)
+								(* Arrays need length bindings if there
+								is no profile/range analysis.  *)
+								| Some(vrange) ->
+									let rmin = range_item_to_int (range_min vrange) in
+									let rmax = range_item_to_int (range_max vrange) in
+									(* TODO -- if this is hooked up to a range
+									checker that just coped out and gave
+									the whole range, then we should detect that
+									and propose it as plausible. *)
+									(* We could have a zero rmax, but
+									that's a very boring array, and
+									probably not worth accelerating? *)
+									(rmin >= 0) && (rmax > 1)
+								)
+						| Dimension(DimVariable(v, DimPo2Relation)) ->
+								(* Note that rangemaps use a stupid non-nested structure where '.' is in the the actual used name.  *)
+								let vrange = Hashtbl.find rangemap (name_reference_to_string v) in
+								match vrange with
+								| Some(r) ->
+										(* These must be ints.  *)
+										(* let () = Printf.printf "Trying to remove po2 for %s\n" (typename) in
+										let () = Printf.printf "Range is %s\n" (range_set_to_string r) in *)
+										let rmax = range_item_to_int (range_max r) in
+										let rmin = range_item_to_int (range_min r) in
+										(* let () = Printf.printf "Have min %d, max %d\n" (rmin) (rmax) in *)
+										(* Perhaps bounds should be tighter than this? 
+										It is very hard to imagine an
+										array with length greater than 2^64... *)
+										(* on the other hand, we would like to allow
+										for use of range analyses,
+										and statements like
+										(1 << n) in C code should allow
+										a rangechecker to conclude this range,
+										which is exactly the condition we would like
+										to use this in.  *)
+										let res = (rmax <= 64) && (rmin >= 0) in
+										res
+									(* The Po2 length assumption is an
+									extremely specific heursitic that
+									I'm not comfortable infering
+									unless we have good evidence for it:
+									in this case, an input range
+									that suggests it is possible. *)
+								| None -> false
+					)
+			| _ -> true (* everything else passes.  *)
+			) in
+		let result = check_typ typ in
+		let () = if options.debug_assign_dimensions then
+			Printf.printf "Result of check was %b\n" (result)
+		else ()
+		in
+		result
+	))
 
 (* Assign dimensions to all array types.
    inps is the set of variables to choose
    types from. *)
-let assign_dimensions (options: options) do_classmaps typemap inps =
+let assign_dimensions (options: options) do_classmaps rangemap typemap inps =
 	let () = if options.debug_assign_dimensions then
 		let () = Printf.printf "Starting to assign dimensions\n" in
         let () = Printf.printf "Variable list is: %s\n" (String.concat ~sep:", " inps) in
@@ -184,6 +265,7 @@ let assign_dimensions (options: options) do_classmaps typemap inps =
 			(name_reference_list_to_string top_level_wrapped_names)
 		in () else () in
 	let res_typemaps = List.map inps (assign_dimensions_to_type options typemap top_level_wrapped_names) in
+    let filtered_typemaps = List.map res_typemaps (assign_dimensions_apply_heuristics options rangemap)  in
     (* Also preserve the other elements.  *)
     let other_elements = carry_other_elements typemap.variable_map inps in
     let () = if options.debug_assign_dimensions then
@@ -203,6 +285,7 @@ let assign_dimensions (options: options) do_classmaps typemap inps =
 				let sub_typemap = { typemap with variable_map = cls_typemap } in
 				let wrapped_cls_members = expand_and_wrap_names sub_typemap cls_members in
 				let tps_with_dims = List.map cls_members (assign_dimensions_to_type options sub_typemap wrapped_cls_members) in
+                let filtered_tps_with_dims = List.map tps_with_dims (assign_dimensions_apply_heuristics options rangemap) in
 
 				let () = if options.debug_assign_dimensions then
 					let () = Printf.printf "For class %s, \n" (cname) in
@@ -213,7 +296,7 @@ let assign_dimensions (options: options) do_classmaps typemap inps =
 					()
 				in
 				(* reconstruct this into a list of typemaps.  *)
-				cname, metadata, create_all_typemaps tps_with_dims
+				cname, metadata, create_all_typemaps filtered_tps_with_dims
 			)) in
 			let () = if options.dump_assigned_dimensions then
 				let () = Printf.printf "The top-level dimensions are %s\n" (type_hash_table_to_string typemap.variable_map) in
@@ -229,11 +312,11 @@ let assign_dimensions (options: options) do_classmaps typemap inps =
 		else
 			[typemap.classmap]
 	in
-	let result_typemaps = create_all_typemaps (res_typemaps @ other_elements) in
+	let result_typemaps = create_all_typemaps (filtered_typemaps @ other_elements) in
 	let () = if options.debug_assign_dimensions then
 		Printf.printf "Number of result classmaps is %d, result typemaps is %d\n" (List.length result_classmaps) (List.length result_typemaps)
 	else () in
-	List.map (List.cartesian_product result_classmaps result_typemaps) (fun (cmap, tmap) ->
+    let result_maps = List.map (List.cartesian_product result_classmaps result_typemaps) (fun (cmap, tmap) ->
 		{
 			variable_map = tmap;
 			classmap = cmap;
@@ -244,4 +327,5 @@ let assign_dimensions (options: options) do_classmaps typemap inps =
 			types.  *)
 			original_typemap = None;
 		}
-	)
+	) in
+	result_maps

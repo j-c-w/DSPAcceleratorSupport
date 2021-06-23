@@ -30,7 +30,7 @@ let rec gir_to_string gir =
 	| Sequence(sublist) -> String.concat ~sep:";\n" (List.map sublist gir_to_string)
 	| Assignment(lval, rval) -> (lvalue_to_string lval) ^ " = " ^ (rvalue_to_string rval)
 	| LoopOver(body, ind, limit) ->
-			"LoopUpTo " ^ (variable_reference_to_string limit) ^
+			"LoopUpTo " ^ (expression_to_string limit) ^
 			" indvar " ^ (gir_name_to_string ind) ^
 			"{\n" ^ (gir_to_string body) ^ "}"
 	| Expression(expr) ->

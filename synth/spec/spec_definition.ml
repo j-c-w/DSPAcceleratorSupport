@@ -33,8 +33,11 @@ and dimension_type =
     | EmptyDimension
 	| Dimension of dimension_value
 and dimension_value =
-	| DimVariable of name_reference
+	| DimVariable of name_reference * dimension_relation
 	| DimConstant of int
+and dimension_relation =
+	| DimEqualityRelation
+	| DimPo2Relation
 
 type synth_value =
 	| BoolV of bool

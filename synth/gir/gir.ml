@@ -58,7 +58,7 @@ and gir =
 	   variables.  *)
 	| Assignment of lvalue * rvalue
 	(* Body, induction variable name, loop max value *)
-    | LoopOver of gir * gir_name * variable_reference
+    | LoopOver of gir * gir_name * expression
 	| Expression of expression
     (* Function definition, has a name, a list of args, and a body.  *)
     | FunctionDef of gir_name * (gir_name list) * gir * ((string, synth_type) Hashtbl.t)

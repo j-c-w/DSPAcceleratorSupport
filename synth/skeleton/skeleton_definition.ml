@@ -8,7 +8,7 @@ open Range_definition;;
    eventually include more complicated mappings
    than the direct mappings entailed by this.  *)
 type one_dim_var_mapping =
-	| ExactVarMatch of name_reference * name_reference
+	| VarMatch of name_reference * name_reference * dimension_relation
 	| ConstantMatch of int
 
 type dimvar_mapping =

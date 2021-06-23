@@ -7,8 +7,8 @@ open Builtin_conversion_functions;;
 
 let one_dim_var_mapping_to_string map =
 	match map with
-	| ExactVarMatch(fromv, tov) -> (name_reference_to_string fromv) ^
-    " = " ^ (name_reference_to_string tov)
+	| VarMatch(fromv, tov, mode) -> (name_reference_to_string fromv) ^
+    " = " ^ (name_reference_to_string tov) ^ (dim_relation_to_string mode)
 	| ConstantMatch(from_const) ->
 			(string_of_int from_const)
 
@@ -20,20 +20,22 @@ let dimvar_mapping_list_to_string mapping =
 
 let one_dimension_mapping_equal m1 m2 =
     match m1, m2 with
-    | ExactVarMatch(fromv1, tov1), ExactVarMatch(fromv2, tov2) ->
+    | VarMatch(fromv1, tov1, mode1), VarMatch(fromv2, tov2, mode2) ->
             (name_reference_equal fromv1 fromv2) &&
-            (name_reference_equal tov1 tov2)
+            (name_reference_equal tov1 tov2) &&
+            (mode1 = mode2)
 	| ConstantMatch(fconst1), ConstantMatch(fconst2) ->
 			(fconst1 = fconst2)
     | _, _ -> false
 
 let one_dimension_mapping_equal_commutative m1 m2 =
 	match m1, m2 with
-	| ExactVarMatch(fromv1, tov1), ExactVarMatch(fromv2, tov2) ->
+	| VarMatch(fromv1, tov1, DimEqualityRelation), VarMatch(fromv2, tov2, DimEqualityRelation) ->
 			((name_reference_equal fromv1 fromv2) &&
 			 (name_reference_equal tov1 tov2)) ||
 			((name_reference_equal fromv1 tov2) &&
 			 (name_reference_equal fromv2 tov1))
+            (* TODO --- something for pow2? *)
 	| other1, other2 ->
 			(* No difference for constant matching *)
 			one_dimension_mapping_equal other1 other2

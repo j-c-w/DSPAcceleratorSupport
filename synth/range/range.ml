@@ -207,6 +207,22 @@ let range_max r = match r with
 			) in
 			max_overall
 
+let range_item_min im =
+	match im with
+	| RangeItem(i) -> i
+	| RangeRange(f, t) -> f
+
+let range_min r = match r with
+	| RangeSet(items) ->
+			let min_of_each = Array.map items range_item_min in
+			let min_overall = Array.fold min_of_each ~init:(Array.get min_of_each 0) ~f:(fun acc -> fun r ->
+				if (range_compare acc r) > 0 then
+					r
+				else
+					acc
+			) in
+			min_overall
+
 let range_value_set_sort vset =
     (* Perhaps it would be better to keep these sets as arrays? *)
     List.sort vset (fun a -> fun b ->
@@ -398,3 +414,8 @@ let range_map_to_string rangemap =
 let empty_range_set r =
 	let rsize = range_size r in
 	(range_size_compare rsize (Finite(0))) = 0
+
+let range_item_to_int i =
+	match i with
+	| RangeInteger(i) -> i
+	| _ -> raise (RangeError "Can't do non int to integer")

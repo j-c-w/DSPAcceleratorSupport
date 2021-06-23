@@ -85,7 +85,7 @@ and check_elt_for_uninitialized_read typemap name typ json =
 							()
 						else
 							raise JSONCheckFailed
-				| DimVariable(d) ->
+				| DimVariable(d, _) ->
 						(* TODO --- we could do a more thorough check here... *)
 						()
 			in

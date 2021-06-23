@@ -165,9 +165,9 @@ let rec get_uses_defining_type typ =
             | Dimension(nm) ->
 					(
                     match nm with
-						| DimVariable(AnonymousName) -> raise (TopologicalSortException "No anon names in the typemap!")
-						| DimVariable(Name(n)) -> [UDName(Name(n))]
-						| DimVariable(StructName(ns)) -> raise (TopologicalSortException "Congratualations, you hit the case
+						| DimVariable(AnonymousName, _) -> raise (TopologicalSortException "No anon names in the typemap!")
+						| DimVariable(Name(n), _) -> [UDName(Name(n))]
+						| DimVariable(StructName(ns), _) -> raise (TopologicalSortException "Congratualations, you hit the case
 						that means you need to do a f*ck of a lot of work fixing the typemaps so that
 						they are actually sane and are recursive rather than the weird implicit
 						'.' that they use now.  Enjoy!")
@@ -307,12 +307,12 @@ let rec compute_use_def_assign_for_node typemap gir =
 		}
 	| LoopOver(body, indvar, maxvar) ->
 		let subuses = compute_use_def_assign_for_node typemap body in
-        let maxv_uses = compute_use_def_assign_for_vref maxvar in
+        let maxv_uses = compute_use_def_assign_for_expr maxvar in
 		(* Filter out the indvar, since that is
 		defined and assigned in the loop header.  *)
 		let subuses_without_index = List.filter subuses.uses (fun i ->
 			not (ud_name_equal i (UDName(indvar)))) in
-		let uses = maxv_uses.uses @ maxv_uses.maybe_assigns @ subuses_without_index in
+		let uses = maxv_uses.uses @ subuses_without_index in
 		let defs = subuses.defs in
 		let assigns = subuses.assigns in
 		{

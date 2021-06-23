@@ -86,16 +86,24 @@ let rec generate_loop_wrappers_from_dimensions dim =
 			(* Generate a loop for each of the dimvars.  *)
 			(* Also try just a straight up assignment.  *)
             match dimvar with
-			| ExactVarMatch(from, tov) ->
+			| VarMatch(tov, fromv, mode) ->
 				let indvar = new_induction_variable () in
                 let in_loop_assign =(fun assign ->
-                    LoopOver(assign, indvar, generate_variable_reference_to from)
+					match mode with
+					| DimEqualityRelation ->
+						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
+					| DimPo2Relation ->
+						(* So I was generating the conversion in the
+						loop, but it turns out by using the tov,
+						you don't have to do the conversion :) *)
+						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
+                            (* LoopOver(assign, indvar, FunctionCall(FunctionRef(Name("Pow2")), VariableList([generate_variable_reference_to tov]))) *)
                     ) in
                 (in_loop_assign, [indvar])
 			| ConstantMatch(from) ->
 				let indvar = new_induction_variable () in
 				let in_loop_assign = (fun assign ->
-					LoopOver(assign, indvar, generate_const_reference_to (Int64V(from)))
+					LoopOver(assign, indvar, VariableReference(generate_const_reference_to (Int64V(from))))
 				)
 				in
 				(in_loop_assign, [indvar])
@@ -222,7 +230,7 @@ let rec define_name_of index_points =
 (* Either empty or singleton --- used to concat elsewhere *)
 let get_unwarpped_dim_dependency (dimension_value): gir_name list =
     match dimension_value with
-    | DimVariable(vnam) -> (match vnam with
+    | DimVariable(vnam, relation) -> (match vnam with
         | Name(n) -> [Name(n)]
         | _ -> raise (GenerateGIRException "Can't convert anything that isn't a name!")
         )
@@ -242,7 +250,7 @@ let rec get_bindings_by_name tvars dims =
             (*  Needs to only havea s inle entry -- keeping it like this
             because I think we may want more complex types in the
             future here.  *)
-            | DimvarOneDimension(ExactVarMatch(f, t)) -> Dimension(DimVariable(f))
+            | DimvarOneDimension(VarMatch(f, t, mode)) -> Dimension(DimVariable(f, mode))
 			| DimvarOneDimension(ConstantMatch(f)) -> Dimension(DimConstant(f))
             in
             let subdims = get_bindings_by_name tvars dims in
@@ -268,6 +276,7 @@ let generate_conversion_function conv = match conv with
             *)
             EmptyGIR, Name("identity")
 	| PowerOfTwoConversion ->
+			let () = Printf.printf "Propagating po2 conversion\n" in
 			EmptyGIR, Name("Pow2")
     | Map(ftype, ttype, to_from_list) ->
 			let to_from_list_synths = List.map to_from_list (fun (tov, fromv) ->
@@ -322,9 +331,9 @@ let get_definition_type_for options escapes validmap typemap v =
                         let stype_new = size_concreteization sb in
                         let dimmax = match dim with
                         | Dimension(DimConstant(c)) -> Some(DimConstant(c))
-                        | Dimension(DimVariable(dimv)) ->
+                        | Dimension(DimVariable(dimv, relation)) ->
                                 let range = Hashtbl.find validmap (name_reference_to_string dimv) in
-								(
+								let raw_max = (
                                 match range with
                                 | None ->
 										(* This should really be the below exception, but
@@ -336,8 +345,13 @@ let get_definition_type_for options escapes validmap typemap v =
 										(* raise (GenerateGIRException "Error: when in static allocation mode, array parameters must have length restrictions (try specifying in accelerator file") *)
                                 | Some(r) ->
                                         match range_max r with
-                                        | RangeInteger(i) -> Some(DimConstant(i))
+                                        | RangeInteger(i) -> Some(i)
                                         | _ -> assert false (* Can't have non-integer array length *)
+								) in
+								(
+								match relation with
+								| DimEqualityRelation -> Option.map raw_max (fun r -> DimConstant(r))
+								| DimPo2Relation -> Option.map raw_max (fun r -> DimConstant(Utils.power_of_two r))
 								)
                         | EmptyDimension -> assert false
                         in
