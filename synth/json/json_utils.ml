@@ -24,8 +24,7 @@ and load_json_elt (e: Yojson.Basic.t) =
 	| `Assoc(d) ->
 			StructV("Unknown", load_json d)
 	| `Bool(b) ->
-			(* Not generated right now? *)
-			raise (JSONException "Unepxected type: bool")
+			BoolV(b)
 	| `Float(f1) ->
 			(* arbitrarily choose this I suppose --- note that
 			 if this changes, there are a bunch of other synth
