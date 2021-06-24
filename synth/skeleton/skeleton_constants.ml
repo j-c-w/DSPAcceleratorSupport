@@ -13,20 +13,24 @@ let join_option_lists optlists =
 	| [] -> None
 	| xs -> Some(xs)
 
-let get_constants_from_constmap (constmap: (string, synth_value list) Hashtbl.t) styp =
-	match styp with
-	| SInt(nr) ->
-			let i16 = Hashtbl.find constmap (synth_type_to_string Int16) in
-			let i32 = Hashtbl.find constmap (synth_type_to_string Int16) in
-			let i64 = Hashtbl.find constmap (synth_type_to_string Int16) in
-			join_option_lists [i16; i32; i64]
-	| SBool(nr) ->
-			Hashtbl.find constmap (synth_type_to_string Bool)
-	| SFloat(nr) ->
-			let f16 = Hashtbl.find constmap (synth_type_to_string Float16) in
-			let f32 = Hashtbl.find constmap (synth_type_to_string Float32) in
-			let f64 = Hashtbl.find constmap (synth_type_to_string Float64) in
-			join_option_lists [f16; f32; f64]
+let get_constants_from_constmap (constmap: (string, synth_value list) Hashtbl.t) vname styp =
+	Hashtbl.find constmap vname
+	(* match styp with *)
+	(* | SInt(nr) -> *)
+	(* 		let i16 = Hashtbl.find constmap (synth_type_to_string Int16) in *)
+	(* 		let i32 = Hashtbl.find constmap (synth_type_to_string Int32) in *)
+	(* 		let i64 = Hashtbl.find constmap (synth_type_to_string Int64) in *)
+	(* 		let ui16 = Hashtbl.find constmap (synth_type_to_string UInt16) in *)
+	(* 		let ui32 = Hashtbl.find constmap (synth_type_to_string UInt32) in *)
+	(* 		let ui64 = Hashtbl.find constmap (synth_type_to_string UInt64) in *)
+	(* 		join_option_lists [i16; i32; i64; ui16; ui32; ui64] *)
+	(* | SBool(nr) -> *)
+	(* 		Hashtbl.find constmap (synth_type_to_string Bool) *)
+	(* | SFloat(nr) -> *)
+	(* 		let f16 = Hashtbl.find constmap (synth_type_to_string Float16) in *)
+	(* 		let f32 = Hashtbl.find constmap (synth_type_to_string Float32) in *)
+	(* 		let f64 = Hashtbl.find constmap (synth_type_to_string Float64) in *)
+	(* 		join_option_lists [f16; f32; f64] *)
 
 let rec dimconsts_from_types typ =
 	match typ with
@@ -114,7 +118,7 @@ let generate_plausible_constants_map options supplied_constmap validmap input_st
                in the input json files --- these should correspond
                to e.g. constants used in user code.
                *)
-            let consts: synth_value list option = get_constants_from_constmap supplied_constmap stype in
+            let consts: synth_value list option = get_constants_from_constmap supplied_constmap vname stype in
             (* Second, we can look at any array length parameters
             that are specified as constants.  *)
             (* Note of course, that this only returns something
@@ -140,10 +144,11 @@ let generate_plausible_constants_map options supplied_constmap validmap input_st
                 | Some(rconst), Some(copts) ->
                         (* If we have the range restrictions set, then only consider consts
                         in the valid range for this variable.  *)
-                        Some(List.filter copts (fun opt ->
+                        (* Some(List.filter copts (fun opt ->
                             (List.exists rconst (fun r -> synth_value_equal r opt)
                         ))
-                        )
+                        ) *)
+						const_options
                 | _, _ -> const_options
             in
             (

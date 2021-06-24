@@ -54,7 +54,7 @@ let load_iospec options filename =
 	) load_value_profiles in
 	let range_tbl = load_rangetable options classmap typemap (json |> member "range") in
 	let valid_tbl = load_rangetable options classmap typemap (json |> member "valid") in
-	let const_tbl = load_consttable options (json |> member "consts") in
+	let const_tbl = load_consttable options typemap (json |> member "consts") in
 	(* Check for a few common errors: TODO -- we should realy do a more conclusive check here.  *)
 	let _ = check_has_not json ["rangemap"; "validmap"] in
 	let iospec: iospec = {
