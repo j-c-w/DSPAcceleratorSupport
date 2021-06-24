@@ -520,7 +520,7 @@ let table_clone t =
 	newtbl
 
 (* Typemap utils.  *)
-let clone_typemap (t: (string, synth_type) Hashtbl.t) =
+let clone_variablemap (t: (string, synth_type) Hashtbl.t) =
     table_clone t
 
 let clone_classmap (t: (string, structure_metadata) Hashtbl.t) =
@@ -528,6 +528,18 @@ let clone_classmap (t: (string, structure_metadata) Hashtbl.t) =
 
 let clone_valuemap (t: (string, synth_value) Hashtbl.t) =
 	table_clone t
+
+let clone_alignment_map (t: (string, int) Hashtbl.t) =
+    table_clone t
+
+let rec clone_typemap (t: typemap) =
+    {
+        variable_map = clone_variablemap t.variable_map;
+        classmap = clone_classmap t.classmap;
+        alignment_map = clone_alignment_map t.alignment_map;
+        original_typemap =
+            Option.map t.original_typemap clone_typemap
+    }
 
 let merge_maps (t1: (string, 'a) Hashtbl.t) (t2: (string, 'a) Hashtbl.t) =
 	let newtbl = Hashtbl.create (module String) in

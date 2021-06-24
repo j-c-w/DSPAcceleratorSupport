@@ -94,7 +94,9 @@ let fs_conditional_sketches = [
 let fs_array_operator = [
     FSBitReversal;
     FSNormalize;
+	FSHalfNormalize;
     FSDenormalize;
+	FSHalfDenormalize;
 ]
 
 (* Typical ways that FFT/IFFT are specified. *)
@@ -138,7 +140,9 @@ and to_string_var var =
 and to_string_op op = match op with
     | FSBitReversal -> "BitReversal"
     | FSNormalize -> "Normalize"
+	| FSHalfNormalize -> "HalfNormalize"
     | FSDenormalize -> "Denormalize"
+	| FSHalfDenormalize -> "HalfDenormalize"
     | FSArrayOpHole -> "ArrayOperatorHole"
 
 let rec fs_fill_holes filler structure =
@@ -232,6 +236,7 @@ let compare_fs (a: synth_value) b = match (int_from_value a, int_from_value b) w
 
 let rec generic_normalize op arr: synth_value list =
     let length = float_of_int (List.length arr) in
+	let () = Printf.printf "Input length of array is %d\n" (List.length arr) in
     List.map arr (fun e1 ->
         let result: synth_value = match e1 with
 		| StructV(sname, subeles) ->
@@ -264,8 +269,14 @@ let rec generic_normalize op arr: synth_value list =
 let normalize arr =
 	generic_normalize (fun f -> fun length -> f /. length) arr
 
+let half_normalize arr =
+	generic_normalize (fun f -> fun length -> f /. (length /. 2.0)) arr
+
 let denormalize arr =
 	generic_normalize (fun f -> fun length -> f *. length) arr
+
+let half_denormalize arr =
+	generic_normalize (fun f -> fun length -> f *. (length /. 2.0)) arr
 
 let bit_reverse n maxbits =
     (* not sure (a) what this should do for non power of two
@@ -328,9 +339,15 @@ let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
             | FSNormalize ->
 					let new_value = normalize arr in
                     set_value inputs on (ArrayV(new_value))
+			| FSHalfNormalize ->
+					let new_value = half_normalize arr in
+					set_value inputs on (ArrayV(new_value))
             | FSDenormalize ->
 					let new_value = denormalize arr in
                     set_value inputs on (ArrayV(new_value))
+			| FSHalfDenormalize ->
+					let new_value = half_denormalize arr in
+					set_value inputs on (ArrayV(new_value))
             | FSArrayOpHole ->
                     raise (FFTSynth "Can't execute algs with holes")
             )
@@ -461,7 +478,9 @@ let fft_synth options typemap variables (gir_program: program) iopairs: post_beh
 	match valid_programs with
 	| [] -> None
 	| x :: xs ->
+            let prog, typemap = generate_gir_for options typemap x in
 			Some({
 				includes = (fft_synth_includes options);
-				program = (generate_gir_program options typemap x)
+                program = prog;
+                typemap = typemap
 			})

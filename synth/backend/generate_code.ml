@@ -347,12 +347,12 @@ let rec cxx_generate_from_gir options (typemap: typemap) gir =
 			false_code ^ "\n}"
 	| Free(v) ->
 			(* Depending on the mode, this may not expand into anything.  *)
-			let precode, postcode, typ = cxx_generate_from_variable_reference typemap v in
+			let precode, postcode, typ = cxx_generate_from_variable_reference typemap true v in
 			let free =
 				match options.compile_settings.allocation_mode with
 					| StaticAllocationMode | StackAllocationMode -> ""
 					| HeapAllocationMode ->
-							if is_malloc_type typemap typ then
+							if is_malloc_type typemap (Option.value_exn typ) then
 								"facc_free(" ^ (postcode) ^ ")"
 							else
 								""
@@ -399,27 +399,44 @@ let rec cxx_generate_from_gir options (typemap: typemap) gir =
 and cxx_generate_from_lvalue typemap lvalue =
     match lvalue with
     | LVariable(nref) ->
-			let pre, ref, _ = (cxx_generate_from_variable_reference typemap nref) in
+			let pre, ref, _ = (cxx_generate_from_variable_reference typemap false nref) in
 			pre, ref
 
-and cxx_generate_from_variable_reference typemap vref =
+(* So this find_type parameter is a bit of a hack.
+
+THe post-behavioural synthesizer generates some 'function'
+(i.e. #define) parameters that are not 'real' variables
+because they are concated like strings by the #define.
+
+As a result, they don't exist in the typemap.
+
+Perhaps a less hacky way of doing this owuld be to properly
+type those, but that isn't great either, since you'd end
+up with types for invalid variables in the typemap. I'd argue
+that's more fundamental.. Anyway. It's a bit shit here,
+like 'some' variable references don't have to have types.
+*)
+and cxx_generate_from_variable_reference typemap find_type vref =
 	match vref with
 	| Variable(Name(nm)) ->
-			(* let () = Printf.printf "Variable is %s%!\n" (gir_name_to_string nm) in *)
+			(* let () = Printf.printf "Variable is %s%!\n" (nm) in *)
 			let typ =
-				if (String.compare nm "") = 0 then
-					(* Empty is used as a placeholder by the behavioural synthesizer.  *)
-					(* Unit seems like the best type to give that --- it obviously can't be passed
-					to functions, but it is used to be passed to #defines.  *)
-					Unit
+				if find_type then
+					if (String.compare nm "") = 0 then
+						(* Empty is used as a placeholder by the behavioural synthesizer.  *)
+						(* Unit seems like the best type to give that --- it obviously can't be passed
+						to functions, but it is used to be passed to #defines.  *)
+						Some(Unit)
+					else
+						Some(Hashtbl.find_exn typemap.variable_map nm)
 				else
-					Hashtbl.find_exn typemap.variable_map nm
+					None
 			in
 			"", nm, typ
 	| MemberReference(structref, member) ->
-			(* TODO -- need to support pointer-ref
-			   generation.  *)
-			let struct_pre_code, struct_reference, structtype = cxx_generate_from_variable_reference typemap structref in
+			(* Need to get the subtype to support correct pointer/index generation.  *)
+			let struct_pre_code, struct_reference, structtype_opt = cxx_generate_from_variable_reference typemap true structref in
+			let structtype = Option.value_exn structtype_opt in
 			let classname = match structtype with
 				| Pointer(Struct(nm)) -> nm
 				| Struct(nm) -> nm
@@ -433,22 +450,25 @@ and cxx_generate_from_variable_reference typemap vref =
 				| Struct(v) -> "."
 				| other -> raise (CXXGenerationException "Unexpected member reference")
 			in
-			struct_pre_code, struct_reference ^ op ^ (cxx_gir_name_to_string member), member_type
+			struct_pre_code, struct_reference ^ op ^ (cxx_gir_name_to_string member), Some(member_type)
 	| IndexReference(arr, ind) ->
 			let pre_code, ind_reference = cxx_generate_from_expression typemap ind in
-			let arr_pre_code, arr_reference, arr_reference_typ = cxx_generate_from_variable_reference typemap arr in
+			let arr_pre_code, arr_reference, arr_reference_typ = cxx_generate_from_variable_reference typemap find_type arr in
             let reftyp = match arr_reference_typ with
-            | Array(sty, _) -> sty
-            | other -> raise (CXXGenerationException "Unexpected array reference")
+            | Some(Array(sty, _)) -> Some(sty)
+            | Some(other) -> raise (CXXGenerationException "Unexpected array reference")
+			| None ->
+					let () = assert (not (find_type)) in
+					None
             in
 			arr_pre_code ^ "\n" ^ pre_code, arr_reference ^ "[" ^ ind_reference ^ "]", reftyp
 	| Constant(synth_value) ->
 			(* TODO --- properly support more complex synth values, e.g. arrays or structs.  *)
 			(* Has empty pre code *)
-			"", (synth_value_to_string synth_value), synth_value_to_type synth_value
+			"", (synth_value_to_string synth_value), Some(synth_value_to_type synth_value)
 	| Cast(vref, typ) ->
-			let precode, refcode, original_type = cxx_generate_from_variable_reference typemap vref in
-			precode, "(" ^ (cxx_type_signature_synth_type_to_string typ) ^ ")" ^ refcode, typ
+			let precode, refcode, original_type = cxx_generate_from_variable_reference typemap true vref in
+			precode, "(" ^ (cxx_type_signature_synth_type_to_string typ) ^ ")" ^ refcode, Some(typ)
 
 and cxx_generate_from_rvalue typemap rvalue =
     match rvalue with
@@ -456,7 +476,7 @@ and cxx_generate_from_rvalue typemap rvalue =
 and cxx_generate_from_expression typemap expr =
     match expr with
     | VariableReference(nref) ->
-			let pre, post, typ = cxx_generate_from_variable_reference typemap nref in
+			let pre, post, typ = cxx_generate_from_variable_reference typemap false nref in
 			pre, post
     | FunctionCall(fref, vlist) ->
 			(* let () = Printf.printf "fref code is %s\n" (cxx_generate_from_function_ref fref) in *)
@@ -496,22 +516,22 @@ and cxx_generate_from_function_ref fref =
 and cxx_generate_from_vlist typemap vlist =
     match vlist with
     | VariableList(nrefs) ->
-		let pre_code, refs, types = Utils.unzip3 (List.map nrefs (cxx_generate_from_variable_reference typemap)) in
+		let pre_code, refs, types = Utils.unzip3 (List.map nrefs (cxx_generate_from_variable_reference typemap false)) in
         (String.concat ~sep:"\n" pre_code, String.concat ~sep:", " refs)
 and cxx_generate_from_conditional typemap cond =
 	match cond with
 	| Check(vref, comparator) ->
 			(* Unary comparators are represented
 			as functions, e.g. REPR(var) *)
-			let vref_pre_code, vref_ref, vref_type = cxx_generate_from_variable_reference typemap vref in
+			let vref_pre_code, vref_ref, vref_type = cxx_generate_from_variable_reference typemap false vref in
 			vref_pre_code, (cxx_generate_from_unary_comparator comparator) ^ "(" ^
 			vref_ref ^ ")"
 	| Compare(vref1, vref2, oper) ->
 			(* Again, use a function-like structure, relying
 			on #defines in the clib to provide the appropriate
 			definitions.  *)
-			let vref1_pre_code, vref1_ref, vref1type = cxx_generate_from_variable_reference typemap vref1 in
-			let vref2_pre_code, vref2_ref, vref2type = cxx_generate_from_variable_reference typemap vref2 in
+			let vref1_pre_code, vref1_ref, vref1type = cxx_generate_from_variable_reference typemap false vref1 in
+			let vref2_pre_code, vref2_ref, vref2type = cxx_generate_from_variable_reference typemap false vref2 in
 			vref1_pre_code ^ "\n" ^ vref2_pre_code ^ "\n",
 			(cxx_generate_from_binary_comparator oper) ^ "(" ^
 			vref1_ref ^
@@ -665,9 +685,9 @@ let rec generate_input_assigns options (typemap: typemap) inps livein json_ref =
 
 (* Given a list of the liveout vars, produce an asssignment
 that produces the output JSON.*)
-let rec generate_output_assigns options typemap types outvars outprefix outjson =
+let rec generate_output_assigns options typemap program types outvars outprefix outjson =
 	let asses = List.map (List.zip_exn outvars types) (fun (out, typ) ->
-		let defcode, vname = (generate_output_assign options typemap typ out outprefix ".") in
+		let defcode, vname = (generate_output_assign options typemap program typ out outprefix ".") in
 		(* Defcode is the code to define any intermediate values needed. *)
 		defcode ^ "\n" ^
 		outjson ^ "[\"" ^ out ^ "\"] = " ^ vname ^ ";"
@@ -677,12 +697,22 @@ let rec generate_output_assigns options typemap types outvars outprefix outjson 
 (* note that this is a slightly confusing definition, because we are
 trying to input from the 'out' variable into the json, not assign
 to it.  *)
-and generate_output_assign options typemap typ out out_prefix operator =
+and generate_output_assign options typemap program (infered_typ, typ) out out_prefix operator =
 	let () = if options.debug_generate_code then
 		Printf.printf "Generating outupt for %s\n" (out)
 	else () in
 	match typ with
 	| Array(artyp, adim) ->
+		let dim_ratio_modifier =
+			compute_dimension_ratio_modifier typ infered_typ in
+		let _ = match infered_typ with
+		| Array(sty, sdim) -> sty
+		(* Ideally, we could handle this, eg. in infering
+		structs over fixed-length arrays, but I'm not
+		actually sure what to do here. (maybe nothingish
+		is OK? *)
+		| _ -> raise (CXXGenerationException "Infered non-array over array." )
+		in
 		(* Needs to go back to a std::vector-based type *)
 		let artypname = cxx_vectors_type_signature_synth_type_to_string artyp in
 		let outtmp = generate_out_tmp () in
@@ -692,10 +722,10 @@ and generate_output_assign options typemap typ out out_prefix operator =
 		(* TODO--- need to actually properly handle multi-dimensions here.  *)
 		(* (Array indexing like this won't work for the C view of the world --probaly
 		need multipied indexes or some shit. ) *)
-		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ length ^ "; " ^ ivar ^ "++) {" in
+		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ length ^ dim_ratio_modifier ^ "; " ^ ivar ^ "++) {" in
 		let newout = generate_out_tmp() in
 		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ out ^ "[" ^ ivar ^ "];" in
-		let assbody, assresvar = generate_output_assign options typemap artyp newout out_prefix "." in
+		let assbody, assresvar = generate_output_assign options typemap program (artyp, artyp) newout out_prefix "." in
 		(* Add to the array. *)
 		let inloopassign = outtmp ^ ".push_back(" ^ assresvar ^ ");" in
 		let loop_end = "}" in
@@ -703,14 +733,28 @@ and generate_output_assign options typemap typ out out_prefix operator =
 			vecres; assloop_header; newout_assign; assbody; inloopassign; loop_end
 		], outtmp)
 	| Pointer(styp) ->
+		let infered_subtyp =
+			match infered_typ with
+			| Pointer(st) -> st
+			(* Again -- what do we want to do here? *)
+			| _ -> raise (CXXGenerationException "Unexpected type infered over pointer")
+		in
 		let ptyp = cxx_vectors_type_signature_synth_type_to_string styp in
 		let outtmp = generate_out_tmp() in
 		let outtmp_assign = ptyp ^ " " ^ outtmp ^ " = " ^ "*" ^ out ^ ";" in
-		let sub_ass, assresvar = generate_output_assign options typemap styp outtmp out_prefix "->" in
+		let sub_ass, assresvar = generate_output_assign options typemap program (infered_subtyp, styp) outtmp out_prefix "->" in
 		(String.concat ~sep:"\n" [
 			outtmp_assign; sub_ass
 		], assresvar)
 	| Struct(n) ->
+		let _ = match infered_typ with
+		(* Don't know what to do here. *)
+		(* currently don't do this anyway? *)
+		| Struct(n') -> assert ((String.compare n n') = 0)
+		| _ ->
+				let () = Printf.printf "Inferedtyp is %s, selftyp is %s\n" (synth_type_to_string infered_typ) (synth_type_to_string typ) in
+				assert false
+		in
 		let json_tmp = generate_out_tmp () in
 		let defn = "json " ^ json_tmp ^ ";" in
 		let structdefn = Hashtbl.find_exn typemap.classmap n in
@@ -718,8 +762,11 @@ and generate_output_assign options typemap typ out out_prefix operator =
 		(* Need the unprefixed assigns so we can get their types from the typemap.  *)
 		let unprefixed_assigns = get_class_fields structdefn in
 		let sub_typemap = get_class_typemap structdefn in
-		let sub_types = List.map unprefixed_assigns (fun ass -> Hashtbl.find_exn sub_typemap ass) in
-		let asscode = generate_output_assigns options typemap sub_types sub_assigns (out ^ operator) json_tmp in
+		let sub_types = List.map unprefixed_assigns (fun ass ->
+			let restyp = Hashtbl.find_exn sub_typemap ass in
+			(restyp, restyp)
+		) in
+		let asscode = generate_output_assigns options typemap program sub_types sub_assigns (out ^ operator) json_tmp in
 		String.concat ~sep:"\n" [defn; asscode], json_tmp
 	| _ ->
 		(* We can literally just put the variable name.  *)
@@ -753,8 +800,16 @@ let generate_dump_function options (typemap: typemap) (program: program) filenam
 	let header = "void " ^ funname ^ "(" ^ (String.concat ~sep:", " (cxx_names_to_type_definition typemap.variable_map argnames)) ^ ") {\n" in
 	let json_out_name = "output_json" in
 	let write_json_def = "    json " ^ json_out_name ^ ";" in
-	let types = List.map vnames (fun i -> Hashtbl.find_exn typemap.variable_map i) in
-	let gen_results = generate_output_assigns options typemap types vnames "" json_out_name in
+	(* So these type pairs are a bit of a hack here --- they
+	are what is needed, but the generate_output_assigns is
+	disturbingly coupled with what types might be infered. *)
+	(* Anyway, it's only here to allow the correct array lengths
+	to be used for the output writing code.  *)
+	let types = List.map vnames (fun i ->
+			(Hashtbl.find_exn program.typemap.variable_map i,
+			Hashtbl.find_exn typemap.variable_map i)
+		) in
+	let gen_results = generate_output_assigns options typemap program types vnames "" json_out_name in
 	let ofstream_create = "std::ofstream out_str(" ^ filename ^ "); " in
 	let ofstream_write = "out_str << std::setw(4) << " ^ json_out_name ^ " << std::endl;" in
 	let tail = "}" in

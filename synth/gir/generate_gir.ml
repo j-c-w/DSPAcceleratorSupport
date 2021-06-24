@@ -590,7 +590,7 @@ let generate_gir_for options apispec iospec (skeleton: skeleton_pairs) =
 	else () in
     List.map res (fun (pre, post) ->
 		let new_typemap =
-			{ skeleton.typemap with variable_map = clone_typemap skeleton.typemap.variable_map }
+			{ skeleton.typemap with variable_map = clone_variablemap skeleton.typemap.variable_map }
 		in
 		(skeleton, pre, post, new_typemap, all_fundefs, skeleton.rangecheck, skeleton.inputmap))
 

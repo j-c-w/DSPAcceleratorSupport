@@ -69,7 +69,8 @@ let rec generate_gir_program options typemap fft_behaviour =
                                 [(vname, None)]
                         (* For everything else, we need to do one
                         loop for each subcomponent of the array. *)
-                        | FSNormalize | FSDenormalize ->
+                        | FSNormalize | FSDenormalize
+						| FSHalfNormalize | FSHalfDenormalize ->
                             let variables = get_class_fields (Hashtbl.find_exn typemap.classmap name) in
                             let struct_typmap = get_class_typemap (Hashtbl.find_exn typemap.classmap name) in
                             List.map (variables) (fun key ->
@@ -99,8 +100,12 @@ let rec generate_gir_program options typemap fft_behaviour =
                                 "BIT_REVERSE"
                         | FSNormalize ->
                                 "ARRAY_NORM"
+						| FSHalfNormalize ->
+								"ARRAY_HALF_NORM"
                         | FSDenormalize ->
                                 "ARRAY_DENORM"
+						| FSHalfDenormalize ->
+								"ARRAY_HALF_DENORM"
                         | FSArrayOpHole -> raise (CXXHoleError "Hole")
                 in
                 let post_index = match post with
@@ -110,7 +115,7 @@ let rec generate_gir_program options typemap fft_behaviour =
                 append after the array access and that way
                 doesn't have to worry about putting a dot between
                 things.  *)
-                | Some(n) -> Variable(Name("." ^ n))
+                | Some(n) -> Variable(Name(n))
                 in
                 let fref = FunctionRef(Name(funname)) in
                 (* These are technically macros, but should
@@ -160,4 +165,7 @@ and generate_gir_variable v =
 
 let generate_gir_for options typemap fft_behaviour =
     let result = generate_gir_program options typemap fft_behaviour in
-    Gir_reduce.reduce_gir options result
+	let reduced = Gir_reduce.reduce_gir options result in
+	let new_typemap = clone_typemap typemap in
+    let () = Gir_typemap.gir_fix_typemap options new_typemap result in
+    reduced, new_typemap

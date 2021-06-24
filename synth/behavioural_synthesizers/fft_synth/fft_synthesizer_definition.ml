@@ -26,5 +26,7 @@ and fs_variable =
 and fs_array_operator =
     | FSBitReversal
     | FSNormalize
+	| FSHalfNormalize
     | FSDenormalize
+	| FSHalfDenormalize
     | FSArrayOpHole

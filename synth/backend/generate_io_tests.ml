@@ -149,7 +149,9 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
                                 (
 								match relation with
 								| DimEqualityRelation -> arrlen
-								| DimPo2Relation -> Utils.power_of_two arrlen
+								| DimPo2Relation ->
+										let () = Printf.printf "Computing po2 (2^%d)\n" arrlen in
+										Utils.power_of_two arrlen
                                 )
 						| DimConstant(c) -> c
 				in
@@ -322,7 +324,8 @@ let generate_io_tests_for_program options (iospec: iospec) program_number (progr
 	let structure_orderings = generate_toposorted_classmap options program.typemap io_typemap in
 	let () =
 		if options.debug_generate_io_tests then
-			Printf.printf "Topo sorted values are %s" (name_reference_list_to_string toposorted_values)
+			let () = Printf.printf "Topo sorted values are %s\n" (name_reference_list_to_string toposorted_values) in
+			Printf.printf "Starting to generate values\n"
 		else () in
 	let values = generate_io_values options iospec.value_profiles num_tests program.inputmap toposorted_values structure_orderings program.typemap io_typemap in
 	(* Now, convert those to YoJSON values to be written out.  *)
@@ -330,6 +333,9 @@ let generate_io_tests_for_program options (iospec: iospec) program_number (progr
 	json_files
 
 let generate_io_tests options (iospec: iospec) programs =
+	let () = if options.debug_generate_io_tests then
+		Printf.printf "Starting generating tests: Generating tests for %d programs\n" (List.length programs)
+	else () in
 	let numbers = generate_file_numbers (List.length programs) in
 	Utils.parmap options (fun (number, program) ->
 		(program, generate_io_tests_for_program options iospec number program))

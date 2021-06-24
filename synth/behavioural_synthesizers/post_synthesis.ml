@@ -29,6 +29,12 @@ let run_post_synthesis options iospec apispec programs io_files =
             else () in
 			{
                 prog with
-				post_behavioural = post_program
+				post_behavioural = post_program;
+				typemap =
+					(
+					match post_program with
+						| Some(pp) -> pp.typemap
+						| None -> prog.typemap
+					)
             }, passed
         ) prog_io_pairs

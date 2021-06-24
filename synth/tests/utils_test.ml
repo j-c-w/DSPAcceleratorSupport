@@ -10,6 +10,10 @@ let test_log2 () =
 	let y = log_2 128 in
     Alcotest.(check (int)) "same int" 7 y
 
+let test_po2 () =
+	let y = power_of_two 8 in
+	Alcotest.(check (int)) "same int" 256 y
+
 let utils_tests =
 	[
         "fp-equals",
@@ -19,5 +23,9 @@ let utils_tests =
 		"log2-test",
 		[
 			test_case "Log2 Check" `Quick test_log2
+		];
+		"po2-test",
+		[
+			test_case "Po2 Check" `Quick test_po2
 		]
     ]

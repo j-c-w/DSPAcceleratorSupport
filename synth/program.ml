@@ -7,6 +7,7 @@ open Skeleton_definition;;
 type post_behavioural_program = {
 	(* Any includes required for the generated program.  *)
 	includes: string list;
+	typemap: typemap;
 	program: gir
 }
 
