@@ -1,0 +1,5 @@
+Source: https://github.com/gregfjohnson/fft
+Commit: dc8a8ddcb3931b2ee176f44b8cea27f69759624b
+License: (Bespoke, see LICENSE.txt)
+MainFile: GPLv2
+FFTFucntion: complex.c:131
