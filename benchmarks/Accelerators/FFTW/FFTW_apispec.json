@@ -13,7 +13,7 @@
 	"required_includes": ["../../benchmarks/Accelerators/FFTW/interface.hpp", "complex"],
 	"valid": {
 		"dir": "set(-1, 1)",
-		"interface_len": "set(power_of_two(20))"
+		"interface_len": "set(power_of_two(1, 20))"
 	},
 	"compiler_flags": ["-lfftw3", "-lfftw3f"],
 	"classmap": {

@@ -13,8 +13,8 @@
 	},
 	"range": {
 		"direction": "set(0, 1)",
-		"setup.N": "set(power_of_two(30))",
-		"setup.Ncvec": "set(power_of_two(30))"
+		"setup.N": "set(power_of_two(2, 30))",
+		"setup.Ncvec": "set(power_of_two(2, 30))"
 	},
 	"value_profiles": [
 		"../results/Github/marton78_pffft/value_profiles/2.json",

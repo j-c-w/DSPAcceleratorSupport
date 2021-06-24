@@ -32,7 +32,7 @@ set_contents:
 
 set_item:
 	| RANGE LPAREN item COMMA item RPAREN { SugaredRangeRange($3, $5) }
-    | POWER_OF_TWO LPAREN NAT RPAREN { SugaredRangeFunction(SugaredRangePowerOfTwo($3)) }
+    | POWER_OF_TWO LPAREN NAT COMMA NAT RPAREN { SugaredRangeFunction(SugaredRangePowerOfTwo($3, $5)) }
 	| item { SugaredRangeItem($1) }
 
 item_list:

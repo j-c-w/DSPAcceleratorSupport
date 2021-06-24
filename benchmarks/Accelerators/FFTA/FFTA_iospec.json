@@ -11,7 +11,7 @@
 	},
 	"required_includes": ["../../benchmarks/Accelerators/FFTA/adi_emulation.c"],
 	"valid": {
-		"adi_acc_n": "set(power_of_two(20))"
+		"adi_acc_n": "set(power_of_two(6, 20))"
 	},
 	"compiler_flags": ["-lfftw3", "-lfftw3f"],
 	"classmap": {

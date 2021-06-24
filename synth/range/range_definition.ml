@@ -12,8 +12,8 @@ type range_type =
 (* These are the types the range parser reads in ---
 has some extra defs for things like all powers of two. *)
 type sugared_function =
-	(* Keep track of max power of two allowed. *)
-	| SugaredRangePowerOfTwo of int
+	(* Keep track of min and max power of two allowed. *)
+	| SugaredRangePowerOfTwo of int * int
 
 type sugared_range_item =
 	| SugaredRangeInteger of int
