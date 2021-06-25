@@ -5,6 +5,7 @@ open Range_definition;;
 open Range;;
 open Gir;;
 open Gir_utils;;
+open Spec_utils;;
 
 exception RangeSynthError of string
 
@@ -79,7 +80,7 @@ let range_set_intersection r1 r2 =
 let range_set_has_intersection r1 r2 =
 	not (empty_range_set (range_set_intersection r1 r2))
 
-let positive_check_for vname range_set =
+let positive_check_for vname var_type range_set =
 	let conds = Array.map range_set (fun range_elem ->
 		match range_elem with
 		| RangeRange(lower, higher) ->
@@ -91,7 +92,16 @@ let positive_check_for vname range_set =
 				)
 		| RangeItem(RangeInteger(i)) ->
 				let ivalue = Constant(range_item_to_synth_value (RangeInteger(i))) in
-				Compare(vname, ivalue, Equal)
+                if is_integer_type var_type then
+                    Compare(vname, ivalue, Equal)
+                else if is_bool_type var_type then
+                    (* Need to cast: we can generate this for
+                    e.g. bools which have a significant degree
+                    of correspondance with ints.  *)
+                    (* Not sure what is should be cast to? *)
+                    Compare(Cast(vname, Int16), ivalue, Equal)
+                else
+                    raise (RangeSynthError "Unsupported type to compare to ints")
 		| RangeItem(RangeFloat(i)) ->
 				let ivalue = Constant(range_item_to_synth_value (RangeFloat(i))) in
 				Compare(vname, ivalue, FloatEqual)
@@ -112,44 +122,44 @@ let positive_check_for vname range_set =
 (* TODO --- ideally, we should replace all the calls to positive_check_for with
 a call to a function that takes the positive vs negative tradeoff
 	into account.  *)
-let difference_check_no_valid vname accel_valid user_range =
+let difference_check_no_valid vname var_type accel_valid user_range =
 	let inter = range_intersection accel_valid user_range in
-	positive_check_for vname inter
+	positive_check_for vname var_type inter
 
-let difference_check vname accel_valid user_range user_valid =
+let difference_check vname var_type accel_valid user_range user_valid =
 	let inputs_to_check = range_intersection accel_valid user_range in
 	(* Make sure to redirect the invalid user inputs inputs 
 	to the user code. *)
 	let inputs_with_diversions = range_intersection inputs_to_check user_valid in
-	positive_check_for vname inputs_with_diversions
+	positive_check_for vname var_type inputs_with_diversions
 
-let intersection_check vname accel_valid user_valid =
+let intersection_check vname var_type accel_valid user_valid =
 	let inter = range_intersection accel_valid user_valid in
-	positive_check_for vname inter
+	positive_check_for vname var_type inter
 
-let check vname accel_valid =
-	positive_check_for vname accel_valid
+let check vname var_type accel_valid =
+	positive_check_for vname var_type accel_valid
 
 (* The idea is that for each element in, we check if it's in
 	the out range for that variable.  *)
-let generate_check_for options var accel_valid_analysis input_range_analysis input_valid_analysis =
+let generate_check_for options var var_type accel_valid_analysis input_range_analysis input_valid_analysis =
 	match accel_valid_analysis, input_range_analysis, input_valid_analysis with
 	| Some(RangeSet(accel_valid)), Some(RangeSet(input_range)), None ->
 			(* Do a difference check without the
 			valid range analysis.  *)
-			difference_check_no_valid var accel_valid input_range
+			difference_check_no_valid var var_type accel_valid input_range
 	| Some(RangeSet(accel_valid)), Some(RangeSet(input_range)), Some(RangeSet(valid_range)) ->
 			(* Do a difference check with the valid range analysis
 			for the user code. *)
-			difference_check var accel_valid input_range valid_range
+			difference_check var var_type accel_valid input_range valid_range
 	| Some(RangeSet(accel_valid)), None, Some(RangeSet(valid_range)) ->
 			(* We should just take the intersection of the
 			two sets --- i.e. not use the accelerator if it would
 			work but the user code would fail.  *)
-			intersection_check var accel_valid valid_range
+			intersection_check var var_type accel_valid valid_range
 	| Some(RangeSet(accel_valid)), None, None ->
 			(* just do a straight check.  *)
-			check var accel_valid
+			check var var_type accel_valid
 	| None, Some(RangeSet(input_range)), Some(RangeSet(valid_range)) ->
 			(* TODO _-- we should try to back off to the user
 			code when the input range and teh valid range
@@ -191,10 +201,11 @@ let is_supported_type s1 s2 s3 =
 (* This should be able to generate range checks either
    on the accelerator variables or on the user code
    variables.  *)
-let generate_range_check options vars accel_valid input_range input_valid =
+let generate_range_check options typemap vars accel_valid input_range input_valid =
 	let wrapped_vars = List.map vars (fun var -> Variable(Name(var))) in
 	let range_checks: conditional list = List.filter_map wrapped_vars (fun var ->
 		let var_string = (variable_reference_to_string var) in
+		let var_type = type_of typemap.variable_map typemap.classmap (variable_reference_to_string var) in
 		let accel_valid_for_var = Hashtbl.find accel_valid var_string in
 		let input_range_for_var = Hashtbl.find input_range var_string in
 		let input_valid_for_var = Hashtbl.find input_valid var_string in
@@ -204,7 +215,7 @@ let generate_range_check options vars accel_valid input_range input_valid =
         else () in
         let res =
 			if is_supported_type accel_valid_for_var input_range_for_var input_valid_for_var then
-				generate_check_for options var accel_valid_for_var input_range_for_var input_valid_for_var
+				generate_check_for options var var_type accel_valid_for_var input_range_for_var input_valid_for_var
 			else
 				(* E.g. arrays are not currently supported for range
 				generation here -- only for guiding the random

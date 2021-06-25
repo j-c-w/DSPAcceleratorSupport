@@ -232,7 +232,7 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
 	)) in
     result_tbl
 
-let generate_range_check_skeleton options classmap iospec apispec pre_binding =
+let generate_range_check_skeleton options typemap iospec apispec pre_binding =
     (* First, we need to generate what the real input/valid
     ranges are /before/ translation through the binding code. *)
     let transformed_io_rangemap = transform_rangemap_by options RangeBackward iospec.rangemap apispec.validmap pre_binding in
@@ -242,7 +242,7 @@ let generate_range_check_skeleton options classmap iospec apispec pre_binding =
     some skeleton stuff instead?  Not sure there's any
     benefit to doing that, but it would perhaps
     be cleaner.  *)
-    let result = generate_range_check options iospec.livein transformed_io_rangemap iospec.rangemap iospec.validmap in
+    let result = generate_range_check options typemap iospec.livein transformed_io_rangemap iospec.rangemap iospec.validmap in
     let () = if options.dump_range_check then
         let () = Printf.printf "Generated range check (%s)\n" (match result with
         | None -> "None"
@@ -270,8 +270,8 @@ let check_valid_map rangemap validmap iomap =
 	) in
 	()
 
-let generate_range_checks_skeleton options classmap iospec apispec pre_bindings =
-    List.map pre_bindings (generate_range_check_skeleton options classmap iospec apispec)
+let generate_range_checks_skeleton options typemap iospec apispec pre_bindings =
+    List.map pre_bindings (generate_range_check_skeleton options typemap iospec apispec)
 
 let generate_input_ranges_skeleton options rangemap validmap binding =
 	let () =

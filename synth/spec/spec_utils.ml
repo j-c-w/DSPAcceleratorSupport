@@ -308,6 +308,11 @@ let synth_value_from_int t i =
 	| UInt64 -> check_non_neg i; UInt64V(i)
 	| _ -> raise (SpecException "Unexpected non-int type")
 
+let synth_value_from_bool t i =
+	match t with
+	| Bool -> BoolV(i)
+	| _ -> raise (SpecException "Unexpected non-bool type")
+
 let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in
     String.concat ~sep:", " (
@@ -461,6 +466,19 @@ let int_from_value v =
 	| UInt16V(v) -> Some(v)
 	| UInt32V(v) -> Some(v)
 	| UInt64V(v) -> Some(v)
+	| BoolV(v) -> if v then Some(1) else Some(0)
+	| _ -> None
+
+let bool_from_value v =
+	let value = int_from_value v in
+	match value with
+	| Some(value_num) ->
+		if value_num = 0 then Some(true) else Some(false)
+	| None -> None
+
+let bool_from_value v =
+	match v with
+	| BoolV(v) -> Some(v)
 	| _ -> None
 
 let array_from_value v =
@@ -485,6 +503,11 @@ let is_int_value v =
 	| UInt64V(_) -> true
 	| _ -> false
 
+let is_bool_value v =
+	match v with
+	| BoolV(_) -> true
+	| _ -> false
+
 let is_array_value v =
 	match v with
 	| ArrayV(_) -> true
@@ -502,6 +525,8 @@ let synth_value_cast v t =
 		Option.map (float_from_value v) (synth_value_from_float t)
 	else if is_integer_type t then
 		Option.map (int_from_value v) (synth_value_from_int t)
+	else if is_bool_type t then
+		Option.map (bool_from_value v) (synth_value_from_bool t)
 	else
 		(* Currently not supporting any other casting for
 			internal simulation.  Would be easy to add more to emulate

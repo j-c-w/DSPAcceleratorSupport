@@ -47,7 +47,10 @@ let generate_bool_within_range rangemap namestring =
 	match Hashtbl.find rangemap namestring with
 	| None -> (Random.int (1)) = 1
 	| Some(range) ->
-			raise (TypeException "Range of bools not currently supported! (nee dto add to the rtypes etc.")
+			match random_value_in_range range  with
+			| RBool(v) -> v
+			| RInt(v) -> (v <> 0)
+			| _ -> raise (TypeException "Unexpected non-bool result")
 
 let generate_float_within_range rangemap namestring =
     match Hashtbl.find rangemap namestring with

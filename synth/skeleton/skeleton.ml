@@ -263,6 +263,8 @@ let binding_check binding = true
 let rec compatible_types from_t to_t: bool =
 	match from_t, to_t with
 	(* TODO -- handle cross-conversion between bool and int? *)
+	| SInt(nfrom), SBool(nto) -> true
+	| SBool(nfrom), SInt(nto) -> true
 	| SInt(nfrom), SInt(nto) -> true
 	| SBool(nfrom), SBool(nto) -> true
 	| SFloat(nfrom), SFloat(nto) -> true
@@ -593,7 +595,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let livein_types = skeleton_type_lookup typemap iospec.livein in
     let livein_api_types = skeleton_type_lookup typemap apispec.livein in
     let liveout_api_types = skeleton_type_lookup typemap apispec.liveout in
-    let liveout_types = skeleton_type_lookup typemap (iospec.liveout @ iospec.returnvar) in
+    let liveout_types = skeleton_type_lookup typemap (iospec.returnvar @ iospec.liveout) in
     (* Get the types that are not livein, but are function args.  *)
     let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the binds.  *)
@@ -638,7 +640,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
         Printf.printf "Number of post-bindings generated is %d\n" (List.length range_checked_post_skeletons);
         Printf.printf "Number of skeletons generated is %d\n" (List.length skeleton_pair_objects);
         Printf.printf "Number of skeletons post-filtering is %d\n" (List.length sensible_skeleton_pairs);
-		Printf.printf "Returnvars requiring a define are %s\n" (String.concat ~sep:", " define_only_return_vars);
+		(* Printf.printf "Returnvars requiring a define are %s\n" (String.concat ~sep:", " define_only_return_vars); *)
         )
 	else () in
 	if options.debug_generate_skeletons then
