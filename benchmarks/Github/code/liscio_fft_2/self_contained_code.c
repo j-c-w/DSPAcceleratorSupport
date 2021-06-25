@@ -1,8 +1,8 @@
      #define M_PI 3.14159265358979323846
- #include "self_contained_code.h" // Lots of lines inserted in this extraction to get extra dependencies etc in the right places.
 #include <stdlib.h>
 #include <complex.h>
 #include <math.h>
+#include "self_contained_code.h"
 
 static complex double *FFT_recurse( complex double *x, int N, int skip ) {
     complex double *X = (complex double*)malloc( sizeof(complex double) * N );
@@ -53,5 +53,4 @@ complex double *FFT( complex double *x, int N ) {
     return FFT_math( x, N );
 #endif
 }
- struct _complex_double_;
  _complex_double_ *FFT_wrapper (_complex_double_ *x, int N) { return (_complex_double_*) FFT((complex double *) x, N); } // # We need to add this since FACC can't see into the internals of the compiler, so it casts the C++ complex double type to its own internal type.
