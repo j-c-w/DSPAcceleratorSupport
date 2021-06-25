@@ -1,20 +1,16 @@
 {
 	"livein": ["invec", "n", "forward"],
 	"liveout": ["outvec"],
-	"returnvarname": ["returnv"],
+	"returnvarname": [],
 	"execcmd": "../benchmarks/Github/code/gregfjohnson_fft/exec",
-	"funname": "FFT_wrapper",
-	"funargs": ["invec", "outvec", "n", "forward"],
+	"funname": "recFFT_wrapper",
+	"funargs": ["outvec", "invec", "n", "forward"],
 	"typemap": {
 		"invec": "array(_complex_double_)",
 		"outvec": "array(_complex_double_)",
 		"n": "uint32",
 		"forward": "bool",
 		"returnv": "int32"
-	},
-	"notes": "consts are extracted via a constant analysis of the possible return values this could take.",
-	"consts": {
-		"returnv": "set(-1, 0)"
 	},
 	"required_includes": ["../../benchmarks/Github/code/gregfjohnson_fft/self_contained_code.c"],
 	"classmap": {

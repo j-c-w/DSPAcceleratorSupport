@@ -210,4 +210,4 @@ int FFT(complex *outvec, complex *invec, unsigned int n, bool forward) {
     return 0;
 }
  #include "self_contained_code.h"
- int FFT_wrapper (_complex_double_ *invec, _complex_double_ *outvec, unsigned int n, bool forward) { return (int) FFT((complex *) invec, (complex *) outvec, n, forward); } // # We need to add this since FACC can't see into the internals of the compiler, so it casts t he C++ complex double type to its own internal type.
+ void recFFT_wrapper (_complex_double_ *outvec, _complex_double_ *invec, unsigned int n, bool forward) { return recFFT((complex *) outvec, (complex *) invec, n, forward); } // # We need to add this since FACC can't see into the internals of the compiler, so it casts t he C++ complex double type to its own internal type.

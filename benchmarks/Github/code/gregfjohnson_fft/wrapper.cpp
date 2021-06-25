@@ -25,7 +25,7 @@ void StopAcceleratorTimer() {
 		(clock()) - AcceleratorStart;
 }
 
-void write_output(_complex_double_ * invec, _complex_double_ * outvec, unsigned int n, bool forward, int returnv) {
+void write_output(_complex_double_ * invec, _complex_double_ * outvec, unsigned int n, bool forward) {
 
     json output_json;
 std::vector<json> output_temp_1;
@@ -40,7 +40,6 @@ output_temp_1.push_back(output_temp_4);
 }
 output_json["outvec"] = output_temp_1;
 
-output_json["returnv"] = returnv;
 std::ofstream out_str(output_file); 
 out_str << std::setw(4) << output_json << std::endl;
 }
@@ -62,12 +61,11 @@ unsigned int n = input_json["n"];
 bool forward = input_json["forward"];
 _complex_double_ outvec[n];
 clock_t begin = clock();
-int returnv = 0;
 for (int i = 0; i < TIMES; i ++) {
-	returnv = FFT_wrapper(invec, outvec, n, forward);
+	recFFT_wrapper(outvec, invec, n, forward);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
-write_output(invec, outvec, n, forward, returnv);
+write_output(invec, outvec, n, forward);
 }
