@@ -9,6 +9,7 @@ open Float_compare;;
 open Json_utils;;
 open Program;;
 open Program_utils;;
+open Range_checker;;
 
 (* Largely, we assume taht j1 and j2 have the same members
 this will sometimes crash and sometimes spuriously go true
@@ -159,16 +160,23 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
 					true_output=None;
 					measured_output=None;
 					passed=true;
+					vacuous=true;
 				}
             | RunSuccess(outf) ->
 					let () = assert (not (outfile_has_errors options (get_io_typemap program) outf)) in
                     if output_checked_result = 0 then
 						let () = assert (not (outfile_has_errors options (get_io_typemap program) experiment_outname)) in
+						let inp_values = load_value_map_from testin in
+						let inp_passes = inputs_in_range program inp_values in
                         {
                             input=testin;
                             true_output=Some(outf);
                             measured_output=Some((pre_accel_variables_outname, experiment_outname));
-                            passed=(compare_outputs options experiment_outname outf)
+							passed=(compare_outputs options experiment_outname outf);
+							(* if the input didn't pass the range check,
+							we just called the origincal code, so this
+							was vacuous.  *)
+							vacuous = not inp_passes;
                         }
                     else
                         (* Run of accelerator failed --- this probably
@@ -179,7 +187,8 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
                             input=testin;
                             true_output=Some(outf);
                             measured_output=None;
-                            passed=false
+							passed=false;
+							vacuous=false;
                         }
             in
             let () =
@@ -201,8 +210,8 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
     post-test generation where we go through and are like "this is clearly buggy, this jus tmissed
     due to bad luck" etc. *)
     (* Anyway, this makes sure that there is at least one non-vacuous testcase *)
-    let lucky_pass = List.for_all res (fun res -> Option.is_none res.true_output) in
-	let valid_passes = List.count res (fun res -> Option.is_some res.true_output) in
+    let lucky_pass = List.for_all res (fun res -> res.vacuous) in
+	let valid_passes = List.count res (fun res -> not res.vacuous) in
 	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous: luck pass is %b) \n%!" (execname) (passed_count) (total_count) (total_count - valid_passes) (lucky_pass) in
 	res, (passed && (not lucky_pass))
 

@@ -10,4 +10,5 @@ type test_result = {
 	(* Intermediate results * outputs *)
 	measured_output: (string * string) option;
 	passed: bool;
+	vacuous: bool;
 }
