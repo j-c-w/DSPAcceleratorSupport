@@ -23,22 +23,32 @@ let infer_structs_on_typemap options typemap variables =
         let current_type = Hashtbl.find_exn typemap.variable_map variable in
         match current_type with
         | Array(t, d) ->
-                if is_constant_dimension_variable d then
+				(* TODO -- insert a real struct trheshold.  *)
+                if (is_constant_dimension_variable d) && (dimension_constant_less_than d (Dimension(DimConstant(4)))) then
                     (* Allocate this as an n-struct, provided n < struct_threshold *)
                     (* If we do this, we reduce to a single pointer.  *)
                     (* TODO *)
                     [(variable, Array(t, d))], []
                 else
                     (* FFT-specific heuristic: try making this a 2-tuple.  *)
+					let newdim =
+						match d with
+						(* If we are infering a 2x struct on this variable, we'll need to reduce
+						it by a factor of two.  *)
+						(* Note that we don't use the newdim
+						if the inference fails.  *)
+						| Dimension(DimConstant(c)) -> Dimension(DimConstant(c / 2))
+						| other -> other
+					in
                     (
                     match t with
                     | Float16 ->
                             (* TODO *)
                             [(variable, Array(t, d))], []
                     | Float32 ->
-                            [(variable, Array(two_float32_type, d)); (variable, Array(t, d))], [two_float32_type]
+                            [(variable, Array(two_float32_type, newdim)); (variable, Array(t, d))], [two_float32_type]
                     | Float64 ->
-                            [(variable, Array(two_float64_type, d)); (variable, Array(t, d))], [two_float64_type]
+                            [(variable, Array(two_float64_type, newdim)); (variable, Array(t, d))], [two_float64_type]
                     | other ->
                             (* TODO -- support ints here? *)
                             [(variable, Array(t, d))], []

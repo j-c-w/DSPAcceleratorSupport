@@ -70,6 +70,12 @@ let dimension_value_equal d1 d2 =
 	| DimVariable(v1, r1), DimVariable(v2, r2) -> (name_reference_equal v1 v2) && (dim_relation_equal r1 r2)
 	| _, _ -> false
 
+let dimension_constant_less_than d1 d2 =
+	match d1, d2 with
+	| Dimension(DimConstant(c1)), Dimension(DimConstant(c2)) ->
+			c1 < c2
+	| _, _ -> raise (SpecException "not allowed dim constant < comparison with non-constnats")
+
 let rec dimension_type_to_string dim =
     match dim with
     | EmptyDimension -> "No dimensions set!"
