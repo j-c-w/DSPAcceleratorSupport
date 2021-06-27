@@ -14,7 +14,7 @@ let backend_target_from_string str =
 
 let get_compiler_cmd target =
     match target with
-    | CXX -> "clang++"
+    | CXX -> "g++"
 
 let get_compiler_flags target =
 	match target with
