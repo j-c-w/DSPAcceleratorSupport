@@ -1,3 +1,4 @@
+ #define t_float float
 /* fft64.c  complex data stored  re, im, re, im, re, ... im */
 
 void fft64(float Z[128]) /* input data points and output  [0] to [127] */

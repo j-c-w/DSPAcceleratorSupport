@@ -51,7 +51,9 @@ Z_vec.push_back(Z_inner);
 }
 float *Z = &Z_vec[0];
 clock_t begin = clock();
-fft64(Z);
+for (int i = 0; i < TIMES; i ++) {
+	fft64(Z);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;

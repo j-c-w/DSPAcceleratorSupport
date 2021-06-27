@@ -60,7 +60,10 @@ vector_vec.push_back(vector_inner);
 _float_complex_ *vector = &vector_vec[0];
 long int N = input_json["N"];
 clock_t begin = clock();
-int returnv = fft_wrapper(vector, N);
+int returnv;
+for (int i = 0; i < TIMES; i ++) {
+	returnv = fft_wrapper(vector, N);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
