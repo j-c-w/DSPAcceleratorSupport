@@ -73,6 +73,14 @@ let assignment_type_to_string stype =
     | AssignConstant(c) ->
             "Constant(" ^ synth_value_to_string c ^ ")"
 
+let type_of_assignment tmap stype =
+	match stype with
+	| AssignVariable(v) -> type_of_name_reference_list tmap v
+	| AssignConstant(c) -> synth_value_to_type c
+
+let assignment_type_list_to_string stype_list =
+    String.concat ~sep:", " (List.map stype_list assignment_type_to_string)
+
 let rec skeleton_dimension_group_type_to_string stype =
 	match stype with
 	| SType(subtype) -> skeleton_type_to_string subtype

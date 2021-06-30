@@ -4,6 +4,7 @@ open Core_kernel;;
 open Options;;
 open Skeleton_flatten;;
 open Skeleton_constants;;
+open Skeleton_deduplicate;;
 open Skeleton_verify;;
 open Skeleton_definition;;
 open Skeleton_utils;;
@@ -671,8 +672,10 @@ let generate_all_skeleton_pairs opts typemaps iospec apispec =
 			generate_skeleton_pairs opts typemap iospec apispec
 		)
 	) in
+    let deduplicated =
+        deduplicate_skeletons opts result in
 	let () = if opts.debug_generate_skeletons then
 		Printf.printf "Total number fo skeletons (across all typemaps) is %d\n" (List.length result)
 	else ()
 	in
-	result
+    deduplicated

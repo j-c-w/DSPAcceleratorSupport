@@ -406,8 +406,39 @@ let rec type_of_name_reference (typemap: typemap) nr =
 				variable_map = (get_class_typemap (Hashtbl.find_exn typemap.classmap sname))
 			} in
 			type_of_name_reference updated_typemap (StructName(xs))
-	| StructName(_) -> raise (SpecException "Ill-formatted")
+	| StructName(_) -> raise (SpecException ("Ill-formatted" ^ (name_reference_to_string nr)))
 	| AnonymousName -> raise (SpecException "no type for anon name")
+
+let rec name_reference_cannonicalize ns =
+	let rec flatten x =
+		match x with
+				| AnonymousName -> []
+				| StructName(ns) -> ns
+				| Name(x) -> [Name(x)]
+	in
+	match ns with
+	| AnonymousName -> AnonymousName
+	| Name(x) -> Name(x)
+	| StructName(Name(x) :: xs) ->
+			StructName(Name(x) :: (List.concat ((List.map xs (fun x -> flatten (name_reference_cannonicalize x))))))
+	| StructName(StructName(ns) :: xs) ->
+			(
+			match name_reference_cannonicalize (StructName(ns)) with
+			| StructName(ns_rest) ->
+					let tail = List.concat (
+						List.map xs (fun x ->
+							flatten (name_reference_cannonicalize x)
+						)
+					) in
+					StructName(ns_rest @ (tail))
+			| _ -> assert false (* Expect a struct name to come back as a struct name. *)
+			)
+	| StructName(AnonymousName :: xs) -> assert false (* ill formatted *)
+	| StructName([]) -> AnonymousName
+
+
+let type_of_name_reference_list typemap ns =
+	type_of_name_reference typemap (name_reference_cannonicalize (StructName(ns)))
 
 let is_float_type typ =
 	match typ with
