@@ -231,6 +231,18 @@ let compute_dimension_ratio_modifier t1 t2 =
         | _, _ ->
                 raise (CXXGenerationException ("Unexpected infered type pair " ^ (synth_type_to_string t1) ^ ", " ^ (synth_type_to_string t2)))
 
+(* Constant array types are adjusted appropriately
+so that we don't end up with the odd situation of
+having infered an X element array when in fact
+it is really a 2 * X element array.  Makes
+some sense to not have these line up with dimvariables,
+but not with dim constants.  *)
+let use_dim_ratio_modifier adim =
+	match adim with
+	| Dimension(DimConstant(_)) -> false
+	| Dimension(DimVariable(_)) -> true
+	| EmptyDimension -> false (* This can arise wehn doing json generation. *)
+
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
 let rec cxx_definition_synth_type_to_string options typemap alignment escapes typ base_type name =
@@ -704,7 +716,10 @@ and generate_output_assign options typemap program (infered_typ, typ) out out_pr
 	match typ with
 	| Array(artyp, adim) ->
 		let dim_ratio_modifier =
-			compute_dimension_ratio_modifier typ infered_typ in
+			if use_dim_ratio_modifier adim then
+				compute_dimension_ratio_modifier typ infered_typ
+			else ""
+		in
 		let _ = match infered_typ with
 		| Array(sty, sdim) -> sty
 		(* Ideally, we could handle this, eg. in infering
