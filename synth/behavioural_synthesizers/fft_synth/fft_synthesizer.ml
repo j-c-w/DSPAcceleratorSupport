@@ -236,7 +236,7 @@ let compare_fs (a: synth_value) b = match (int_from_value a, int_from_value b) w
 
 let rec generic_normalize op arr: synth_value list =
     let length = float_of_int (List.length arr) in
-	let () = Printf.printf "Input length of array is %d\n" (List.length arr) in
+	(* let () = Printf.printf "Input length of array is %d\n" (List.length arr) in *)
     List.map arr (fun e1 ->
         let result: synth_value = match e1 with
 		| StructV(sname, subeles) ->
