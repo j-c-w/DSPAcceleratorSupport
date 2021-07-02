@@ -30,7 +30,8 @@
 		"../results/Github/biotrump_OouraFFT/value_profiles/32768.json"
 	],
 	"range": {
-		"n": "set(power_of_two(2, 15))"
+		"n": "set(power_of_two(2, 15))",
+		"isgn": "set(0, 1)"
 	},
 	"required_includes": ["../../benchmarks/Github/code/biotrump_OouraFFT/self_contained_code.c"],
 	"classmap": {
