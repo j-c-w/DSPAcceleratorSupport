@@ -88,7 +88,9 @@ let range_compat_check options from_range to_range =
 	let has_intersection = range_set_has_intersection from_range to_range in
 	(* If the sets are small enough, we'll try combinatorial mapping, so
 	   we don't need to worry too much about overlap.  *)
-	let small_sets = (range_size_compare from_size rangeConversionSizeLimit) = -1 in
+	let small_set_from = (range_size_compare from_size rangeConversionSizeLimit) = -1 in
+	let small_set_to = (range_size_compare to_size rangeConversionSizeLimit) = -1 in
+	let small_sets = small_set_from && small_set_to in
     to_smaller && (has_intersection || small_sets)
 
 let range_from_fromvars rangemap fromvars =
