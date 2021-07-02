@@ -106,7 +106,15 @@ let dimvar_match x y =
             Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
     | DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimPo2Relation) ->
             Some(DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation)))
-            (* TODO -- do we need an inverse po2 relation? *)
+	| DimVariable(vname1, DimMulByRelation(x)), DimVariable(vname2, DimMulByRelation(y)) ->
+			if x = y then
+				Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
+			else
+				(* TODO --- infer another multiplication factor? *)
+				None
+	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimMulByRelation(x)) ->
+			Some(DimvarOneDimension(VarMatch(vname1, vname2, DimMulByRelation(x))))
+            (* TODO -- do we need an inverse po2/mulby relation? *)
     | DimVariable(vname1, _), DimVariable(vname2, _) ->
             (* TODO --- does it do us any good to do a
             conversion here?  not sure.  *)

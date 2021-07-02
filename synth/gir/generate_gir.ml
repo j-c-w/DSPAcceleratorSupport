@@ -98,6 +98,8 @@ let rec generate_loop_wrappers_from_dimensions dim =
 						you don't have to do the conversion :) *)
 						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
                             (* LoopOver(assign, indvar, FunctionCall(FunctionRef(Name("Pow2")), VariableList([generate_variable_reference_to tov]))) *)
+					| DimMulByRelation(x) ->
+						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
                     ) in
                 (in_loop_assign, [indvar])
 			| ConstantMatch(from) ->
@@ -277,6 +279,33 @@ let generate_conversion_function conv = match conv with
             EmptyGIR, Name("identity")
 	| PowerOfTwoConversion ->
 			EmptyGIR, Name("Pow2")
+	| MultiplyByConversion(mby) ->
+			(* OK, so really this shouldn't need to be a customizeable
+			function, but it fits easier with the rest of the
+			passes... *)
+			let fname = Name("MultiplByX_" ^ (gir_name_to_string (new_conversion_function ()))) in
+			let argname = new_variable() in
+			let returnvar = new_variable() in
+			let typelookup = Hashtbl.create (module String) in
+			(* TODO --- We should be smarter about the types. *)
+			let _ = Hashtbl.add typelookup (gir_name_to_string argname) (Int64) in
+			let _ = Hashtbl.add typelookup (gir_name_to_string returnvar) (Int64) in
+			let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun(Int64, Int64)) in
+			let functiondef = FunctionDef(fname, [argname],
+				Sequence([
+					Definition(returnvar, true, Some(Int64));
+					Assignment(
+						LVariable(Variable(returnvar)),
+						Expression(FunctionCall(FunctionRef(Name("Multiply")),
+						VariableList([
+							Constant(Int64V(mby)); Variable(argname)
+						])))
+					);
+					Return(VariableReference(Variable(returnvar)))
+				]),
+				typelookup
+			) in
+			functiondef, fname
     | Map(ftype, ttype, to_from_list) ->
 			let to_from_list_synths = List.map to_from_list (fun (tov, fromv) ->
 				(range_value_to_synth_value tov, 
@@ -351,6 +380,8 @@ let get_definition_type_for options escapes validmap typemap v =
 								match relation with
 								| DimEqualityRelation -> Option.map raw_max (fun r -> DimConstant(r))
 								| DimPo2Relation -> Option.map raw_max (fun r -> DimConstant(Utils.power_of_two r))
+								| DimMulByRelation(mby) ->
+										Option.map raw_max (fun r -> DimConstant(r * mby))
 								)
                         | EmptyDimension -> assert false
                         in

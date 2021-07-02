@@ -50,6 +50,51 @@ let log_all r =
 	| RangeSet(rset) ->
 			RangeSet(Array.map rset log_item)
 
+let divalways i mby =
+	match i with
+	| RangeInteger(x) ->
+			RangeInteger(x / mby)
+	| _ -> raise (RangeCheckException "Unsuppored div convtype")
+
+let range_item_divide_always i mby =
+	match i with
+	| RangeRange(f, t) ->
+			RangeRange(divalways f mby, divalways t mby)
+	| RangeItem(i) ->
+			RangeItem(divalways i mby)
+
+let range_item_divide i mby =
+	let div i =
+		match i with
+		| RangeInteger(x) ->
+				if (x % mby) = 0 then
+					Some(RangeInteger(x / mby))
+				else
+					None
+		| _ -> raise (RangeCheckException "unsupported multiply-by conversion type")
+	in
+	match i with
+	| RangeRange(f, t) ->
+			(* should probably actually properly do this.  *)
+			Some(RangeRange(divalways f mby, divalways t mby))
+	| RangeItem(i) ->
+			Option.map (div i) (fun i -> RangeItem(i))
+
+let range_item_multiply i mby =
+	let range_value_mul i =
+		match i with
+		| RangeInteger(x) ->
+				RangeInteger(x * mby)
+		| _ -> assert false
+	in
+	match i with
+	| RangeRange(f, t) ->
+			let res = RangeRange(range_value_mul f, range_value_mul t) in
+			let () = Printf.printf "New range is %s\n" (range_range_to_string res) in
+			res
+	| RangeItem(i) ->
+			RangeItem(range_value_mul i)
+
 let execute_conversion_on_range direction conversion inp_ranges =
     match conversion with
     | IdentityConversion ->
@@ -67,6 +112,28 @@ let execute_conversion_on_range direction conversion inp_ranges =
 			| RangeBackward ->
 					let shifted = log_all res in
 					shifted
+			)
+	| MultiplyByConversion(mby) ->
+			let () = assert ((List.length inp_ranges) = 1) in
+			let res = List.hd_exn inp_ranges in
+			(
+			match direction with
+			| RangeForward ->
+					(
+					match res with
+					| RangeSet(items) ->
+							RangeSet(Array.map items (fun i ->
+								range_item_multiply i mby
+							))
+					)
+			| RangeBackward ->
+					(
+					match res with
+					| RangeSet(items) ->
+							RangeSet(Array.filter_map items (fun item ->
+								range_item_divide item mby
+							))
+					)
 			)
     | Map(fromt, tot, mappairs) ->
             (* Maps are 1 to 1, so must be one assigning var *)
@@ -180,6 +247,7 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
                     let () = Printf.printf "Generated an empty result range. \n" in
                     let () = Printf.printf "Input range was %s\n" (String.concat (List.map ranges range_set_to_string))  in
                     let () = Printf.printf "Output range is %s (size %s)\n" (range_set_to_string result_range) (range_size_to_string (range_size result_range)) in
+					let () = Printf.printf "Conversion function was %s\n" (flat_single_variable_binding_to_string flat_binding) in
                     assert false
                 else
                     ()

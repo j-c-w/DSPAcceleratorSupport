@@ -32,6 +32,14 @@ within an already exponential problem.. *)
 let range_conversion options r1 r2 =
     let r1_size = range_size r1 in
     let r2_size = range_size r2 in
+	let multiply_options =
+		if is_integer_range (range_type r1) && is_integer_range (range_type r2) && is_even_range r2 then
+			(* TODO --- there must be a better way to do this? *)
+			(* E.g. using the information about length variables *)
+			[MultiplyByConversion(2)]
+		else
+			[]
+	in
 	let po2_options =
 		if is_integer_range (range_type r1) && is_integer_range (range_type r2) then
             (* r2 is the assignment target, so we are looking
@@ -53,7 +61,7 @@ let range_conversion options r1 r2 =
             getIdentityConversionFunction options r1 r2
     else
         getIdentityConversionFunction options r1 r2
-	in po2_options @ perm_options
+	in multiply_options @ po2_options @ perm_options
 
 (* Various things are implausible, like the fromrange
 being lots and lots and the to range being nearly empty.

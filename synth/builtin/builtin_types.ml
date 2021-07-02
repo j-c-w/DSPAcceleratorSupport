@@ -45,3 +45,9 @@ let get_size_modifier_for typ =
 	| Struct("facc_2xf32_t") -> 2
 	| Struct("facc_2xf64_t") -> 2
 	| other -> 1
+
+let is_infered_type typ =
+	match typ with
+	| Struct("facc_2xf32_t") -> true
+	| Struct("facc_2xf64_t") -> true
+	| _ -> false

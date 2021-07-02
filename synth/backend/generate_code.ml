@@ -140,6 +140,8 @@ let cxx_dimension_value_to_string typemap dvalue =
 			cxx_name_reference_to_string typemap n
 	| DimVariable(n, DimPo2Relation) ->
 			"(1 << (" ^ (cxx_name_reference_to_string typemap n) ^ "))"
+	| DimVariable(n, DimMulByRelation(x)) ->
+			(cxx_name_reference_to_string typemap n) ^ " * " ^ (string_of_int x)
 
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)
@@ -156,7 +158,7 @@ let cxx_dimtype_to_name typemap dimtype =
 
 let rec cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier =
     match dimtype with
-            | Dimension(x) -> "[" ^ (cxx_dimension_value_to_string typemap x) ^ dim_ratio_modifier ^ "]"
+            | Dimension(x) -> "[" ^ (dim_ratio_modifier (cxx_dimension_value_to_string typemap x)) ^ "]"
 			| EmptyDimension -> "TOFILL"
 
 let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier =
@@ -191,7 +193,7 @@ let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ 
 			prefix ^ "*", subsize
     | othertyp ->
             let tyname = cxx_type_signature_synth_type_to_string othertyp in
-            tyname, "sizeof(" ^ tyname ^ ")" ^ dimratio_modifier
+            tyname, dimratio_modifier ("sizeof(" ^ tyname ^ ")")
 
 (* This is like a question of: if we are trying to return this
 variable, does it have to be malloced?*)
@@ -201,6 +203,25 @@ let is_malloc_type typemap typ =
 	| Pointer(_) -> true
 	| other -> false
 
+let get_dimension_modifer dim_orig dim_infered modifier =
+	match dim_orig with
+	| Dimension(DimVariable(_, DimEqualityRelation)) ->
+			(* Can do lots of conversions here.  *)
+			(
+		match dim_infered with
+			| Dimension(DimVariable(_, DimEqualityRelation)) -> (fun v -> v ^ modifier)
+			| Dimension(DimVariable(_, DimPo2Relation)) -> (fun v -> "(1 << " ^ v ^ ")" ^ modifier)
+			| Dimension(DimVariable(_, DimMulByRelation(x))) ->
+					(fun v -> (string_of_int x) ^ " * " ^ v ^ modifier)
+			| Dimension(DimConstant(_)) -> (fun v -> v ^ modifier)
+			| EmptyDimension -> (fun v -> v ^ modifier)
+			)
+	| other ->
+			(* Otehrwise, these are going to have to be
+			equal I think.  *)
+			let () = assert (dimension_type_equal dim_orig dim_infered) in
+			(fun v -> v ^ modifier)
+
 (* This is basically saying: if we are allocating
 space for t1, but then cast to an array of length
 t2 with dimension 'n', what factor do we need to
@@ -208,7 +229,7 @@ adjust n by to allocate the right ammount of space
 in terms of type t1.  *)
 let compute_dimension_ratio_modifier t1 t2 =
 	if synth_type_equal t1 t2 then
-		""
+		(fun v -> v)
 	else
 		(* So this should only ever be called with unequal
 			when type inference has been applied.  In that
@@ -220,14 +241,14 @@ let compute_dimension_ratio_modifier t1 t2 =
 			this will have to get more complex, but for
 			now it can just be a simple pattern match. *)
 		match t1, t2 with
-		| Array(Struct("facc_2xf32_t"), _), Array(Float32, _) ->
-                "/ 2"
-		| Array(Struct("facc_2xf64_t"), _), Array(Float64, _) ->
-                "/ 2"
-		| Array(Float32, _), Array(Struct("facc_2xf32_t"), _) ->
-                "* 2"
-		| Array(Float64, _), Array(Struct("facc_2xf64_t"), _) ->
-                "* 2"
+		| Array(Struct("facc_2xf32_t"), dim_op1), Array(Float32, dim_op2) ->
+                get_dimension_modifer dim_op1 dim_op2 "/ 2"
+		| Array(Struct("facc_2xf64_t"), dim_op1), Array(Float64, dim_op2) ->
+                get_dimension_modifer dim_op1 dim_op2 "/ 2"
+		| Array(Float32, dim_op1), Array(Struct("facc_2xf32_t"), dim_op2) ->
+                get_dimension_modifer dim_op1 dim_op2 "* 2"
+		| Array(Float64, dim_op1), Array(Struct("facc_2xf64_t"), dim_op2) ->
+                get_dimension_modifer dim_op1 dim_op2 "* 2"
         | _, _ ->
                 raise (CXXGenerationException ("Unexpected infered type pair " ^ (synth_type_to_string t1) ^ ", " ^ (synth_type_to_string t2)))
 
@@ -246,6 +267,8 @@ let use_dim_ratio_modifier adim =
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
 let rec cxx_definition_synth_type_to_string options typemap alignment escapes typ base_type name =
+	(* What ratio should be infered by the difference
+	between the sizes of the respective types.  *)
 	let dim_ratio_modifier =
 		compute_dimension_ratio_modifier typ base_type in
 	let alignment_value = match alignment with
@@ -718,10 +741,10 @@ and generate_output_assign options typemap program (infered_typ, typ) out out_pr
 		let dim_ratio_modifier =
 			if use_dim_ratio_modifier adim then
 				compute_dimension_ratio_modifier typ infered_typ
-			else ""
+			else (fun v -> v)
 		in
 		let _ = match infered_typ with
-		| Array(sty, sdim) -> sty
+		| Array(sty, sdim) -> sdim
 		(* Ideally, we could handle this, eg. in infering
 		structs over fixed-length arrays, but I'm not
 		actually sure what to do here. (maybe nothingish
@@ -737,7 +760,7 @@ and generate_output_assign options typemap program (infered_typ, typ) out out_pr
 		(* TODO--- need to actually properly handle multi-dimensions here.  *)
 		(* (Array indexing like this won't work for the C view of the world --probaly
 		need multipied indexes or some shit. ) *)
-		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ length ^ dim_ratio_modifier ^ "; " ^ ivar ^ "++) {" in
+		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ (dim_ratio_modifier length) ^ "; " ^ ivar ^ "++) {" in
 		let newout = generate_out_tmp() in
 		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ out ^ "[" ^ ivar ^ "];" in
 		let assbody, assresvar = generate_output_assign options typemap program (artyp, artyp) newout out_prefix "." in

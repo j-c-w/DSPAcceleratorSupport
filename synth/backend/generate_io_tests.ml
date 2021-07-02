@@ -112,8 +112,8 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 				that have precomputed constant tables, e.g. twiddle factors.  *)
 				generate_array_from_range rangemap (name_string)
 			else
-				let infered_subtype = match infered_type with
-				| Array(sty, _) -> sty
+				let (infered_subtype, infered_dim) = match infered_type with
+				| Array(sty, dim) -> sty, dim
 				(* As above with pointers: we can definitely handle this, but
 				as of now the structure inferencer doesn't actually do this,
 				and so it's difficult to understand what subtype to use without
@@ -122,7 +122,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 				in
 				(* If the name wasn't specified, then we should
 				generate an array.  *)
-				let dimvar_size = match dimvar with
+				let infered_dimvar_size = match infered_dim with
 				| Dimension(dms) -> dms
 				| EmptyDimension ->
 						raise (TypeException "Can't have empty dimensions!")
@@ -130,12 +130,9 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 				(* If this throws, there's an issue with the topo sorting below --- we
 				   expect that the dimvars will have been assigned.  *)
 				let base_arrlen =
-						match dimvar_size with
+						match infered_dimvar_size with
 						| DimVariable(dimvar_name, relation) ->
 								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
-								let () = if options.debug_generate_io_tests then
-									Printf.printf "Getting dimension %s\n" (name_reference_to_string dimvar_name)
-								else () in
 								let wrapper = get_value values_so_far dimvar_name in
 								let arrlen = match wrapper with
 								| Int16V(v) -> v
@@ -149,13 +146,22 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 										about what it means. *)
 										raise (TypeException "Unexpected list dimension type (non-int) ")
 								in
-                                (
+								let () = if options.debug_generate_io_tests then
+									Printf.printf "Getting dimension %s, with original array length %d\n" (name_reference_to_string dimvar_name) (arrlen)
+								else () in
+								let result_length = (
 								match relation with
 								| DimEqualityRelation -> arrlen
 								| DimPo2Relation ->
-										let () = Printf.printf "Computing po2 (2^%d)\n" arrlen in
 										Utils.power_of_two arrlen
-                                )
+								| DimMulByRelation(x) ->
+										x * arrlen
+                                ) in
+								let () = if options.debug_generate_io_tests then
+									Printf.printf "Got length after modification of %d" (result_length)
+								else ()
+								in
+								result_length
 						| DimConstant(c) -> c
 				in
 				let arrlen_modifier = get_size_modifier_for infered_subtype in
@@ -337,7 +343,7 @@ let generate_io_tests_for_program options (iospec: iospec) program_number (progr
 
 let generate_io_tests options (iospec: iospec) programs =
 	let () = if options.debug_generate_io_tests then
-		Printf.printf "Starting generating tests: Generating tests for %d programs\n" (List.length programs)
+		Printf.printf "Starting generating tests: Generating tests for %d programs (try using --no-parmp if you don't see any other debug information) \n" (List.length programs)
 	else () in
 	let numbers = generate_file_numbers (List.length programs) in
 	Utils.parmap options (fun (number, program) ->

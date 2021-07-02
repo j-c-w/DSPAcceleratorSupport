@@ -115,7 +115,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     let working_programs = List.filter_map post_synthesis_programs (fun (p, passing) -> if passing then Some(p) else None) in
 	(* Do some opts? *)
     (* Do not dump intermediates in the final result! *)
-	let () = Printf.printf "=================================\n" in
+	let () = Printf.printf "===============================================\n" in
 	let working_programs_code = generate_code opts api iospec false working_programs in
     let () = print_working_code opts api working_programs_code in
 	let () = print_working_code_warnings opts working_programs_code in

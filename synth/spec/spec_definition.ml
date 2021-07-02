@@ -38,6 +38,7 @@ and dimension_value =
 and dimension_relation =
 	| DimEqualityRelation
 	| DimPo2Relation
+	| DimMulByRelation of int
 
 type synth_value =
 	| BoolV of bool

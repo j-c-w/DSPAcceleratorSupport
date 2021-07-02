@@ -260,6 +260,16 @@ let check_assignment_compatability options skel dimensions =
 					else
 						(* no overlap.  *)
 						true
+			| DimvarOneDimension(VarMatch(tov, fromv, DimMulByRelation(x))) ->
+					if dim_assign_equal tovars tov then
+						(* as above *)
+						(dim_assign_equal fromvars fromv) &&
+						(match conversion_function with
+						| MultiplyByConversion(mby) -> x = mby
+						| _ -> false)
+					else
+						(* no overlap.  *)
+						true
             | DimvarOneDimension(ConstantMatch(_)) ->
                     true
             in

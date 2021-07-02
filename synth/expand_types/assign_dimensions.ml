@@ -4,6 +4,7 @@ open Spec_utils;;
 open Options;;
 open Utils;;
 open Range;;
+open Builtin_types;;
 
 exception AssignDimensionsException of string
 
@@ -63,11 +64,22 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 				let possible_len_vars =
 					List.concat
 						(List.map possible_len_vars (fun lv ->
+							(* Note that we do not infer the mulby relation here, since
+							that should be infered only during type inference (i.e.
+							we are saying hey, if we reduce the length of your
+							array by a factor of two, maybe the original N you were
+							using should actually be N / 2 now. ) *)
 							[
 								DimVariable(lv, DimEqualityRelation);
-								DimVariable(lv, DimPo2Relation)
+								DimVariable(lv, DimPo2Relation);
 							]
 							)) in
+				let () = if opts.debug_assign_dimensions then
+					let () = Printf.printf "Array variable has type %s\n" (synth_type_to_string name) in
+					let () = Printf.printf "Looking at the following len vars: %s\n" (String.concat ~sep:", " (List.map possible_len_vars dimension_value_to_string)) in
+					()
+				else ()
+				in
                 let newarrtyp =
 					List.concat (
 						List.map newsubtyps (fun newsubtyp ->
@@ -207,6 +219,10 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 									probably not worth accelerating? *)
 									(rmin >= 0) && (rmax > 1)
 								)
+						| Dimension(DimVariable(v, DimMulByRelation(x))) ->
+								let _ = Hashtbl.find rangemap (name_reference_to_string v) in
+								(* TODO --- filter by cheecking the multipled range is kinda still in range.  *)
+								true
 						| Dimension(DimVariable(v, DimPo2Relation)) ->
 								(* Note that rangemaps use a stupid non-nested structure where '.' is in the the actual used name.  *)
 								let vrange = Hashtbl.find rangemap (name_reference_to_string v) in

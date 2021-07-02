@@ -419,3 +419,21 @@ let range_item_to_int i =
 	match i with
 	| RangeInteger(i) -> i
 	| _ -> raise (RangeError "Can't do non int to integer")
+
+(*  These functions ask if this is an /entirely/ even
+    range.  ie. would it be safe to divide it by two.
+	*)
+let is_even_item i = match i with
+	| RangeInteger(x) -> (x % 2) = 0
+	| _ -> false (* only consider integer types.  *)
+
+let is_even_range_range r = match r with
+	| RangeRange(f, t) ->
+			false
+	| RangeItem(i) ->
+			is_even_item i
+
+let is_even_range r =
+	match r with
+	| RangeSet(elems) ->
+			Array.for_all elems is_even_range_range

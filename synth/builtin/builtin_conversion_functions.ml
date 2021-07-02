@@ -15,12 +15,15 @@ entries in generate_gir etc.  *)
 type conversion_functions =
 	| IdentityConversion
 	| PowerOfTwoConversion
+	| MultiplyByConversion of int
 	| Map of synth_type * synth_type * (range_value * range_value) list
 
 let conversion_function_to_string conv_function =
     match conv_function with
     | IdentityConversion -> "IdentityConversion"
 	| PowerOfTwoConversion -> "PowerOfTwoConversion"
+	| MultiplyByConversion(x) ->
+			"MultipliedBy " ^ (string_of_int x)
     | Map(f, t, ftlist) -> "ValueMapConversion(" ^
         (synth_type_to_string f) ^ "->" ^ (synth_type_to_string t) ^ ") {" ^
 		(String.concat ~sep:", " (List.map ftlist (fun (f, t) ->
