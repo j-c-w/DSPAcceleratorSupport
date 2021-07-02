@@ -455,15 +455,65 @@ and get_struct_variables classmap varname structname =
          List.map sf prepend_sname
         )
 
+let rec get_operations_in prog =
+	match prog with
+	| FSConditional(s, cond) ->
+			get_operations_in s
+	| FSArrayOp(operator, v) ->
+			[operator]
+	| FSSeq(slist) ->
+			List.concat(
+			List.map slist get_operations_in
+			)
+	| FSStructureHole -> []
+
+(* TODO *)
+let get_variables_in p = []
+
+let array_operator_equal x y =
+	match x, y with
+	| FSNormalize, FSNormalize -> true
+	| FSDenormalize, FSDenormalize -> true
+	| FSHalfNormalize, FSHalfNormalize -> true
+	| FSHalfDenormalize, FSHalfDenormalize -> true
+	| FSBitReversal, FSBitReversal -> true
+	| FSArrayOpHole, FSArrayOpHole -> true
+	| _, _ -> false
+
+let is_likely_valid_program prog =
+	let ops = get_operations_in prog in
+	let _ = get_variables_in prog in
+	
+	(* which operations are never going to be
+	useful in the same sketch.  *)
+	let invalid_op_pairs = [
+		[FSNormalize; FSDenormalize];
+		[FSNormalize; FSHalfNormalize];
+		[FSNormalize; FSHalfDenormalize];
+		[FSHalfNormalize; FSHalfDenormalize];
+		[FSHalfNormalize; FSDenormalize];
+		[FSDenormalize; FSHalfDenormalize];
+	] in
+	List.for_all invalid_op_pairs (fun inv_ops ->
+		not (List.for_all inv_ops (fun op -> List.mem ops op array_operator_equal))
+	)
+
 class fft_synth_manipulator hole_opts =
     object
         inherit [fs_structure] Generic_sketch_synth.synth_manipulator as super
         method to_string (fs: fs_structure) =
             to_string_structure fs
+
         method fill_holes structs =
-            List.concat (
-                List.map structs (fs_fill_holes hole_opts)
-            )
+			let all_options = 
+				List.concat (
+					List.map structs (fs_fill_holes hole_opts)
+				)
+			in
+			(* let () = Printf.printf "Pre filtering number of opts is %d\n" (List.length all_options) in *)
+			let filtered = List.filter all_options is_likely_valid_program in
+			(* let () = Printf.printf "Post filtering number of opts is %d\n" (List.length filtered) in *)
+			filtered
         method runner prog state =
             runner prog state
     end
