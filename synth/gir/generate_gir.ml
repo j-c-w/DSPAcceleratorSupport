@@ -98,7 +98,7 @@ let rec generate_loop_wrappers_from_dimensions dim =
 						you don't have to do the conversion :) *)
 						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
                             (* LoopOver(assign, indvar, FunctionCall(FunctionRef(Name("Pow2")), VariableList([generate_variable_reference_to tov]))) *)
-					| DimMulByRelation(x) ->
+					| DimDivByRelation(x) ->
 						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
                     ) in
                 (in_loop_assign, [indvar])
@@ -279,11 +279,11 @@ let generate_conversion_function conv = match conv with
             EmptyGIR, Name("identity")
 	| PowerOfTwoConversion ->
 			EmptyGIR, Name("Pow2")
-	| MultiplyByConversion(mby) ->
+	| DivideByConversion(mby) ->
 			(* OK, so really this shouldn't need to be a customizeable
 			function, but it fits easier with the rest of the
 			passes... *)
-			let fname = Name("MultiplByX_" ^ (gir_name_to_string (new_conversion_function ()))) in
+			let fname = Name("DivideByX_" ^ (gir_name_to_string (new_conversion_function ()))) in
 			let argname = new_variable() in
 			let returnvar = new_variable() in
 			let typelookup = Hashtbl.create (module String) in
@@ -296,9 +296,9 @@ let generate_conversion_function conv = match conv with
 					Definition(returnvar, true, Some(Int64));
 					Assignment(
 						LVariable(Variable(returnvar)),
-						Expression(FunctionCall(FunctionRef(Name("Multiply")),
+						Expression(FunctionCall(FunctionRef(Name("IntDivide")),
 						VariableList([
-							Constant(Int64V(mby)); Variable(argname)
+							Variable(argname); Constant(Int64V(mby))
 						])))
 					);
 					Return(VariableReference(Variable(returnvar)))
@@ -380,8 +380,8 @@ let get_definition_type_for options escapes validmap typemap v =
 								match relation with
 								| DimEqualityRelation -> Option.map raw_max (fun r -> DimConstant(r))
 								| DimPo2Relation -> Option.map raw_max (fun r -> DimConstant(Utils.power_of_two r))
-								| DimMulByRelation(mby) ->
-										Option.map raw_max (fun r -> DimConstant(r * mby))
+								| DimDivByRelation(mby) ->
+										Option.map raw_max (fun r -> DimConstant(r / mby))
 								)
                         | EmptyDimension -> assert false
                         in

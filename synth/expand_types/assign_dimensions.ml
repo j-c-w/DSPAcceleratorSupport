@@ -219,7 +219,7 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 									probably not worth accelerating? *)
 									(rmin >= 0) && (rmax > 1)
 								)
-						| Dimension(DimVariable(v, DimMulByRelation(x))) ->
+						| Dimension(DimVariable(v, DimDivByRelation(x))) ->
 								let _ = Hashtbl.find rangemap (name_reference_to_string v) in
 								(* TODO --- filter by cheecking the multipled range is kinda still in range.  *)
 								true

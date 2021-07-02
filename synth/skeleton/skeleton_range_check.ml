@@ -113,7 +113,7 @@ let execute_conversion_on_range direction conversion inp_ranges =
 					let shifted = log_all res in
 					shifted
 			)
-	| MultiplyByConversion(mby) ->
+	| DivideByConversion(mby) ->
 			let () = assert ((List.length inp_ranges) = 1) in
 			let res = List.hd_exn inp_ranges in
 			(
@@ -122,16 +122,16 @@ let execute_conversion_on_range direction conversion inp_ranges =
 					(
 					match res with
 					| RangeSet(items) ->
-							RangeSet(Array.map items (fun i ->
-								range_item_multiply i mby
+							RangeSet(Array.filter_map items (fun i ->
+								range_item_divide i mby
 							))
 					)
 			| RangeBackward ->
 					(
 					match res with
 					| RangeSet(items) ->
-							RangeSet(Array.filter_map items (fun item ->
-								range_item_divide item mby
+							RangeSet(Array.map items (fun item ->
+								range_item_multiply item mby
 							))
 					)
 			)

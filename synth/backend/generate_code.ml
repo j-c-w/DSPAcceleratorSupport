@@ -140,8 +140,8 @@ let cxx_dimension_value_to_string typemap dvalue =
 			cxx_name_reference_to_string typemap n
 	| DimVariable(n, DimPo2Relation) ->
 			"(1 << (" ^ (cxx_name_reference_to_string typemap n) ^ "))"
-	| DimVariable(n, DimMulByRelation(x)) ->
-			(cxx_name_reference_to_string typemap n) ^ " * " ^ (string_of_int x)
+	| DimVariable(n, DimDivByRelation(x)) ->
+			"(" ^ (cxx_name_reference_to_string typemap n) ^ " / " ^ (string_of_int x) ^ ")"
 
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)
@@ -211,8 +211,8 @@ let get_dimension_modifer dim_orig dim_infered modifier =
 		match dim_infered with
 			| Dimension(DimVariable(_, DimEqualityRelation)) -> (fun v -> v ^ modifier)
 			| Dimension(DimVariable(_, DimPo2Relation)) -> (fun v -> "(1 << " ^ v ^ ")" ^ modifier)
-			| Dimension(DimVariable(_, DimMulByRelation(x))) ->
-					(fun v -> (string_of_int x) ^ " * " ^ v ^ modifier)
+			| Dimension(DimVariable(_, DimDivByRelation(x))) ->
+					(fun v ->  "(" ^ v ^ " / " ^ (string_of_int x) ^ ")" ^ modifier)
 			| Dimension(DimConstant(_)) -> (fun v -> v ^ modifier)
 			| EmptyDimension -> (fun v -> v ^ modifier)
 			)

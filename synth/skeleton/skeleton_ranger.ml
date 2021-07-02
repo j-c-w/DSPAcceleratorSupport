@@ -36,7 +36,7 @@ let range_conversion options r1 r2 =
 		if is_integer_range (range_type r1) && is_integer_range (range_type r2) && is_even_range r2 then
 			(* TODO --- there must be a better way to do this? *)
 			(* E.g. using the information about length variables *)
-			[MultiplyByConversion(2)]
+			[DivideByConversion(2)]
 		else
 			[]
 	in

@@ -35,12 +35,12 @@ let fft_generate_gir_from_dimension (x: dimension_type) =
 								)
 							))]),
 							Variable(Name(tmpvar))
-					| DimMulByRelation(mby) ->
+					| DimDivByRelation(mby) ->
 							let tmpvar = generate_ind_name () in
 							Sequence([Definition(Name(tmpvar), false, Some(Int64));
 							Assignment(
 								LVariable(Variable(Name(tmpvar))),
-								Expression(FunctionCall(FunctionRef(Name("Multiply")),
+								Expression(FunctionCall(FunctionRef(Name("IntDivide")),
 								VariableList([Variable(Name(name_reference_to_string x)); Constant(Int64V(mby))])
 							)))]), Variable(Name(tmpvar))
 					)

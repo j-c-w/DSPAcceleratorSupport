@@ -12,7 +12,7 @@
 
 // Operations
 #define Pow2(x) (1 << x)
-#define Multiply(x,y) (x * y)
+#define IntDivide(x,y) (x / y)
 
 // Builtin types
 typedef struct { float f32_1; float f32_2; } facc_2xf32_t;
