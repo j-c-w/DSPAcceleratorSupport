@@ -495,7 +495,7 @@ let is_likely_valid_program prog =
 		[FSDenormalize; FSHalfDenormalize];
 	] in
 	List.for_all invalid_op_pairs (fun inv_ops ->
-		not (List.for_all inv_ops (fun op -> List.mem ops op array_operator_equal))
+		List.exists inv_ops (fun op -> not(List.mem ops op array_operator_equal))
 	)
 
 class fft_synth_manipulator hole_opts =

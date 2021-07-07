@@ -129,14 +129,13 @@ let rec generate_gir_program options typemap fft_behaviour =
                 (* These are technically macros, but should
                 end up being the smae.   *)
 				Sequence([
-					precode;
 					Expression(FunctionCall(
 						fref,
 						VariableList([vname; post_index; length_name])
 					))
 				])
             ) in
-            Sequence(calls)
+			Sequence(precode :: calls)
     | FSSeq(elems) ->
 			Sequence(
 				List.map elems (generate_gir_program options typemap)
