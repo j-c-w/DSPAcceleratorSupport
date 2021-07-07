@@ -13,6 +13,8 @@ https://github.com/JodiTheTigger/meow_fft: Supported: --- Valid.
 https://github.com/slowjud/FFT: Broken: --- Valid but has unknown header that I can't find.  Novel structure for storing inputs.
 https://github.com/extemporelang/kiss_fft: Clone: --- Clone of kissfft above.
 https://github.com/jtfell/c-fft: Supported: --- Valid for some functions.  Provides too much input sparsity on others.
+https://github.com/jtfell/c-fft: Supported: -- CooleyTukey
+https://github.com/jtfell/c-fft: Supported: --- GoodThomas
 https://github.com/adafruit/Adafruit_ZeroFFT: Fixed-Point FFT: --  Integer FFT
 https://github.com/FFmpeg/FFmpeg: Fixed-Point FFT: -- Valid after preprocessor generates the functions.
 https://github.com/Themaister/muFFT : Function Pointers: --- Valid.  In-context only, very complicated struct used as a plan.
@@ -26,7 +28,7 @@ https://github.com/swharden/FftSharp:Not C/C++: --- Written in C# I think.
 https://github.com/gpu-fftw/gpu_fftw :Architecture-Specific Code:--- Seems like it should work --- might need specialized hardware to run properly though.
 https://github.com/liscio/fft/ :Supported:--- Supported
 https://github.com/marton78/pffft :Supported:--- Supported in context
-https://github.com/SproutOrc/MSP430FFT : Supported: --- Only one length supported by the code
+https://github.com/SproutOrc/MSP430FFT : Broken: --- Only one length supported by the code
 https://github.com/madhurjain/audio-fft : Fixed-Point: --- Also a clone, just copy and paste Arm CMSIS
 https://github.com/barnex/fftw: Clone:  --- Also written in Go.
 https://github.com/godock/fftw-build : Clone: --- fftw again
@@ -38,10 +40,11 @@ https://github.com/cpuimage/fftResample : Clone : --- some other repo cloned.
 https://github.com/Stenzel/FFT4CM4F : Not C/C++ : --- Assembly, supported but not portable between targets to benchmark.
 https://github.com/calamitySoft/FFT-Listener: Integer FFT: ---- 
 https://github.com/amd/amd-fftw : Clone:
-https://github.com/xbarin02/uFFT : Supported: --- should be easy 
+https://github.com/xbarin02/uFFT : Supported: DIF
+https://github.com/xbarin02/uFFT : Supported: DIT
 https://github.com/EuphonistiHack/launchpad-freq-analyzer : Clone : Using ARM CMSIS
 https://github.com/tasimon/FFT: Supported: --- Note only supports length of 64.
-https://github.com/slosar/FFTLog: Unsupported: Implements the FFTLog algorithm, quite a cool one to be honest: https://jila.colorado.edu/~ajsh/FFTLog/
+https://github.com/slosar/FFTLog: FFTLog: Implements the FFTLog algorithm, quite a cool one to be honest: https://jila.colorado.edu/~ajsh/FFTLog/
 https://github.com/ericlyon/pd-fftease: Supported: --- Looks easy to support
 https://github.com/adis300/fft-c: Support in Progress : I think this needs a conversion to/from a real-valued FFT
 https://github.com/simpleavr/lp_8bitfft: Fixed-Point FFT:  --- fixed point
