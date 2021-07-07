@@ -23,6 +23,42 @@ let getIdentityConversionFunction options r1 r2 =
 			we probably shouldn't do this assignment as an identity assignment. *)
 		[]
 
+(* Tranform a range by some conversion function (forward) *)
+let transform_range convf range =
+    let apply_conv i = match i with
+    | RangeInteger(i) ->
+            (
+            match convf with
+            | IdentityConversion -> RangeInteger(i)
+            | PowerOfTwoConversion -> RangeInteger(Utils.power_of_two i)
+            | DivideByConversion(n) -> RangeInteger(i / n)
+            | Map(_, _, vlist) ->
+                    let (_, res) = List.find_exn vlist ~f:(fun (f, t) ->
+                        if range_value_eq (range_value_to_item f) (RangeInteger(i)) then
+                            true
+                        else
+                            false
+                    ) in
+                    range_value_to_item res
+            )
+    | _ -> assert false (* IMO conversions are only generated
+    for ints right now.  *)
+    (* Tha'ts not strictly true I think --- might also
+    be FP, for e.g. maps, but I can't remember. *)
+    in
+    let transform_range_itms itm = match itm with
+    | RangeItem(i) -> RangeItem(apply_conv i)
+    | RangeRange(f, t) ->
+            (* todo --- might have to flip f/t for some
+             things e.g. divide by -1.   THose
+             aren't generated right now. *)
+            RangeRange(apply_conv f, apply_conv t)
+    in
+    match range with
+    | RangeSet(itms) ->
+            RangeSet(Array.map itms transform_range_itms)
+
+
 (* There is a lot more we could do here, e.g.
    making ranges with 0 overlap unlikely etc.  *)
 (* Generate a conversion from r1 to r2.  *)
@@ -69,7 +105,7 @@ I suspect a lot more could be done here.  *)
 (* There is a lot of nuance we want to avoid here, e.g.
 if the user has picked doubles, and the accelerator is
 floats, we probably still want to try it.  *)
-let range_compat_check options from_range to_range =
+let range_compat_check options conversion from_range to_range =
     let from_size = range_size from_range in
     let to_size = range_size to_range in
     (* Want to check if fom_size >> to_size (if so then fail) *)
@@ -85,7 +121,7 @@ let range_compat_check options from_range to_range =
         ()
     else ()
     in
-	let has_intersection = range_set_has_intersection from_range to_range in
+	let has_intersection = range_set_has_intersection (transform_range conversion from_range) to_range in
 	(* If the sets are small enough, we'll try combinatorial mapping, so
 	   we don't need to worry too much about overlap.  *)
 	let small_set_from = (range_size_compare from_size rangeConversionSizeLimit) = -1 in
@@ -141,18 +177,23 @@ let check_binds options from_rangemap to_rangemap (bind: flat_single_variable_bi
                 ()
             else ()
             in
-            let compatible = range_compat_check options frange trange in
-            if compatible then
-                let conv_fs = range_conversion options frange trange in
-				List.map conv_fs (fun conv_f -> {
-					fromvars_index_nesting = bind.fromvars_index_nesting;
-					tovar_index_nesting = bind.tovar_index_nesting;
-					valid_dimensions = bind.valid_dimensions;
-					conversion_function = conv_f
-				})
-            else
-                (* Not compatible.  *)
-				[]
+            let conv_fs = range_conversion options frange trange in
+            List.filter_map conv_fs (fun conv_f ->
+                let compatible = range_compat_check options conv_f frange trange in
+                let () = if options.debug_skeleton_range_filter then
+                    let () = Printf.printf "Under conversion %s compatible: %b\n" (conversion_function_to_string conv_f) (compatible) in
+                    () else ()
+                in
+                if compatible then
+                    Some({
+                        fromvars_index_nesting = bind.fromvars_index_nesting;
+                        tovar_index_nesting = bind.tovar_index_nesting;
+                        valid_dimensions = bind.valid_dimensions;
+                        conversion_function = conv_f
+                    })
+                else
+                    None
+            )
 
 (* This is a pass aimed at 'range-ifying' bindings -- it excludes
    bindings with vastly different valid range bindings, and

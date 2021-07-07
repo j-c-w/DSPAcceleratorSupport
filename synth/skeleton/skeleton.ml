@@ -645,8 +645,10 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
             (List.length livein_types) (List.length livein_api_types)
             (List.length liveout_api_types) (List.length liveout_types);
 		Printf.printf "For this typemap:\n";
-        Printf.printf "Number of pre-bindings generated is %d\n" (List.length range_checked_pre_skeletons);
-        Printf.printf "Number of post-bindings generated is %d\n" (List.length range_checked_post_skeletons);
+        Printf.printf "Number of pre-bindings generated is %d\n" (List.length pre_skeletons);
+        Printf.printf "Number of post-bindings generated is %d\n" (List.length post_skeletons);
+		Printf.printf "Number of pre-bindings after filtering is %d\n" (List.length range_checked_pre_skeletons);
+		Printf.printf "Number of post-bindings after filtering is %d\n" (List.length range_checked_post_skeletons);
         Printf.printf "Number of skeletons generated is %d\n" (List.length skeleton_pair_objects);
         Printf.printf "Number of skeletons post-filtering is %d\n" (List.length sensible_skeleton_pairs);
 		(* Printf.printf "Returnvars requiring a define are %s\n" (String.concat ~sep:", " define_only_return_vars); *)
