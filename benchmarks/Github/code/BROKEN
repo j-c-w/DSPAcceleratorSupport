@@ -11,3 +11,7 @@ biotrump_OouraFFT_4: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_5: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_6: Non-MultiplicativeArrayLenghts
 omnister_fftp: AliasedReturnVariable Support
+rshuston_FFT-C: Buggy
+rshuston_FFT-C_2: Buggy
+rshuston_FFT-C_3: Buggy
+kappalabs_fft_band_equalizer: Carried-Over-Outputs
