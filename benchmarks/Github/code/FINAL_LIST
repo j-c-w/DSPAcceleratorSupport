@@ -1,4 +1,3 @@
-Following is a list of benchmarks from the search list that were deemed suitable.  See SEARCH_LIST for more details on why they are included.
 xiahouzouxin_fft: None
 mborgerding_kissfft: None
 cpuimage_FFTResampler: None
@@ -16,6 +15,5 @@ xbarin02_uFFT_2: None
 tasimon_FFT: StructureInference
 cpuimage_StockhamFFT: None
 akw0088_fft: None
-rshuston_FFT-C: None
-rshuston_FFT-C_2: None
-rshuston_FFT-C_3: None
+cpuimage_cpuFFT: None
+mozanuanal_SimpleDSP: ValueProfiling

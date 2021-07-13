@@ -1,9 +1,5 @@
 Themaister_muFFT: Void* Pointers
-fakufaku_esp32-fft: Buggy: Crashing when I try it
-https://github.com/adis300/fft-c: Real-Valued FFT : I think this needs a conversion to/from a real-valued FFT
 https://github.com/brendanashworth/fft-small: Distinct Interface: --- I don't understand how to create a benchmark from this, don't know what x is, but it looks data-dependent, which is a no-go.
-https://github.com/SproutOrc/MSP430FFT: Buggy: Incorrect outputs
-https://github.com/ericlyon/pd-fftease: Buggy: Incorrect outputs
 biotrump_OouraFFT: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_2: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_3: Non-MultiplicativeArrayLenghts
@@ -11,3 +7,8 @@ biotrump_OouraFFT_4: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_5: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_6: Non-MultiplicativeArrayLenghts
 omnister_fftp: AliasedReturnVariable Support
+https://github.com/BradenHarrelson/FastFourierTransform: Unsynthesizeable I/O
+https://github.com/BradenHarrelson/FastFourierTransform_2: Unsynthesizeable I/O
+https://github.com/983/fft: Unbindable Outputs
+https://github.com/helloworldpark/wavelet-fft: Unbindable Outputs
+https://github.com/seanlikeskites/atfft: Void* Pointers
