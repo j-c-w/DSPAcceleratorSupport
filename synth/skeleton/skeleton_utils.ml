@@ -23,7 +23,7 @@ let one_dimension_mapping_equal m1 m2 =
     | VarMatch(fromv1, tov1, mode1), VarMatch(fromv2, tov2, mode2) ->
             (name_reference_equal fromv1 fromv2) &&
             (name_reference_equal tov1 tov2) &&
-            (mode1 = mode2)
+            (dim_relation_equal mode1 mode2)
 	| ConstantMatch(fconst1), ConstantMatch(fconst2) ->
 			(fconst1 = fconst2)
     | _, _ -> false

@@ -63,7 +63,12 @@ let dimension_value_to_string (dim: dimension_value) =
 	| DimConstant(i) -> (string_of_int i)
 	| DimVariable(n, rel) -> (name_reference_to_string n) ^ (dim_relation_to_string rel)
 
-let dim_relation_equal r1 r2 = (r1 = r2)
+let dim_relation_equal r1 r2 = match r1, r2 with
+	| DimEqualityRelation, DimEqualityRelation -> true
+	| DimPo2Relation, DimPo2Relation -> true
+	| DimDivByRelation(x), DimDivByRelation(y) ->
+			x = y
+	| _, _ -> false
 	
 let dimension_value_equal d1 d2 =
 	match d1, d2 with

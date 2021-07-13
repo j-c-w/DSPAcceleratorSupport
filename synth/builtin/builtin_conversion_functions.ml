@@ -18,6 +18,16 @@ type conversion_functions =
 	| DivideByConversion of int
 	| Map of synth_type * synth_type * (range_value * range_value) list
 
+let is_identity_conversion conv =
+	match conv with
+	| IdentityConversion -> true
+	| _ -> false
+
+let is_po2_conversion conv =
+	match conv with
+	| PowerOfTwoConversion -> true
+	| _ -> false
+
 let conversion_function_to_string conv_function =
     match conv_function with
     | IdentityConversion -> "IdentityConversion"
