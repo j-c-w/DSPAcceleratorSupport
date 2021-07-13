@@ -247,7 +247,7 @@ let check_assignment_compatability options skel dimensions =
                     if dim_assign_equal tovars tov then
 						(* conversion function must preserve the dimension relation.  *)
 						(dim_assign_equal fromvars fromv) &&
-						(conversion_function = IdentityConversion)
+						(is_identity_conversion conversion_function)
                     else
                         (* This dimension has no overlap with
                         the assignment we are considering. *)
@@ -256,7 +256,7 @@ let check_assignment_compatability options skel dimensions =
 					if dim_assign_equal tovars tov then
 						(* as above.  *)
 						(dim_assign_equal fromvars fromv) &&
-						(conversion_function = PowerOfTwoConversion)
+						(is_po2_conversion conversion_function)
 					else
 						(* no overlap.  *)
 						true
