@@ -154,8 +154,8 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 								| DimEqualityRelation -> arrlen
 								| DimPo2Relation ->
 										Utils.power_of_two arrlen
-								| DimDivByRelation(x) ->
-										arrlen / x
+								| DimDivByPlusOneRelation(x) ->
+										(arrlen - 1) / x
                                 ) in
 								let () = if options.debug_generate_io_tests then
 									Printf.printf "Got length after modification of %d\n" (result_length)

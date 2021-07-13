@@ -141,7 +141,7 @@ let cxx_dimension_value_to_string typemap dvalue =
 	| DimVariable(n, DimPo2Relation) ->
 			"(1 << (" ^ (cxx_name_reference_to_string typemap n) ^ "))"
 	| DimVariable(n, DimDivByRelation(x)) ->
-			"(" ^ (cxx_name_reference_to_string typemap n) ^ " / " ^ (string_of_int x) ^ ")"
+			"((" ^ (cxx_name_reference_to_string typemap n) ^ " - 1) / " ^ (string_of_int x) ^ ")"
 
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)

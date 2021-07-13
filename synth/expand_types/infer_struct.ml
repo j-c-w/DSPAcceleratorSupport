@@ -45,7 +45,7 @@ let infer_structs_on_typemap options typemap variables =
 							depending on how ingrained this infered
 							type is in user code, it may or may
 							not affect the struct by a factor of two. *)
-							Dimension(DimVariable(v, DimEqualityRelation)); Dimension(DimVariable(v, DimDivByRelation(2)))
+							Dimension(DimVariable(v, DimEqualityRelation)); Dimension(DimVariable(v, DimDivByPlusOneRelation(2)))
 						]
 						(* TODO -- completeness would suggest that we need the same
 						expansion for Po2 lengths. *)

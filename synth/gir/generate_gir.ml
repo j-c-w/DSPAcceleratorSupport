@@ -98,7 +98,7 @@ let rec generate_loop_wrappers_from_dimensions dim =
 						you don't have to do the conversion :) *)
 						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
                             (* LoopOver(assign, indvar, FunctionCall(FunctionRef(Name("Pow2")), VariableList([generate_variable_reference_to tov]))) *)
-					| DimDivByRelation(x) ->
+					| DimDivByPlusOneRelation(x) ->
 						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
                     ) in
                 (in_loop_assign, [indvar])
@@ -296,7 +296,7 @@ let generate_conversion_function conv = match conv with
 					Definition(returnvar, true, Some(Int64));
 					Assignment(
 						LVariable(Variable(returnvar)),
-						Expression(FunctionCall(FunctionRef(Name("IntDivide")),
+						Expression(FunctionCall(FunctionRef(Name("IntDividePlusOne")),
 						VariableList([
 							Variable(argname); Constant(Int64V(mby))
 						])))
@@ -380,8 +380,8 @@ let get_definition_type_for options escapes validmap typemap v =
 								match relation with
 								| DimEqualityRelation -> Option.map raw_max (fun r -> DimConstant(r))
 								| DimPo2Relation -> Option.map raw_max (fun r -> DimConstant(Utils.power_of_two r))
-								| DimDivByRelation(mby) ->
-										Option.map raw_max (fun r -> DimConstant(r / mby))
+								| DimDivByPlusOneRelation(mby) ->
+										Option.map raw_max (fun r -> DimConstant((r - 1) / mby))
 								)
                         | EmptyDimension -> assert false
                         in

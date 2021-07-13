@@ -40,7 +40,7 @@ let fft_generate_gir_from_dimension (x: dimension_type) =
 							Sequence([Definition(Name(tmpvar), false, Some(Int64));
 							Assignment(
 								LVariable(Variable(Name(tmpvar))),
-								Expression(FunctionCall(FunctionRef(Name("IntDivide")),
+								Expression(FunctionCall(FunctionRef(Name("IntDividePlusOne")),
 								VariableList([Variable(Name(name_reference_to_string x)); Constant(Int64V(mby))])
 							)))]), Variable(Name(tmpvar))
 					)

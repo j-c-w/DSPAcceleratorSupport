@@ -106,14 +106,14 @@ let dimvar_match x y =
             Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
     | DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimPo2Relation) ->
             Some(DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation)))
-	| DimVariable(vname1, DimDivByRelation(x)), DimVariable(vname2, DimDivByRelation(y)) ->
+	| DimVariable(vname1, DimDivByPlusOneRelation(x)), DimVariable(vname2, DimDivByPlusOneRelation(y)) ->
 			if x = y then
 				Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
 			else
 				(* TODO --- infer another multiplication factor? *)
 				None
-	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimDivByRelation(x)) ->
-			Some(DimvarOneDimension(VarMatch(vname1, vname2, DimDivByRelation(x))))
+	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimDivByPlusOneRelation(x)) ->
+			Some(DimvarOneDimension(VarMatch(vname1, vname2, DimDivByPlusOneRelation(x))))
             (* TODO -- do we need an inverse po2/mulby relation? *)
     | DimVariable(vname1, _), DimVariable(vname2, _) ->
             (* TODO --- does it do us any good to do a
@@ -331,7 +331,7 @@ and bindings_for (typesets_in: skeleton_type list) (output: skeleton_type): assi
 
    Need to get a set of assignments for each
    output. *)
-and possible_bindings options direction constant_options_map (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
+and possible_bindings options direction constant_options_map (typesets_in: skeleton_dimension_group_type list) (backup_typesets_in) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
     List.concat (List.map types_out (fun type_out ->
 		(*  Make sure that all the possible assingments
 		    have the same dimension.  *)
@@ -382,7 +382,8 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                         let () = assert ((List.length dim_mapping) > 0) in
 						(* Get the possible bindings.  *)
 						let poss_bindings: single_variable_binding_option_group list list =
-							possible_bindings options direction constant_options_map flattened_undimensioned_typeset flattened_arr_stypes in
+							(* TODO --- pass the backup options through here.  *)
+							possible_bindings options direction constant_options_map flattened_undimensioned_typeset [] flattened_arr_stypes in
 						let () = verify_single_binding_option_groups poss_bindings in
 						(* Now add the required dimension mappings.  *)
 						(* For each variable assignment *)
@@ -421,7 +422,18 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                     (* Generate a list of suitable constant binds
                     for this varaible.  *)
                     get_plausible_constants_for constant_options_map stype_out in
-                let all_binds = var_binds @ constbinds in
+                let all_binds = match var_binds @ constbinds with
+					| [] -> (* Get any backup binds: if we couldn't find anything
+					then there may be some other variables
+					we can search bindings for.   This is
+					used for the post-bindings, where if there
+					is nothing found in the live-out  of the API,
+					we can look at the live-in to the user code
+					(as some things often don't change, e.g.
+					array lengths). *)
+							bindings_for (flatten_stypes backup_typesets_in) stype_out
+					| other -> other
+				in
 				let () = if (List.length all_binds) = 0 then
 					let () = Printf.printf "Found no plausible binds for variable %s!\n%!" (name_reference_to_string (name_refs_from_skeleton stype_out)) in
 					let () = Printf.printf "Hashtbl keys were %s\n" (String.concat (Hashtbl.keys constant_options_map)) in
@@ -545,7 +557,7 @@ let get_dimvars_used typeset =
         )in
     remove_duplicates dimension_value_equal with_dups
 
-let assign_and_define_bindings options direction constant_options_map typesets_in typesets_out typesets_define_only =
+let assign_and_define_bindings options direction constant_options_map typesets_in backup_typesets_in typesets_out typesets_define_only =
 	(* Need to flatten the output typesets to make sure we only
 	   look for one type at a type --- this takes the STypes([...])
 	   and converts it to [...] *)
@@ -553,7 +565,7 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
 	(* Get a list of list of possible inputs for each
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
-	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options direction constant_options_map typesets_in flattened_typesets_out in
+	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options direction constant_options_map typesets_in backup_typesets_in flattened_typesets_out in
 	let () = verify_single_binding_option_groups possible_bindings_list in
 	(* Now, generate a set of empty assigns for the variables
 	that don't have to have anything assigned to them.
@@ -569,8 +581,8 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
 
 (* The algorithm should produce bindings from the inputs
    the outputs. *)
-let binding_skeleton options direction typemap constant_options_map typesets_in typesets_out typesets_define =
-	let possible_bindings_list = assign_and_define_bindings options direction constant_options_map typesets_in typesets_out typesets_define in
+let binding_skeleton options direction typemap constant_options_map typesets_in backup_typesets_in typesets_out typesets_define =
+	let possible_bindings_list = assign_and_define_bindings options direction constant_options_map typesets_in backup_typesets_in typesets_out typesets_define in
 	(* Verify that there is exactly one variable per list, and that
 	   there is not more than one list per variable.  *)
 	(* Then, filter out various bindings that might not make any sense.  *)
@@ -610,8 +622,8 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     (* Get any constants that we should try for the binds.  *)
     let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types (livein_api_types @ liveout_types) in
     (* Now use these to create skeletons.  *)
-	let pre_skeletons: skeleton_type_binding list = binding_skeleton options PreBinding typemap constant_options_map livein_types livein_api_types define_only_api_types in
-	let post_skeletons = binding_skeleton options PostBinding typemap constant_options_map liveout_api_types liveout_types [] in
+	let pre_skeletons: skeleton_type_binding list = binding_skeleton options PreBinding typemap constant_options_map livein_types [] livein_api_types define_only_api_types in
+	let post_skeletons = binding_skeleton options PostBinding typemap constant_options_map liveout_api_types livein_types liveout_types [] in
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in

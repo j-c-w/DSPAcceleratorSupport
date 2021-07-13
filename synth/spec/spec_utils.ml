@@ -56,7 +56,7 @@ let dim_relation_to_string dimrel =
     match dimrel with
     | DimEqualityRelation -> " (=) "
     | DimPo2Relation -> " (^2) "
-	| DimDivByRelation(x) -> " (/" ^ (string_of_int x) ^ ")"
+	| DimDivByPlusOneRelation(x) -> " (/" ^ (string_of_int x) ^ " + 1)"
 
 let dimension_value_to_string (dim: dimension_value) =
 	match dim with
@@ -66,7 +66,7 @@ let dimension_value_to_string (dim: dimension_value) =
 let dim_relation_equal r1 r2 = match r1, r2 with
 	| DimEqualityRelation, DimEqualityRelation -> true
 	| DimPo2Relation, DimPo2Relation -> true
-	| DimDivByRelation(x), DimDivByRelation(y) ->
+	| DimDivByPlusOneRelation(x), DimDivByPlusOneRelation(y) ->
 			x = y
 	| _, _ -> false
 	
