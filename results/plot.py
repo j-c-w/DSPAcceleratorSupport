@@ -36,6 +36,9 @@ def plot(group, lines, names, style):
         ## DFTs are /really/ slow, so show on log.
         ax.set_yscale('log', basey=10)
     for lineset, name in zip(lines, names):
+        if len(lineset) == 0:
+            print (name + " has empty lineset")
+            raise error
         x, y = get_lines_from(lineset)
         plt.plot(x, y, label=name)
         minx, maxx = min(x), max(x)
@@ -52,9 +55,9 @@ def plot(group, lines, names, style):
         plt.title("Overhead of FACC-Generated Code Across Different Sizes")
         plt.xlabel("Input size")
 
-    plt.legend()
+    # plt.legend()
 
-    plt.savefig(style + "_" + group + "_output.png")
+    plt.savefig(style + "_" + group + "_output.eps")
     plt.close()
 
 def load_result_maps(base_folder, folder, postfix):
@@ -86,7 +89,10 @@ if __name__ == "__main__":
         v2 = load_result_maps(folder, args.AcceleratedResultsFolder, "json_out")
         res = {}
         for k in v1.keys():
-            res[k] = v1[k] / v2[k]
+            if k in v2.keys():
+                res[k] = v1[k] / v2[k]
+            else:
+                print ("Warning: did not get a result for both original and accelerated")
 
         lines.append(res)
         names.append(folder)
