@@ -23,6 +23,7 @@ for line in $(cat $1); do
 		from=$(echo $line | cut -f2 -d ':')
 		to=$(echo $line | cut -f3 -d ':')
 		search_replaces+=("s:$from:$to:g")
+		contents=""
 	else
 		contents="$(sed -n "${range}p" $fname)"
 	fi
