@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('InfoFile')
+    parser.add_argument('BrokenFile')
     args = parser.parse_args()
 
     total_size = 0
@@ -11,7 +12,17 @@ if __name__ == "__main__":
         reasons = {}
         for line in f.readlines():
             print (line)
-            reason = line.split(":")[2].strip()
+            reason = line.split(":")[1].strip()
+            if reason in reasons:
+                reasons[reason] += 1
+                total_size += 1
+            else:
+                reasons[reason] = 1
+                total_size += 1
+    with open(args.BrokenFile) as f:
+        for line in f.readlines():
+            print(line)
+            reason = line.split(":")[1].strip()
             if reason in reasons:
                 reasons[reason] += 1
                 total_size += 1
