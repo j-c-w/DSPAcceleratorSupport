@@ -1,5 +1,5 @@
 Themaister_muFFT: Void* Pointers
-https://github.com/brendanashworth/fft-small: Interface Incompatability: --- I don't understand how to create a benchmark from this, don't know what x is, but it looks data-dependent, which is a no-go.
+brendanashworth_fft-small: Interface Incompatability: --- I don't understand how to create a benchmark from this, don't know what x is, but it looks data-dependent, which is a no-go.
 biotrump_OouraFFT: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_2: Non-MultiplicativeArrayLenghts
 biotrump_OouraFFT_3: Non-MultiplicativeArrayLenghts
