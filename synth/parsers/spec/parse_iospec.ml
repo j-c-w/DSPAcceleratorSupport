@@ -16,7 +16,12 @@ exception IOSpecError of string
 let extract_typemap typemap vars =
 	let tbl: (string, synth_type) Hashtbl.t = (Hashtbl.create (module String)) in
 	(* Exctract the type names and their values from the JSON. *)
-	let typepairs = List.map vars (fun var -> (var, parse_type(typemap |> member var |> to_string))) in
+	let typepairs = List.map vars (fun var ->
+		if (Yojson.Basic.Util.member var typemap) = `Null then
+			raise (IOSpecError ("Not found type for variable " ^ var ^ "\n"))
+		else
+            (var, parse_type(typemap |> member var |> to_string))
+	) in
 	(* Add these types to the hash map.  *)
 	ignore(List.map typepairs (fun (var, t)  -> Hashtbl.add tbl var t));
 	tbl;;
