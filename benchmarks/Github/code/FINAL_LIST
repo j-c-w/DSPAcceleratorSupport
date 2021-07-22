@@ -16,4 +16,4 @@ tasimon_FFT: Supported:StructureInference
 cpuimage_StockhamFFT: Supported:None
 akw0088_fft: Supported:None
 cpuimage_cpuFFT: Supported:None
-mozanuanal_SimpleDSP: Supported:ValueProfiling
+mozanunal_SimpleDSP: Supported:ValueProfiling
