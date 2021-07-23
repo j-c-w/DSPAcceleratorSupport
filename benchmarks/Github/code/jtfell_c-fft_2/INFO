@@ -5,3 +5,4 @@ MainFile: None
 FFTFucntion: fft.c:FFT_GoodThomas
 Notes: Could use the context in benchmark.c to support the other implemented algs that have sparse inputs.
 Algorithm: GoodThomas
+FunctionLine: 49
