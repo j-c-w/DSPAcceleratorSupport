@@ -66,7 +66,9 @@ direction_vec.push_back(direction_inner);
 }
 complex_f *direction = &direction_vec[0];
 clock_t begin = clock();
-fftr_f(data, log2_N, direction);
+for (int i = 0; i < TIMES; i ++) {
+	fftr_f(data, log2_N, direction);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
