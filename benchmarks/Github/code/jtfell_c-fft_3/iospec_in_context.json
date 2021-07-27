@@ -9,8 +9,7 @@
 		"../results/Github/jtfell_c-fft_3/value_profiles/64.json",
 		"../results/Github/jtfell_c-fft_3/value_profiles/128.json",
 		"../results/Github/jtfell_c-fft_3/value_profiles/256.json",
-		"../results/Github/jtfell_c-fft_3/value_profiles/512.json",
-		"../results/Github/jtfell_c-fft_3/value_profiles/1024.json"
+		"../results/Github/jtfell_c-fft_3/value_profiles/512.json"
 	],
 	"typemap": {
 		"x": "array(complex)",

@@ -5,6 +5,9 @@
 #include<clib/synthesizer.h>
 #include<time.h>
 #include<iostream>
+extern "C" {
+#include "self_contained_code.c"
+}
 char *output_file; 
 char *pre_accel_dump_file; // optional dump file. 
 using json = nlohmann::json;
@@ -59,11 +62,13 @@ int N2 = input_json["N2"];
 clock_t begin = clock();
 complex *result;
 for (int i = 0; i < TIMES; i ++) {
-	returnv = FFT_GoodThomas(x, N, N1, N2);
-	free(result);
+	if (result) {
+		free(result);
+	}
+	result = FFT_GoodThomas(x, N, N1, N2);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
-write_output(x, N, N1, N2, returnv);
+write_output(x, N, N1, N2, result);
 }
