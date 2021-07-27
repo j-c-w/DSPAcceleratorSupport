@@ -17,6 +17,8 @@ mkShell {
 		fftw fftwFloat
 		# Deps for helper scripts
 		python38 python38Packages.numpy python38Packages.matplotlib
+		# Deps for other experiments
+		(callPackage ./decard.nix {})
 	];
 	# Disable leak sanitizer
 	LSAN_OPTIONS="detect_leaks=0";
