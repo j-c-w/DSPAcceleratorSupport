@@ -63,7 +63,6 @@ clock_t begin = clock();
 complex *result;
 for (int i = 0; i < TIMES; i ++) {
 	if (result) {
-		// need to avoid memory leak
 		free(result);
 	}
 	result = FFT_GoodThomas(x, N, N1, N2);
