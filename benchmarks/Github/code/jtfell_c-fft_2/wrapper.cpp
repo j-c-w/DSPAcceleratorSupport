@@ -61,12 +61,12 @@ int N1 = input_json["N1"];
 int N2 = input_json["N2"];
 clock_t begin = clock();
 complex *result;
-for (int i = 0; i < TIMES; i ++) {
-	if (result) {
-		free(result);
-	}
+/* for (int i = 0; i < TIMES; i ++) { */
+	/* if (result) { */
+	/* 	free(result); */
+	/* } */
 	result = FFT_GoodThomas(x, N, N1, N2);
-}
+/* } */
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
