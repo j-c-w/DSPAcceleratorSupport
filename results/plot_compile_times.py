@@ -14,6 +14,7 @@ def plot(ctimes):
     plt.legend()
     axes = plt.gca()
     axes.set_ylim([0.0, 1.001])
+    axes.set_xscale('log')
     
     plt.xlabel('Compile Time (s)')
     plt.ylabel('CDF')
