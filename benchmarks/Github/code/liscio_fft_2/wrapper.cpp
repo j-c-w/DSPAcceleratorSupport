@@ -60,8 +60,9 @@ int N = input_json["N"];
 clock_t begin = clock();
 _complex_double_ *returnvar;
 for (int i = 0; i < TIMES; i ++) {
+	if (returnvar)
+		free(returnvar);
 	returnvar = FFT_wrapper(x, N);
-	free(returnvar);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;

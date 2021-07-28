@@ -1,4 +1,6 @@
 SUBSTITUTE:2i:2 * _Complex_I
+SUBSTITUTE:complex :_g_complex :
+SUBSTITUTE:(complex):(_g_complex):
 INSERT: #define M_PIl M_PI // So this is a hack since I can't get this building since M_PIl seems to be missing.
 complex.h: 7,9 # includes
 complex.c: 5,11 # includes

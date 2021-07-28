@@ -1,3 +1,5 @@
+jtfell_c-fft_2: Buggy: Incorrect outputs
+jtfell_c-fft_3: Buggy: Incorrect outputs
 fakufaku_esp32-fft: Buggy: Crashing when I try it
 SproutOrc_MSP430FFT: Buggy: Incorrect outputs
 ericlyon_pd-fftease: Buggy: Incorrect outputs

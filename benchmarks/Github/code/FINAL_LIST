@@ -2,8 +2,6 @@ xiahouzouxin_fft: Supported:None
 mborgerding_kissfft: Supported:None
 cpuimage_FFTResampler: Supported:None
 jtfell_c-fft: Supported:None
-jtfell_c-fft_2: Supported:ValueProfiling
-jtfell_c-fft_3: Supported:ValueProfiling
 JodiTheTigger_meow_fft: Supported:ValueProfiling
 liscio_fft: Supported:None
 liscio_fft_2: Supported:None

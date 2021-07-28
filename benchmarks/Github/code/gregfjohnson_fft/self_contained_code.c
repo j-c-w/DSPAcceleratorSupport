@@ -1,4 +1,6 @@
 
+
+
  #define M_PIl M_PI // So this is a hack since I can't get this building since M_PIl seems to be missing.
 
 #include <stdbool.h>
@@ -10,12 +12,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <time.h>
- #define complex _Complex double // should be in complex.h but is for some reason missing
+ #define _g_complex _Complex double // should be in complex.h but is for some reason missing
 static bool verbose = false;
-static void dbPrint(int chunk, int chunkSize, int i, complex directionalOmega, complex omegaPower,
-                    complex invec[], complex outvec[]);
+static void dbPrint(int chunk, int chunkSize, int i, _g_complex directionalOmega, _g_complex omegaPower,
+                    _g_complex invec[], _g_complex outvec[]);
 
-static double cangle(complex n) {
+static double cangle(_g_complex n) {
     return atan2(cimag(n), creal(n)) * 180. / M_PIl;
 }
 int primes[] = {
@@ -149,7 +151,7 @@ int primeFactor(int n) {
     }
     return n;
 }
-static void recFFT(complex *outvec, complex *invec, unsigned int n, bool forward) {
+static void recFFT(_g_complex *outvec, _g_complex *invec, unsigned int n, bool forward) {
     if (n == 1) {
         outvec[0] = invec[0];
 
@@ -168,7 +170,7 @@ static void recFFT(complex *outvec, complex *invec, unsigned int n, bool forward
             recFFT(&invec[chunk * chunkSize], &outvec[chunk * chunkSize], chunkSize, forward);
         }
 
-        complex directionalOmega =   forward
+        _g_complex directionalOmega =   forward
                                    ? cexp(-2 * _Complex_I * M_PIl / n)
                                    : cexp( 2 * _Complex_I * M_PIl / n);
 
@@ -178,7 +180,7 @@ static void recFFT(complex *outvec, complex *invec, unsigned int n, bool forward
 
         for (int chunk = 1; chunk < chunkCount; ++chunk) {
             for (int i = 0; i < n; ++i) {
-                complex omegaPower = cpow(directionalOmega, i * chunk);
+                _g_complex omegaPower = cpow(directionalOmega, i * chunk);
 
                 if (verbose) {
                     dbPrint(chunk, chunkSize, i, directionalOmega, omegaPower, invec, outvec);
@@ -190,15 +192,15 @@ static void recFFT(complex *outvec, complex *invec, unsigned int n, bool forward
     }
 }
 
-int FFT(complex *outvec, complex *invec, unsigned int n, bool forward) {
-    complex *changeableInvec;
+int FFT(_g_complex *outvec, _g_complex *invec, unsigned int n, bool forward) {
+    _g_complex *changeableInvec;
 
     if (n == 0) return -1;
 
-    changeableInvec = (complex *) malloc(n * sizeof(complex));
+    changeableInvec = (_g_complex *) malloc(n * sizeof(_g_complex));
     if (changeableInvec == NULL) return -1;
 
-    memcpy(changeableInvec, invec, n * sizeof(complex));
+    memcpy(changeableInvec, invec, n * sizeof(_g_complex));
 
     recFFT(outvec, invec, n, forward);
     free(changeableInvec);
@@ -210,4 +212,4 @@ int FFT(complex *outvec, complex *invec, unsigned int n, bool forward) {
     return 0;
 }
  #include "self_contained_code.h"
- void recFFT_wrapper (_complex_double_ *outvec, _complex_double_ *invec, unsigned int n, bool forward) { return recFFT((complex *) outvec, (complex *) invec, n, forward); } // # We need to add this since FACC can't see into the internals of the compiler, so it casts t he C++ complex double type to its own internal type.
+ void recFFT_wrapper (_complex_double_ *invec, _complex_double_ *outvec, unsigned int n, bool forward) { return recFFT((_g_complex *) invec, (_g_complex *) outvec, n, forward); } // # We need to add this since FACC can't see into the internals of the compiler, so it casts t he C++ _g_complex double type to its own internal type.

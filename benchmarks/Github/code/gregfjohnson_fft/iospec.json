@@ -9,8 +9,7 @@
 		"invec": "array(_complex_double_)",
 		"outvec": "array(_complex_double_)",
 		"n": "uint32",
-		"forward": "bool",
-		"returnv": "int32"
+		"forward": "bool"
 	},
 	"required_includes": ["../../benchmarks/Github/code/gregfjohnson_fft/self_contained_code.c"],
 	"classmap": {
