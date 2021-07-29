@@ -61,9 +61,26 @@ and compare_elts options fcomp v1 v2 =
 	| UInt16V(e1), UInt16V(e2) -> e1 = e2
 	| UInt32V(e1), UInt32V(e2) -> e1 = e2
 	| UInt64V(e1), UInt64V(e2) -> e1 = e2
-    | Float16V(e1), Float16V(e2) -> fcomp#compare e1 e2
-    | Float32V(e1), Float32V(e2) -> fcomp#compare e1 e2
-    | Float64V(e1), Float64V(e2) -> fcomp#compare e1 e2
+	(* TODO --- this is a bit of a hack -- I'm not sure
+	   why there are different widths reaching this point. *)
+    | Float16V(e1), e2 ->
+			(
+			match float_from_value e2 with
+			| Some(f2) -> fcomp#compare e1 f2
+			| None -> false
+			)
+    | Float32V(e1), e2 ->
+			(
+			match float_from_value e2 with
+			| Some(f2) -> fcomp#compare e1 f2
+			| None -> false
+			)
+    | Float64V(e1), e2 ->
+			(
+			match float_from_value e2 with
+			| Some(f2) -> fcomp#compare e1 f2
+			| None -> false
+			)
     | UnitV, UnitV -> true
     | ArrayV(vs1), ArrayV(vs2) ->
 			((List.length vs1) = (List.length vs2)) &&
@@ -78,8 +95,15 @@ and compare_elts options fcomp v1 v2 =
 	in
 	let () = if options.debug_post_synthesis then
 		if not result then
-			Printf.printf "Comparison failed on structures %s and %s\n"
+			let () = Printf.printf "Comparison failed on structures %s and %s\n"
 			(synth_value_to_string v1) (synth_value_to_string v2)
+			in
+			let () = Printf.printf "These have types %s and %s\n"
+			(synth_type_to_string (synth_value_to_type v1))
+			(synth_type_to_string (synth_value_to_type v2))
+			in
+			()
+
 		else ()
 	else () in
 	result
