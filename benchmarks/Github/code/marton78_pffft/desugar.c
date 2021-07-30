@@ -1,16 +1,4 @@
-// See notes - this is to re-sugar the enum types without
-// having to implement them in FACC>
-// This is basically emulating what the compiler would do
-// as it deconstructs the program.
-typedef struct {
-	int N;
-	int Ncvec;
-	int *ifac;
-	int transform;
-	v4sf *data;
-	float *e;
-	float *twiddle;
-} PFFFT_Setup_Desugar;
+#include "self_contained_code.h"
 
 void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input, float *output, float *work, int direction) {
 	struct PFFFT_Setup setup_struct = {
@@ -37,12 +25,12 @@ void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input,
 	pffft_transform_ordered(&setup_struct, input, output, work, (direction == 0 ? PFFFT_FORWARD : PFFFT_BACKWARD));
 }
 
-void desugar_setup(PFFFT_Setup *orig, PFFFT_Setup_Desugar *new) {
-	new->N = orig->N;
-	new->Ncvec = orign->Ncvec;
-	new->ifac = origin ->ifac;
-	new->transform = (orig->transform == PFFFT_REAL ? 0 : 1);
-	new->data = orig->data;
-	new->e = orig->e;
-	new->twiddle = orig->twiddle;
+void desugar_setup(PFFFT_Setup *orig, PFFFT_Setup_Desugar *news) {
+	news->N = orig->N;
+	news->Ncvec = orig->Ncvec;
+	news->ifac = orig->ifac;
+	news->transform = (orig->transform == PFFFT_REAL ? 0 : 1);
+	news->data = orig->data;
+	news->e = orig->e;
+	news->twiddle = orig->twiddle;
 }

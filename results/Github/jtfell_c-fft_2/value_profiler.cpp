@@ -62,6 +62,7 @@ clock_t begin = clock();
 complex *returnv;
 for (int i = 0; i < TIMES; i ++) {
 	returnv = FFT_GoodThomas(x, N, N1, N2);
+	free(returnv);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;

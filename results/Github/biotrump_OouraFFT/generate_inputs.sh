@@ -13,8 +13,10 @@ mkdir -p inputs
 typeset -a inputs
 inputs=("1.0,1.0")
 for i in $(seq 1 $(( $1 - 1))); do
-	rnum1=$(printf '0%s' $(echo "scale=8; $RANDOM/32768" | bc ))
-	rnum2=$(printf '0%s' $(echo "scale=8; $RANDOM/32768" | bc ))
+	# rnum1=$(printf '0%s' $(echo "scale=8; $RANDOM/32768" | bc ))
+	# rnum2=$(printf '0%s' $(echo "scale=8; $RANDOM/32768" | bc ))
+	rnum1=1.00
+	rnum2=21.313
 	inputs+=(", $rnum1, $rnum2")
 done
 

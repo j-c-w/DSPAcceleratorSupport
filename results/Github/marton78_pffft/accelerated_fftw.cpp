@@ -120,54 +120,30 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
-int setup_pointerN = input_json["setup"]["N"];
-int setup_pointerNcvec = input_json["setup"]["Ncvec"];
-std::vector<int> setup_pointerifac_vec;
-for (auto& elem : input_json["setup"]["ifac"]) {
-int setup_pointerifac_inner = elem;
-setup_pointerifac_vec.push_back(setup_pointerifac_inner);
-}
-int *setup_pointerifac = &setup_pointerifac_vec[0];
-int setup_pointertransform = input_json["setup"]["transform"];
-std::vector<float> setup_pointerdata_vec;
-for (auto& elem : input_json["setup"]["data"]) {
-float setup_pointerdata_inner = elem;
-setup_pointerdata_vec.push_back(setup_pointerdata_inner);
-}
-float *setup_pointerdata = &setup_pointerdata_vec[0];
-std::vector<float> setup_pointere_vec;
-for (auto& elem : input_json["setup"]["e"]) {
-float setup_pointere_inner = elem;
-setup_pointere_vec.push_back(setup_pointere_inner);
-}
-float *setup_pointere = &setup_pointere_vec[0];
-std::vector<float> setup_pointertwiddle_vec;
-for (auto& elem : input_json["setup"]["twiddle"]) {
-float setup_pointertwiddle_inner = elem;
-setup_pointertwiddle_vec.push_back(setup_pointertwiddle_inner);
-}
-float *setup_pointertwiddle = &setup_pointertwiddle_vec[0];
-PFFFT_Setup_Desugar setup_pointer = { setup_pointerN, setup_pointerNcvec, setup_pointerifac, setup_pointertransform, setup_pointerdata, setup_pointere, setup_pointertwiddle};
-PFFFT_Setup_Desugar* setup = &setup_pointer;
 std::vector<float> input_vec;
+int n = 0;
 for (auto& elem : input_json["input"]) {
 float input_inner = elem;
 input_vec.push_back(input_inner);
+n += 1;
 }
 float *input = &input_vec[0];
-std::vector<float> work_vec;
-for (auto& elem : input_json["work"]) {
-float work_inner = elem;
-work_vec.push_back(work_inner);
-}
-float *work = &work_vec[0];
-int direction = input_json["direction"];
-float output[setup->N* 2];
+float work[n];
+float output[n];
+n /= 2;
 
+PFFFT_Setup *setup = pffft_new_setup(n, PFFFT_COMPLEX);
+PFFFT_Setup_Desugar desugared;
+// Desugar
+desugar_setup(setup, &desugared);
+// pffft_direction_t direction = PFFFT_FORWARD;
+// Desugar
+int direction = 1;
+clock_t begin = clock();
 for (int i = 0; i < TIMES; i ++) {
-	desugared_transform_ordered_accel(setup, input, output, work, direction);
+	desugared_transform_ordered_accel(&desugared, input, output, work, direction);
 }
 
 
-write_output(setup, input, output, work, direction);
+write_output(&desugared, input, output, work, direction);
 }

@@ -48,7 +48,9 @@ class CTimes(object):
             for line in f.readlines():
                 if 'real\t' in line:
                     time = parse_time(re.split('\t', line)[1])
-                    times.append(time)
+                    if time > 2.0:
+                        # Times < 2.0 are usually crashes
+                        times.append(time)
         return times
 
     def get_cdf(self):

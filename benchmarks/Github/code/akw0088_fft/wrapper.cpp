@@ -5,6 +5,9 @@
 #include<clib/synthesizer.h>
 #include<time.h>
 #include<iostream>
+extern "C" {
+#include "self_contained_code.c"
+}
 char *output_file; 
 char *pre_accel_dump_file; // optional dump file. 
 using json = nlohmann::json;
@@ -26,7 +29,7 @@ void write_output(int num, j_complex_t * x, j_complex_t * w) {
 
     json output_json;
 std::vector<json> output_temp_1;
-for (unsigned int i2 = 0; i2 < TOFILL; i2++) {
+for (unsigned int i2 = 0; i2 < num; i2++) {
 j_complex_t output_temp_3 = x[i2];
 json output_temp_4;
 
@@ -63,7 +66,9 @@ w_vec.push_back(w_inner);
 }
 j_complex_t *w = &w_vec[0];
 clock_t begin = clock();
-fft_c(num, x, w);
+for (int i = 0; i < TIMES; i ++) {
+	fft_c(num, x, w);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;

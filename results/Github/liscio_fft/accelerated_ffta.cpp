@@ -158,7 +158,12 @@ x_vec.push_back(x_inner);
 _complex_double_ *x = &x_vec[0];
 int N = input_json["N"];
 clock_t begin = clock();
-_complex_double_ * returnvar = FFT_wrapper_accel(x, N);
+_complex_double_ *returnvar;
+for (int i = 0; i < TIMES; i ++) {
+	if (returnvar)
+		free(returnvar);
+	returnvar = FFT_wrapper_accel(x, N);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;

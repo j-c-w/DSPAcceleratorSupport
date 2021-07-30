@@ -97,7 +97,9 @@ n /= 2;
 clock_t begin = clock();
 PFFFT_Setup *setup = pffft_new_setup(n, PFFFT_COMPLEX);
 pffft_direction_t direction = PFFFT_FORWARD;
-pffft_transform_ordered(setup, input, output, work, direction);
+for (int i = 0; i < TIMES; i ++) {
+	pffft_transform_ordered(setup, input, output, work, direction);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;

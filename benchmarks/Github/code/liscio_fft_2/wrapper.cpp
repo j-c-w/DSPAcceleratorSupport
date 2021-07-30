@@ -58,9 +58,9 @@ x_vec.push_back(x_inner);
 _complex_double_ *x = &x_vec[0];
 int N = input_json["N"];
 clock_t begin = clock();
-_complex_double_ *returnvar;
+_complex_double_ *returnvar = nullptr;
 for (int i = 0; i < TIMES; i ++) {
-	if (returnvar)
+	if (returnvar == nullptr)
 		free(returnvar);
 	returnvar = FFT_wrapper(x, N);
 }
