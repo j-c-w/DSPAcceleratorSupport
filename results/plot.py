@@ -38,6 +38,8 @@ def plot(group, lines, names, style):
     for lineset, name in zip(lines, names):
         if len(lineset) == 0:
             print (name + " has empty lineset")
+            print (names)
+            print (lines)
             raise error
         x, y = get_lines_from(lineset)
         plt.plot(x, y, label=name)
@@ -54,6 +56,8 @@ def plot(group, lines, names, style):
         plt.ylabel("Overhead (log)")
         plt.title("Overhead of FACC-Generated Code Across Different Sizes")
         plt.xlabel("Input size")
+    else:
+        error("Unknwwn sytle")
 
     # plt.legend()
 

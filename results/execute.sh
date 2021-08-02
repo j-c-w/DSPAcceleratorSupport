@@ -17,6 +17,7 @@ while [[ $# -gt 1 ]]; do
 
 	for file in ${files[@]}; do
 		execname=$(basename $file)
+		basename=accelerated_fftw
 
 		pushd $(dirname $file)
 		# Get all the input file sizes/names:
@@ -24,18 +25,26 @@ while [[ $# -gt 1 ]]; do
 		ifiles=$(find . -name "*.json")
 		popd
 		# Make the new results folder.
-		rfolder=${1}_results
+		rfolder=${basename}_results
 		rm -rf $rfolder
 		results=$(mkdir -p $rfolder)
 
 		# Make the results folder ofr the original scripts
-		orig_res_folder=${1}_orig_results
+		orig_res_folder=${basename}_orig_results
 		rm -rf $orig_res_folder
 		results=$(mkdir -p $orig_res_folder)
 		echo "Results in $rfolder/${file}_out"
 		echo "Time spent in accelerator in $rfolder/${file}_accelerator_time_out"
 
 		for file in ${ifiles[@]}; do
+			echo "Starting file"
+			echo $file
+			pwd
+			echo $rfolder
+			echo $orig_res_folder
+			echo $rfolder/${file}_out
+			echo $orig_res_folder/${file}_acctime_out
+			echo "$orig_res_folder/${file}_out"
 			for t in $(seq 1 $TIMES); do
 				# Get the time out from the executable.
 				eval ./$execname inputs/$file > tmpout
