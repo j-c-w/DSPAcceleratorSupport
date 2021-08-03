@@ -112,10 +112,10 @@ out_str << std::setw(4) << output_json << std::endl;
 void fft_c_accel_internal(int num,j_complex_t * x,j_complex_t * w) {
 
 if ((PRIM_EQUAL(num, 16384)) || ((PRIM_EQUAL(num, 8192)) || ((PRIM_EQUAL(num, 4096)) || ((PRIM_EQUAL(num, 2048)) || ((PRIM_EQUAL(num, 1024)) || ((PRIM_EQUAL(num, 512)) || ((PRIM_EQUAL(num, 256)) || ((PRIM_EQUAL(num, 128)) || (PRIM_EQUAL(num, 64)))))))))) {
-static complex_float adi_acc_output[16384]__attribute__((__aligned__(32)));;
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
 	static int adi_acc_n;;
 	adi_acc_n = num;;
-	static complex_float adi_acc_input[16384]__attribute__((__aligned__(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i82 = 0; i82 < adi_acc_n; i82++) {
 		adi_acc_input[i82].re = x[i82].real;
 	};

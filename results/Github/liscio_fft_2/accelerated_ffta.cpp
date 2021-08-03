@@ -111,10 +111,10 @@ out_str << std::setw(4) << output_json << std::endl;
 _complex_double_ * FFT_wrapper_accel_internal(_complex_double_ * x,int N) {
 
 if ((PRIM_EQUAL(N, 16384)) || ((PRIM_EQUAL(N, 8192)) || ((PRIM_EQUAL(N, 4096)) || ((PRIM_EQUAL(N, 2048)) || ((PRIM_EQUAL(N, 1024)) || ((PRIM_EQUAL(N, 512)) || ((PRIM_EQUAL(N, 256)) || ((PRIM_EQUAL(N, 128)) || (PRIM_EQUAL(N, 64)))))))))) {
-static complex_float adi_acc_output[16384]__attribute__((__aligned__(32)));;
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
 	static int adi_acc_n;;
 	adi_acc_n = N;;
-	static complex_float adi_acc_input[16384]__attribute__((__aligned__(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i12 = 0; i12 < adi_acc_n; i12++) {
 		adi_acc_input[i12].re = x[i12].im;
 	};

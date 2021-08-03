@@ -26,8 +26,8 @@
 		}
 	},
 	"alignment": {
-		"adi_acc_input": 32,
-		"adi_acc_output": 32
+		"adi_acc_input": 64,
+		"adi_acc_output": 64
 	},
 	"allocation_mode": "Static"
 }

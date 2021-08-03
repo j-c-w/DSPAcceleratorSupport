@@ -111,10 +111,10 @@ out_str << std::setw(4) << output_json << std::endl;
 void FFT_accel_internal(COMPLEX * Y,int N) {
 
 if (PRIM_EQUAL(N, 64)) {
-static complex_float adi_acc_output[16384]__attribute__((__aligned__(32)));;
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
 	static int adi_acc_n;;
 	adi_acc_n = N;;
-	static complex_float adi_acc_input[16384]__attribute__((__aligned__(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i2 = 0; i2 < adi_acc_n; i2++) {
 		adi_acc_input[i2].re = Y[i2].real;
 	};

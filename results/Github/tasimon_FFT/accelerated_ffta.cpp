@@ -104,10 +104,10 @@ out_str << std::setw(4) << output_json << std::endl;
 }
 
 void fft64_accel_internal(facc_2xf32_t * Z) {
-static complex_float adi_acc_output[64]__attribute__((__aligned__(32)));;
+static complex_float adi_acc_output[64]__attribute__((__aligned__(64)));;
 	static int adi_acc_n;;
 	adi_acc_n = 64;;
-	static complex_float adi_acc_input[64]__attribute__((__aligned__(32)));;
+	static complex_float adi_acc_input[64]__attribute__((__aligned__(64)));;
 	for (int i12 = 0; i12 < 64; i12++) {
 		adi_acc_input[i12].re = Z[i12].f32_2;
 	};

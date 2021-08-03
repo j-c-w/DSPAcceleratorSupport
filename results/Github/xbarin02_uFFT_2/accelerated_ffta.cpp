@@ -121,10 +121,10 @@ out_str << std::setw(4) << output_json << std::endl;
 int fft_wrapper_accel_internal(_float_complex_ * vector,long int N) {
 
 if ((PRIM_EQUAL(N, 16384)) || ((PRIM_EQUAL(N, 8192)) || ((PRIM_EQUAL(N, 4096)) || ((PRIM_EQUAL(N, 2048)) || ((PRIM_EQUAL(N, 1024)) || ((PRIM_EQUAL(N, 512)) || ((PRIM_EQUAL(N, 256)) || ((PRIM_EQUAL(N, 128)) || (PRIM_EQUAL(N, 64)))))))))) {
-static complex_float adi_acc_output[16384]__attribute__((__aligned__(32)));;
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
 	static int adi_acc_n;;
 	adi_acc_n = N;;
-	static complex_float adi_acc_input[16384]__attribute__((__aligned__(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i17 = 0; i17 < adi_acc_n; i17++) {
 		adi_acc_input[i17].re = vector[i17].re;
 	};

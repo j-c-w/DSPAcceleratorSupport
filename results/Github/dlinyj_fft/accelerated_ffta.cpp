@@ -111,10 +111,10 @@ out_str << std::setw(4) << output_json << std::endl;
 void fft_calc_accel_internal(int p,facc_2xf32_t * c,facc_2xf32_t * in,facc_2xf32_t * out,int norm) {
 
 if ((PRIM_EQUAL(norm, 1)) && ((PRIM_EQUAL(p, 14)) || ((PRIM_EQUAL(p, 13)) || ((PRIM_EQUAL(p, 12)) || ((PRIM_EQUAL(p, 11)) || ((PRIM_EQUAL(p, 10)) || ((PRIM_EQUAL(p, 9)) || ((PRIM_EQUAL(p, 8)) || ((PRIM_EQUAL(p, 7)) || (PRIM_EQUAL(p, 6))))))))))) {
-static complex_float adi_acc_output[16384]__attribute__((__aligned__(32)));;
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
 	static int adi_acc_n;;
 	adi_acc_n = Pow2(p);;;
-	static complex_float adi_acc_input[16384]__attribute__((__aligned__(32)));;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
 	for (int i22 = 0; i22 < adi_acc_n; i22++) {
 		adi_acc_input[i22].re = in[i22].f32_1;
 	};
