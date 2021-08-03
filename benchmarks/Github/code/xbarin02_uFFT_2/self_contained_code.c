@@ -21,16 +21,16 @@ static int ctz(size_t N)
 static void nop_split(const float _Complex *x, float _Complex *X, size_t N)
 {
 	for(size_t n = 0; n < N/2; n++) {
-		X[2*n+0] = x[0/2+n];
-		X[2*n+1] = x[N/2+n];
+		X[0/2+n] = x[2*n+0];
+		X[N/2+n] = x[2*n+1];
 	}
 }
 
 static void fft_split(const float _Complex *x, float _Complex *X, size_t N, float _Complex phi)
 {
 	for(size_t n = 0; n < N/2; n++) {
-		X[2*n+0] = (x[0/2+n] + x[N/2+n]);
-		X[2*n+1] = (x[0/2+n] - x[N/2+n]) * cexpf(-2*(float)M_PI*I*phi);
+		X[0/2+n] = x[2*n+0] + x[2*n+1] * cexpf(-2*(float)M_PI*I*phi);
+		X[N/2+n] = x[2*n+0] - x[2*n+1] * cexpf(-2*(float)M_PI*I*phi);
 	}
 }
 
@@ -49,7 +49,7 @@ static int nop_reverse(int b, float _Complex *buffers[2], size_t N)
 {
 	int J = ctz(N);
 
-	for(int j = J-2; j >= 0; j--, b++) {
+	for(int j = 0; j < J-1; j++, b++) {
 		size_t delta = N>>j;
 
 		for(size_t n = 0; n < N; n += delta) {
@@ -64,7 +64,7 @@ static int fft_reverse(int b, float _Complex *buffers[2], size_t N)
 {
 	int J = ctz(N);
 
-	for(int j = J-1; j >= 0; j--, b++) {
+	for(int j = 0; j < J; j++, b++) {
 		size_t delta = N>>j;
 
 		for(size_t n = 0; n < N; n += delta) {
