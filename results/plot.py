@@ -46,13 +46,13 @@ def plot(group, lines, names, style):
         minx, maxx = min(x), max(x)
 
     if style == 'speedup':
-        plt.plot([minx, maxx], [1.0, 1.0], label="Speedup Threshold")
+        # plt.plot([minx, maxx], [1.0, 1.0], label="Speedup Threshold")
         appendix = "(log)" if group == "all" else ""
         plt.ylabel("Speedup Ratio " + appendix)
         plt.title("Speed Comparison Across Different Sizes")
         plt.xlabel("Input size")
     elif style == 'overhead':
-        plt.plot([minx, maxx], [1.0, 1.0], label="Low Overhead Threshold")
+        # plt.plot([minx, maxx], [1.0, 1.0], label="Low Overhead Threshold")
         plt.ylabel("Overhead (log)")
         plt.title("Overhead of FACC-Generated Code Across Different Sizes")
         plt.xlabel("Input size")

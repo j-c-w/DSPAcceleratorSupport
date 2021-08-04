@@ -62,6 +62,7 @@ if __name__ == "__main__":
 
     # Plot the speedup:
     for folder in args.Folders:
+        print ("Looking at folder " + str(folder))
         num += 1
         original_results, _ = read_file(folder + "/" + args.OriginalResultsFile)
         acc_results, acc_time = read_file(folder + "/" + args.AcceleratedResultsFile)
@@ -82,12 +83,13 @@ if __name__ == "__main__":
     lines = []
     names = []
     for folder in args.Folders:
+        print ("Looking at project " + str(folder))
         num += 1
         orig_res, _ = read_file(folder + "/" + args.OriginalResultsFile)
         acc_res, acc_time = read_file(folder + "/" + args.AcceleratedResultsFile)
 
         res = {}
-        for k in acc_results.keys():
+        for k in acc_res.keys():
             # time spent in wrapper code / time spent in accelerator.
             res[k] = (acc_res[k] - acc_time[k]) / acc_time[k]
         lines.append(res)
