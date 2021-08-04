@@ -59,9 +59,9 @@ def plot(group, lines, names, style):
     else:
         error("Unknwwn sytle")
 
-    # plt.legend()
+    plt.legend()
 
-    plt.savefig(style + "_" + group + "_output.eps")
+    plt.savefig(style + "_" + group + "_output.png")
     plt.close()
 
 def load_result_maps(base_folder, folder, postfix):
