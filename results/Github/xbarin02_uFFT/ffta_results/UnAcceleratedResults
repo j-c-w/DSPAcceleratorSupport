@@ -1,0 +1,108 @@
+Starting runs for size 64:
+Starting gen inputs
+Inputs generated
+Time: 0.000081348000
+AccTime: 0.000000000000
+Runs finished for size 64
+Starting runs for size 128:
+Starting gen inputs
+Inputs generated
+Time: 0.000105940000
+AccTime: 0.000000000000
+Runs finished for size 128
+Starting runs for size 256:
+Starting gen inputs
+Inputs generated
+Time: 0.000143288000
+AccTime: 0.000000000000
+Runs finished for size 256
+Starting runs for size 512:
+Starting gen inputs
+Inputs generated
+Time: 0.000258960000
+AccTime: 0.000000000000
+Runs finished for size 512
+Starting runs for size 1024:
+Starting gen inputs
+Inputs generated
+Time: 0.000467252000
+AccTime: 0.000000000000
+Runs finished for size 1024
+Starting runs for size 2048:
+Starting gen inputs
+Inputs generated
+Time: 0.000866992000
+AccTime: 0.000000000000
+Runs finished for size 2048
+Starting runs for size 4096:
+Starting gen inputs
+Inputs generated
+Time: 0.001970468125
+AccTime: 0.000000000000
+Runs finished for size 4096
+Starting runs for size 8192:
+Starting gen inputs
+Inputs generated
+Time: 0.003991719688
+AccTime: 0.000000000000
+Runs finished for size 8192
+Starting runs for size 16384:
+Starting gen inputs
+Inputs generated
+Time: 0.008094595625
+AccTime: 0.000000000000
+Runs finished for size 16384
+Starting runs for size 64:
+Starting gen inputs
+Inputs generated
+Time: 0.000082060006
+AccTime: 0.000000000000
+Runs finished for size 64
+Starting runs for size 128:
+Starting gen inputs
+Inputs generated
+Time: 0.000108012000
+AccTime: 0.000000000000
+Runs finished for size 128
+Starting runs for size 256:
+Starting gen inputs
+Inputs generated
+Time: 0.000155092000
+AccTime: 0.000000000000
+Runs finished for size 256
+Starting runs for size 512:
+Starting gen inputs
+Inputs generated
+Time: 0.000254420016
+AccTime: 0.000000000000
+Runs finished for size 512
+Starting runs for size 1024:
+Starting gen inputs
+Inputs generated
+Time: 0.000447176000
+AccTime: 0.000000000000
+Runs finished for size 1024
+Starting runs for size 2048:
+Starting gen inputs
+Inputs generated
+Time: 0.000844852000
+AccTime: 0.000000000000
+Runs finished for size 2048
+Starting runs for size 4096:
+Starting gen inputs
+Inputs generated
+Time: 0.001991180000
+AccTime: 0.000000000000
+Runs finished for size 4096
+Starting runs for size 8192:
+Starting gen inputs
+Inputs generated
+Time: 0.003995840000
+AccTime: 0.000000000000
+Runs finished for size 8192
+Starting runs for size 16384:
+Starting gen inputs
+Inputs generated
+Time: 0.008055851875
+AccTime: 0.000000000000
+Runs finished for size 16384
