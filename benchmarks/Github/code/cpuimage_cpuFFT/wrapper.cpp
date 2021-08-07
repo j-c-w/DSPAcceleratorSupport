@@ -59,7 +59,8 @@ cmplx *input = &input_vec[0];
 int n = input_json["n"];
 cmplx output[n];
 clock_t begin = clock();
-FFT(input, output, n);
+for (int i = 0; i < TIMES; i ++)
+	FFT(input, output, n);
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
