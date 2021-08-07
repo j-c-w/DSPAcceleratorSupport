@@ -1,3 +1,5 @@
+*/*/testout
+*.jpg
 */*/inputs/*.json
 */*/accelerated_fftw
 */*/accelerated_fftw.cpp
