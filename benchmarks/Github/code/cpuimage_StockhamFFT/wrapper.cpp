@@ -58,7 +58,9 @@ x_vec.push_back(x_inner);
 complex_t *x = &x_vec[0];
 int n = input_json["n"];
 clock_t begin = clock();
-fft(x, n);
+for (int i = 0; i < TIMES; i ++) {
+	fft(x, n);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;

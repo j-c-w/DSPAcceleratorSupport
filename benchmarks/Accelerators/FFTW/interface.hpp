@@ -35,7 +35,7 @@ void fftwf_example_api(_complex_float_ *api_in, _complex_float_ *api_out, int in
 		}
 		last_plan = fftwf_plan_dft_1d(interface_len, reinterpret_cast<fftwf_complex*>(api_in), reinterpret_cast<fftwf_complex*>(api_out), dir, FFTW_ESTIMATE);
 	}
-	std::cout << "Starting execution!" << std::endl;;
+	// std::cout << "Starting execution!" << std::endl;;
     fftwf_execute(last_plan); /* repeat as needed */
-	std::cout << "Finished execution" << std::endl;;
+	// std::cout << "Finished execution" << std::endl;;
 }
