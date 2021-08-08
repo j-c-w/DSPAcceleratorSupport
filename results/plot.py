@@ -44,6 +44,7 @@ def plot(group, lines, names, style):
         x, y = get_lines_from(lineset)
         plt.plot(x, y, label=name)
         minx, maxx = min(x), max(x)
+        plt.xlim([minx, maxx])
 
     if style == 'speedup':
         # plt.plot([minx, maxx], [1.0, 1.0], label="Speedup Threshold")
