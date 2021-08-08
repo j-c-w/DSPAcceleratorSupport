@@ -32,7 +32,7 @@ def plot(group, lines, names, style):
     plt.cla()
     fix, ax = plt.subplots()
     ax.set_xscale('log', basex=2)
-    if group == 'all':
+    if group == 'all' and style == 'speedup':
         ## DFTs are /really/ slow, so show on log.
         ax.set_yscale('log', basey=10)
     for lineset, name in zip(lines, names):
@@ -54,7 +54,7 @@ def plot(group, lines, names, style):
         plt.xlabel("Input size")
     elif style == 'overhead':
         # plt.plot([minx, maxx], [1.0, 1.0], label="Low Overhead Threshold")
-        plt.ylabel("Overhead (log)")
+        plt.ylabel("Overhead")
         plt.title("Overhead of FACC-Generated Code Across Different Sizes")
         plt.xlabel("Input size")
     else:
@@ -123,7 +123,7 @@ if __name__ == "__main__":
             # Do the subtraction because v2 actually measures the time /in/ the accelerator,
             # which is the inverse of the overhead.
             if v3[k] != 0 and v2[k] != 0 and v3[k] != 0:
-                res[k] = (v1[k] - v2[k]) / v3[k]
+                res[k] = (v1[k] - v2[k]) / v2[k]
 
         lines.append(res)
         names.append(folder)
