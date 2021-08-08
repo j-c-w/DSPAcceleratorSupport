@@ -74,7 +74,7 @@ if __name__ == "__main__":
             res[k] = (original_results[k] / acc_results[k])
 
         lines.append(res)
-        names.append("Project " + str(num))
+        names.append("Project " + str(folder))
 
     plotter.plot(args.graph_type, lines, names, 'speedup')
 
@@ -93,5 +93,5 @@ if __name__ == "__main__":
             # time spent in wrapper code / time spent in accelerator.
             res[k] = (acc_res[k] - acc_time[k]) / acc_time[k]
         lines.append(res)
-        names.append("Project " + str(num))
+        names.append("Project " + str(folder))
     plotter.plot(args.graph_type, lines, names, 'overhead')
