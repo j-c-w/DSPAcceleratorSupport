@@ -1,14 +1,14 @@
 Themaister_muFFT: Void* Pointers
-brendanashworth_fft-small: Interface Incompatability: --- I don't understand how to create a benchmark from this, don't know what x is, but it looks data-dependent, which is a no-go.
-biotrump_OouraFFT: Non-MultiplicativeArrayLenghts
-biotrump_OouraFFT_2: Non-MultiplicativeArrayLenghts
-biotrump_OouraFFT_3: Non-MultiplicativeArrayLenghts
-biotrump_OouraFFT_4: Non-MultiplicativeArrayLenghts
-biotrump_OouraFFT_5: Non-MultiplicativeArrayLenghts
-biotrump_OouraFFT_6: Non-MultiplicativeArrayLenghts
-omnister_fftp: AliasedReturnVariable Support
-kappalabs_fft_band_equalizer: Unbindable Outputs
-BradenHarrelson_FastFourierTransform: Unsynthesizeable I/O
-BradenHarrelson_FastFourierTransform_2: Unsynthesizeable I/O
-helloworldpark_wavelet-fft: Unbindable Outputs
+brendanashworth_fft-small: Interface Incompatibility: --- I don't understand how to create a benchmark from this, don't know what x is, but it looks data-dependent, which is a no-go.
+biotrump_OouraFFT: Non-Standard Array Lengths
+biotrump_OouraFFT_2: Non-Standard Array Lengths
+biotrump_OouraFFT_3: Non-Standard Array Lengths
+biotrump_OouraFFT_4: Non-Standard Array Lengths
+biotrump_OouraFFT_5: Non-Standard Array Lengths
+biotrump_OouraFFT_6: Non-Standard Array Lengths
+omnister_fftp: Non-Standard Return Variable
+kappalabs_fft_band_equalizer: Redundant Outputs
+BradenHarrelson_FastFourierTransform: Printf
+BradenHarrelson_FastFourierTransform_2: Printf
+helloworldpark_wavelet-fft: Redundant Outputs
 seanlikeskites_atfft: Void* Pointers
