@@ -341,7 +341,6 @@ let iospec_to_string (iospec: iospec) =
 let apispec_to_string (apispec: apispec) =
     "Livein: " ^ (String.concat ~sep:", " apispec.livein) ^
     "\nLiveout: " ^ (String.concat ~sep:", " apispec.liveout) ^
-    "\nexeccmd: " ^ apispec.execcmd ^
 	"\n"
 
 let get_class_typemap smeta =
