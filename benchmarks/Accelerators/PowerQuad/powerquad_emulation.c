@@ -11,7 +11,7 @@
 // Lots of decisions surrounding what programming
 // model should be presented to FACC.
 
-void accel_cfft_wrapper(const complex_type *in,
+void fft_api(const complex_type *in,
 						complex_type *out,
 						int n) {
 		fftwf_complex fftw_in[n], fftw_out[n];

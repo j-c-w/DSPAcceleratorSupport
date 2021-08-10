@@ -2,7 +2,7 @@
 	"livein":["power_quad_acc_input", "power_quad_acc_n"],
 	"liveout": ["power_quad_acc_output"],
 	"functionargs": ["power_quad_acc_input", "power_quad_acc_output", "power_quad_acc_n"],
-	"functionname": "accel_cfft_wrapper",
+	"functionname": "fft_api",
 	"typemap": {
 		"power_quad_acc_input": "array(complex_type#power_quad_acc_n)",
 		"power_quad_acc_output": "array(complex_type#power_quad_acc_n)",
