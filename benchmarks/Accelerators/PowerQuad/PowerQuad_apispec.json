@@ -10,7 +10,7 @@
 	},
 	"required_includes": ["../../benchmarks/Accelerators/PowerQuad/powerquad_emulation.c"],
 	"valid": {
-		"power_quad_acc_n": "set(power_of_two(6, 15))"
+		"power_quad_acc_n": "set(power_of_two(6, 12))"
 	},
 	"compiler_flags": ["-lfftw3", "-lfftw3f"],
 	"classmap": {
