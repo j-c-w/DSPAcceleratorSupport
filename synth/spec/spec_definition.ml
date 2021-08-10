@@ -111,7 +111,6 @@ type iospec = {
 type apispec = {
     livein: string list;
     liveout: string list;
-    execcmd: string;
 	funname: string;
 	funargs: string list;
 	required_includes: string list;

@@ -62,8 +62,9 @@ int N = input_json["N"];
 clock_t begin = clock();
 complex *returnv;
 for (int i = 0; i < TIMES; i ++) {
+	if (returnv)
+		free(returnv);
 	returnv = DFT_naive(x, N);
-	free(returnv);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;

@@ -44,7 +44,10 @@ if __name__ == "__main__":
         labels.append(key)
 
     fig, ax = plt.subplots()
-    ax.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
+    ax.pie(sizes, explode=explode, labels=labels, autopct='%1.f%%', shadow=True, startangle=90)
     ax.axis('equal')
 
+    
+    # plt.legend()
+    plt.gcf().subplots_adjust(left=0.34)
     plt.savefig('open_source_project_distribution.eps')

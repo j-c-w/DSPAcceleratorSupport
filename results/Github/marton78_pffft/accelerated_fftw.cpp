@@ -70,6 +70,17 @@ char *output_file;
 char *pre_accel_dump_file; // optional dump file. 
 using json = nlohmann::json;
 const char* __asan_default_options() { return "detect_leaks=0"; }
+clock_t AcceleratorStart;
+clock_t AcceleratorTotalNanos = 0;
+void StartAcceleratorTimer() {
+	AcceleratorStart = clock();
+}
+
+void StopAcceleratorTimer() {
+	AcceleratorTotalNanos +=
+		(clock()) - AcceleratorStart;
+}
+
 
 void write_output(PFFFT_Setup_Desugar * setup, float * input, float * output, float * work, int direction) {
 
@@ -100,7 +111,9 @@ short dir;;
 	};
 	
 if ((PRIM_EQUAL(dir, -1)) && ((PRIM_EQUAL(interface_len, 524288)) || ((PRIM_EQUAL(interface_len, 262144)) || ((PRIM_EQUAL(interface_len, 131072)) || ((PRIM_EQUAL(interface_len, 65536)) || ((PRIM_EQUAL(interface_len, 32768)) || ((PRIM_EQUAL(interface_len, 16384)) || ((PRIM_EQUAL(interface_len, 8192)) || ((PRIM_EQUAL(interface_len, 4096)) || ((PRIM_EQUAL(interface_len, 2048)) || ((PRIM_EQUAL(interface_len, 1024)) || ((PRIM_EQUAL(interface_len, 512)) || ((PRIM_EQUAL(interface_len, 256)) || ((PRIM_EQUAL(interface_len, 128)) || ((PRIM_EQUAL(interface_len, 64)) || ((PRIM_EQUAL(interface_len, 32)) || ((PRIM_EQUAL(interface_len, 16)) || ((PRIM_EQUAL(interface_len, 8)) || ((PRIM_EQUAL(interface_len, 4)) || ((PRIM_EQUAL(interface_len, 2)) || (PRIM_EQUAL(interface_len, 1)))))))))))))))))))))) {
+	StartAcceleratorTimer();
 fftwf_example_api(api_in, api_out, interface_len, dir);;
+	StopAcceleratorTimer();;
 	for (int i584 = 0; i584 < setup->N; i584++) {
 		output[i584].f32_1 = api_out[i584].re;
 	};
@@ -144,6 +157,9 @@ for (int i = 0; i < TIMES; i ++) {
 	desugared_transform_ordered_accel(&desugared, input, output, work, direction);
 }
 
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
+std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
 
 write_output(&desugared, input, output, work, direction);
 }
