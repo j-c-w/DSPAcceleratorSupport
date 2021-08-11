@@ -23,6 +23,7 @@ def splitlist(l, splitlen):
 def read_file(fname):
     if not os.path.exists(fname):
         print ("File doesn't exist, skipping. ")
+        print (fname)
         return {}, {}
 
     with open(fname) as f:

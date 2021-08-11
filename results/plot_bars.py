@@ -4,7 +4,7 @@ import plot
 import plot_ffta
 import numpy as np
 
-def plot_graph(fftw_results, ffta_results):
+def plot_graph(fftw_results, ffta_results, powerquad_results):
     fix, ax = plt.subplots(figsize=(8,3))
     ax.set_yscale('log', basey=10)
     xpos = np.arange(0,  len(fftw_results))
@@ -13,11 +13,12 @@ def plot_graph(fftw_results, ffta_results):
     print (len(ffta_results))
     print (fftw_results)
     print (len(fftw_results))
-    plt.ylim([0.1, 10000])
+    plt.ylim([0.1, 100000])
     plt.bar(xpos, ffta_results, width, label='FFTA')
     plt.bar(xpos + width, fftw_results,  width,  label='FFTW')
+    plt.bar(xpos + width * 2, powerquad_results, width, label='PowerQuad')
     plt.legend()
-    plt.xticks(xpos + width  / 2, range(0, len(fftw_results)))
+    plt.xticks(xpos + width * 3 / 2, range(0, len(fftw_results)))
     plt.xlabel('Project Number')
     plt.ylabel('Speedup')
 
@@ -32,6 +33,7 @@ if __name__ == "__main__":
 
     ffta_results = []
     fftw_results = []
+    powerquad_results = []
 
     i = 0
     for folder in args.directories:
@@ -66,6 +68,23 @@ if __name__ == "__main__":
             size = args.size
 
         ffta_results.append(np.median(ffta_orig[size] / ffta_acc[size]))
-        print ("Value used is ", ffta_results[-1])
 
-    plot_graph(fftw_results, ffta_results)
+        # Get PowerQuad results:
+        powerquad_orig, _ = plot_ffta.read_file(folder + "/powerquad_results/UnAcceleratedResults")
+        powerquad_acc, _ = plot_ffta.read_file(folder + "/powerquad_results/AcceleratedResults")
+
+        if len(powerquad_orig) > 0:
+            if args.size not in powerquad_orig:
+                size = max(powerquad_orig.keys())
+                print ("For project failed to get the sizes")
+                print (folder)
+                print ("Using size ", size)
+            else:
+                size = args.size
+
+            powerquad_results.append(np.median(powerquad_orig[size] / powerquad_acc[size]))
+            print ("Value used is ", ffta_results[-1])
+        else:
+            powerquad_results.append(0.0)
+
+    plot_graph(fftw_results, ffta_results, powerquad_results)
