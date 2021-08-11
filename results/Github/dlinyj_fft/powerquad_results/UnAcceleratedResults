@@ -1,3 +1,11 @@
+Starting runs for size 16:
+Time: 0.050000000000
+AccTime: 0.000000000000
+Runs finished for size 16
+Starting runs for size 32:
+Time: 0.060000000000
+AccTime: 0.000000000000
+Runs finished for size 32
 Starting runs for size 64:
 Time: 0.090000000000
 AccTime: 0.000000000000
@@ -22,6 +30,14 @@ Starting runs for size 2048:
 Time: 2.710000000000
 AccTime: 0.000000000000
 Runs finished for size 2048
+Starting runs for size 16:
+Time: 0.040000000000
+AccTime: 0.000000000000
+Runs finished for size 16
+Starting runs for size 32:
+Time: 0.050000000000
+AccTime: 0.000000000000
+Runs finished for size 32
 Starting runs for size 64:
 Time: 0.080000000000
 AccTime: 0.000000000000
