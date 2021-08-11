@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import plot as plotter # other python file here
+import os
 
 def splitlist(l, splitlen):
     i = 0
@@ -20,6 +21,10 @@ def splitlist(l, splitlen):
     return rlist
 
 def read_file(fname):
+    if not os.path.exists(fname):
+        print ("File doesn't exist, skipping. ")
+        return {}, {}
+
     with open(fname) as f:
         linegroups = splitlist(f.readlines(), 4)
 

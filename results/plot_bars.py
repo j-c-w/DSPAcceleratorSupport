@@ -10,9 +10,12 @@ def plot_graph(fftw_results, ffta_results):
     xpos = np.arange(0,  len(fftw_results))
     width = 0.25
     print (ffta_results)
+    print (len(ffta_results))
     print (fftw_results)
-    plt.bar(xpos, ffta_results, width, label='Speedup FFTA over DSP')
-    plt.bar(xpos + width, fftw_results,  width,  label='Speedup FFTW over CPU')
+    print (len(fftw_results))
+    plt.ylim([0.1, 10000])
+    plt.bar(xpos, ffta_results, width, label='FFTA')
+    plt.bar(xpos + width, fftw_results,  width,  label='FFTW')
     plt.legend()
     plt.xticks(xpos + width  / 2, range(0, len(fftw_results)))
     plt.xlabel('Project Number')
@@ -43,10 +46,12 @@ if __name__ == "__main__":
             size = max(fftw_orig.keys())
             print("For project failed to get the sizes")
             print (folder)
+            print ("Using size ", size)
         else:
             size = args.size
 
         fftw_results.append(fftw_orig[size] / fftw_acc[size])
+        print ("Value used is ", fftw_results[-1])
 
         # Get the FFTA results:
         ffta_orig, _ = plot_ffta.read_file(folder + "/ffta_results/" + "UnAcceleratedResults")
@@ -56,9 +61,11 @@ if __name__ == "__main__":
             size = max(ffta_orig.keys())
             print("For project failed to get the sizes")
             print (folder)
+            print ("Using size ", size)
         else:
             size = args.size
 
         ffta_results.append(np.median(ffta_orig[size] / ffta_acc[size]))
+        print ("Value used is ", ffta_results[-1])
 
     plot_graph(fftw_results, ffta_results)

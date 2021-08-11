@@ -1,0 +1,3 @@
+python plot_joint_graph.py all Github/cpuimage_cpuFFT Github/cpuimage_FFTResampler Github/cpuimage_StockhamFFT Github/dlinyj_fft Github/JodiTheTigger_meow_fft Github/marton78_pffft Github/mborgerding_kissfft Github/mozanunal_SimpleDSP Github/tasimon_FFT Github/xbarin02_uFFT Github/xbarin02_uFFT_2 Github/xiahouzouxin_fft Github/gregfjohnson_fft Github/jtfell_c-fft Github/liscio_fft
+
+python plot_joint_graph.py fast_only Github/cpuimage_cpuFFT Github/cpuimage_FFTResampler Github/cpuimage_StockhamFFT Github/dlinyj_fft Github/JodiTheTigger_meow_fft Github/marton78_pffft Github/mborgerding_kissfft Github/mozanunal_SimpleDSP Github/tasimon_FFT Github/xbarin02_uFFT Github/xbarin02_uFFT_2 Github/xiahouzouxin_fft
