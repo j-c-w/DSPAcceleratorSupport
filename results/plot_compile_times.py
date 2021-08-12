@@ -4,12 +4,32 @@ import os
 import numpy as np
 import re
 
+def get_color(name):
+    if name == "FFTA":
+        return "green"
+    elif name == "FFTW":
+        return "orange"
+    elif name == "PowerQuad":
+        return "red"
+    else:
+        error("unknwon name")
+
+def get_linestyle(name):
+    if name == "FFTA":
+        return "--"
+    elif name == "FFTW":
+        return "-."
+    elif name == "PowerQuad":
+        return ":"
 
 def plot(ctimes):
     plt.clf()
     for time in ctimes:
         x, y = time.get_cdf()
-        plt.plot(x, y, label=time.name)
+        color = get_color(time.name)
+        style = get_linestyle(time.name)
+
+        plt.plot(x, y, label=time.name, color=color, linestyle=style)
 
     plt.legend()
     axes = plt.gca()
