@@ -42,7 +42,7 @@ def compute_differences(vectors):
             tvec = normalize(vectors[keys[j]])
 
             norm = l2norm(fvec, tvec)
-            if norm < 50:
+            if norm < 0.5:
                 print("Found similar" + keys[i] + " " + keys[j])
             diffs.append(norm)
 
