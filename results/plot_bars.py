@@ -87,4 +87,31 @@ if __name__ == "__main__":
         else:
             powerquad_results.append(0.0)
 
+
+    # Sort the values:
+    res = []
+    for i in range(len(args.directories)):
+        res.append(
+                (
+                ffta_results[i],
+                fftw_results[i],
+                powerquad_results[i],
+                args.directories[i]
+                )
+        )
+
+    res = sorted(res)
+
+    fftw_results = []
+    ffta_results = []
+    powerquad_results = []
+    dirs = []
+    for r in res:
+        ffta_results.append(r[0])
+        fftw_results.append(r[1])
+        powerquad_results.append(r[2])
+        dirs.append(r[3])
+
     plot_graph(fftw_results, ffta_results, powerquad_results)
+    print ("Order of folders")
+    print (dirs)
