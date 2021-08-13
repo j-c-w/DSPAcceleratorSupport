@@ -1,6 +1,21 @@
 import argparse
 import matplotlib.pyplot as plt
 
+def parse_reason(r):
+    # break up longer things into multiple lines
+    words = r.split(' ')
+    res = ""
+    i = 1
+    for word in words:
+        i += 1
+        res = res + word + " "
+        if (i % 2) == 0:
+            print ("adding nline")
+            res += "\n"
+    print(res)
+    return res
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('InfoFile')
@@ -12,7 +27,7 @@ if __name__ == "__main__":
         reasons = {}
         for line in f.readlines():
             print (line)
-            reason = line.split(":")[1].strip()
+            reason = parse_reason(line.split(":")[1].strip())
             if reason in reasons:
                 reasons[reason] += 1
                 total_size += 1
@@ -22,7 +37,7 @@ if __name__ == "__main__":
     with open(args.BrokenFile) as f:
         for line in f.readlines():
             print(line)
-            reason = line.split(":")[1].strip()
+            reason = parse_reason(line.split(":")[1].strip())
             if reason in reasons:
                 reasons[reason] += 1
                 total_size += 1
@@ -34,20 +49,34 @@ if __name__ == "__main__":
     explode = []
     labels = []
 
-    for key in sorted(reasons.keys()):
-        if key == "Supported":
-            explode.append(0.1)
-        else:
-            explode.append(0.0)
+    colors = [
+            # May need more?
+            'pink', 'blue', 'orange', 'green', 'red', 'purple', 'brown'
+            ]
+    values = []
+    # sort everthing into smallers -> greates
+    for key in reasons.keys():
+        values.append( (
+            float(reasons[key]) / (float(total_size)),
+            key
+            )
+        )
 
-        sizes.append(float(reasons[key]) / float(total_size))
-        labels.append(key)
+    values = sorted(values)
+    sizes = [v[0] for v in values]
+    labels = [v[1] for v in values]
 
     fig, ax = plt.subplots()
-    ax.pie(sizes, explode=explode, labels=labels, autopct='%1.f%%', shadow=True, startangle=90)
-    ax.axis('equal')
+    ax.bar(range(0, len(labels)), sizes, color=colors, width=0.5)
+    plt.xticks(rotation=90)
+    plt.ylabel("Fraction of Benchmarks")
+    # plt.ylim([0, 1])
+    ax.set_xticklabels([''] + labels)
+    plt.tight_layout()
+    # ax.pie(sizes, explode=explode, labels=labels, autopct='%1.f%%', shadow=True, startangle=90)
+    # ax.axis('equal')
 
     
     # plt.legend()
-    plt.gcf().subplots_adjust(left=0.34)
+    # plt.gcf().subplots_adjust(left=0.34)
     plt.savefig('open_source_project_distribution.eps')

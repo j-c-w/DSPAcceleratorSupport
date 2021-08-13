@@ -11,31 +11,32 @@ def plot_lines(mode, fftw, ffta, powerquad):
     ax.set_xscale('log', basex=2)
     if mode == 'all':
         ax.set_yscale('log', basey=10)
-        plt.ylabel("Speedup Ratio (log)")
+        plt.ylabel("Relative Performance (log)")
     elif mode == 'slow':
         plt.ylim([0, 30])
+        plt.ylabel("Relative Performance")
     else:
-        plt.ylabel("Speedup Ratio")
+        plt.ylabel("Relative Performance")
 
     plt.xlabel("Input Size")
     plt.xlim([4, 2**14])
 
     for i in range(len(fftw)):
-        fftw_keys = sorted(fftw[i].keys())
-        fftw_values = [fftw[i][k] for k in fftw_keys]
-        plt.plot(fftw_keys, fftw_values, '-.', color='orange')
-
         ffta_keys = sorted(ffta[i].keys())
         ffta_values = [ffta[i][k] for k in ffta_keys]
         plt.plot(ffta_keys, ffta_values, '--', color='green')
+
+        fftw_keys = sorted(fftw[i].keys())
+        fftw_values = [fftw[i][k] for k in fftw_keys]
+        plt.plot(fftw_keys, fftw_values, '-.', color='orange')
 
         pq_keys = sorted(powerquad[i].keys())
         pq_values = [powerquad[i][k] for k in pq_keys]
         plt.plot(pq_keys, pq_values, ':', color='red')
 
     custom_lines = [
-            Line2D([0], [0], linestyle='-.', color='orange', label='FFTW'),
             Line2D([0], [0], linestyle='--', color='green', label='FFTA'),
+            Line2D([0], [0], linestyle='-.', color='orange', label='FFTW'),
             Line2D([0], [0], linestyle=':', color='red', label='PowerQuad')
             ]
     ax.legend(handles=custom_lines)

@@ -87,9 +87,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ctimes_files = []
-    for path, sdirs, files in os.walk(args.folder):
-        for name in files:
-            pname = os.path.join(path, name)
-            ctimes_files.append(CTimes(name, pname))
+    # That is better vv
+    # for path, sdirs, files in os.walk(args.folder):
+    for name in ['FFTA', 'FFTW', 'PowerQuad']:
+        pname = os.path.join(args.folder, name)
+        ctimes_files.append(CTimes(name, pname))
 
     plot(ctimes_files)
