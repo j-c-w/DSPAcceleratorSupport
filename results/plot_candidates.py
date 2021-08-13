@@ -18,6 +18,7 @@ def plot(ccounts):
     axes = plt.gca()
     axes.set_ylim([0.0, 1.001])
     axes.set_xscale('log')
+    axes.set_xlim([1, 1000])
 
     plt.xlabel("Number of Binding Candidates")
     plt.ylabel("CDF")
@@ -32,16 +33,18 @@ class CCount(object):
     def get_counts(self):
         counts = []
         with open (self.path) as f:
-            for line in f.readlines:
+            for line in f.readlines():
                 if "Number of programs from these pairs" in line:
-                    cands = int(re.split(' ', line)[6])
+                    cands = int(re.split(' ', line)[7])
                     counts.append(cands)
         return counts
 
     def get_cdf(self):
         cands = np.array(sorted(self.get_counts()))
         y_var = np.array(range(0, len(cands)))
-        y_var = y_var / (len(times) - 1)
+        y_var = y_var / (len(cands) - 1)
+        
+        return cands, y_var
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
