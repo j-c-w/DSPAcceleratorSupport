@@ -1,0 +1,395 @@
+ -n
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0.625
+AccTime: 0
+Can't find any working inputs to user code: likely too sparse (try more inputs?)WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 8 possible annotated typemaps
+Number of skeletons generated is 8
+Number of conversion pairs generated is 8
+Number of programs from these pairs is 8
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0.03125
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 9 possible annotated typemaps
+Number of skeletons generated is 52
+Number of conversion pairs generated is 52
+Number of programs from these pairs is 52
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Can't find any working inputs to user code: likely too sparse (try more inputs?)WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 91 possible annotated typemaps
+Number of skeletons generated is 28
+Number of conversion pairs generated is 28
+Number of programs from these pairs is 28
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Can't find any working inputs to user code: likely too sparse (try more inputs?)WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 2 possible annotated typemaps
+Number of skeletons generated is 12
+Number of conversion pairs generated is 12
+Number of programs from these pairs is 12
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 2 possible annotated typemaps
+Number of skeletons generated is 12
+Number of conversion pairs generated is 12
+Number of programs from these pairs is 12
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 3 possible annotated typemaps
+Number of skeletons generated is 12
+Number of conversion pairs generated is 12
+Number of programs from these pairs is 12
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 24
+Number of conversion pairs generated is 24
+Number of programs from these pairs is 24
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 1 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
+WARNING: Set --only-test and --skip-build may lead to inconsistent results
+(--only-test renumbers executables)
+Loading specifications...
+Synthesizing...
+Starting synthesis!
+Generated the dimensions
+Have 2 possible annotated typemaps
+Number of skeletons generated is 4
+Number of conversion pairs generated is 4
+Number of programs from these pairs is 4
+Number of codes generated is 1
+Number of codes built is 1
+Generating tests for the 1 programs
+Number of IO tests generated is 1
+Time: 0
+AccTime: 0
+Real responses generated
+Warning: Accelerator failed on input (input file synthethizer_temps/io/1//1.json): accelerator bounds should be specified for better performance. 
+For executable synthethizer_temps/1_exec, passed cound is 0 of 1 tests (0 are vacuous: luck pass is false) 
+Starting post synthesis (1 programs)
+===============================================
+Working tests are in the source files for executables 
+There were 0 working in total
+Required compiler flags to build are: libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address -lfftw3 -lfftw3f
+Done!
