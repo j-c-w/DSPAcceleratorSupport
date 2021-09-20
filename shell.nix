@@ -3,7 +3,7 @@
 with pkgs;
 mkShell {
 	buildInputs = [
-		cloc ocaml gdb racket valgrind splint linuxPackages-libre.perf gnumake ctags bc
+		cloc ocaml gdb valgrind splint linuxPackages-libre.perf gnumake ctags bc
 		# Ocaml packages
 		ocamlPackages.findlib ocamlPackages.ocamlbuild ocamlPackages.yojson
 		ocamlPackages.core_kernel opam ocamlPackages.cmdliner
