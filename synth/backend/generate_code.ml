@@ -918,7 +918,17 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 		else
 			(* We assume only a single returnvar here.  *)
 			let () = assert (List.length program.returnvar = 1) in
-			returntype ^ " " ^ (String.concat ~sep:"" program.returnvar) ^ " = "
+			if (List.mem (program.funargs) (List.hd_exn program.returnvar) Utils.string_equal) then
+				(* If the returnvar is one of the funargs, then we don't have
+				to redefine it.  It's not clear that this is 100% correct,
+				but this is the only case in which the name of the returnvar
+				has any meaning -- so, I suppose I define this as the semantics
+				of what assining the name of he returnvar to be one of the other
+				vars.  Intended use case is e.g. if usercode returns one of
+				the things passed as an argument.   *)
+				(List.hd_exn program.returnvar) ^ " = "
+			else
+				returntype ^ " " ^ (String.concat ~sep:"" program.returnvar) ^ " = "
 	in
 	let call_func = result_assignment ^ program.generated_funname ^ "(" ^ argnames ^ ");" in
     let post_timing_code =
@@ -940,8 +950,10 @@ std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC <<
 			""
     in
 	let origmap = Option.value_exn program.typemap.original_typemap in
+	let writeout_args = (Utils.remove_duplicates Utils.string_equal (program.funargs @ program.returnvar)) in
+	let output_args = (Utils.remove_duplicates Utils.string_equal (program.liveout @ program.returnvar)) in
 	let output_writing_function =
-		generate_dump_function options origmap program "output_file" (program.funargs @ program.returnvar) (program.liveout @ program.returnvar) "write_output"
+		generate_dump_function options origmap program "output_file" (writeout_args) (output_args) "write_output"
 	in
 	let accelerator_timing_functions =
 		if options.generate_timing_code then
@@ -950,7 +962,7 @@ std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC <<
 			""
 	in
 	let output_write_call =
-        "write_output(" ^ (String.concat ~sep:", " (program.funargs @ program.returnvar)) ^ ");"
+        "write_output(" ^ (String.concat ~sep:", " writeout_args) ^ ");"
 	in
 	let tail = "}" in
 	String.concat ~sep:"\n" [accelerator_timing_functions; output_writing_function],

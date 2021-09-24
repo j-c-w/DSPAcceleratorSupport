@@ -604,7 +604,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let livein_types = skeleton_type_lookup typemap iospec.livein in
     let livein_api_types = skeleton_type_lookup typemap apispec.livein in
     let liveout_api_types = skeleton_type_lookup typemap apispec.liveout in
-    let liveout_types = skeleton_type_lookup typemap (iospec.returnvar @ iospec.liveout) in
+    let liveout_types = skeleton_type_lookup typemap (Utils.remove_duplicates Utils.string_equal (iospec.returnvar @ iospec.liveout)) in
     (* Get the types that are not livein, but are function args.  *)
     let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the binds.  *)
