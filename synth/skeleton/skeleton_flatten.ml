@@ -9,6 +9,7 @@ open Utils;;
 open Builtin_conversion_functions;;
 
 let flatten_binding (svar_binding: single_variable_binding_option_group) =
+    (* let () = Printf.printf "Length of bindings is %d\n" (List.length svar_binding.valid_dimensions_set) in *)
 	if List.length svar_binding.valid_dimensions_set > 0 then
 		let reduced_dimvar_set = List.map svar_binding.valid_dimensions_set filter_dimvar_set in
 		let combinations = cross_product reduced_dimvar_set in
@@ -43,6 +44,9 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 					let () = Printf.printf "Starting new skeleton!\n" in
 					let () = Printf.printf "Scanning length of %d\n" (List.length skel.bindings) in
 					let () = Printf.printf "Skeleton is %s\n" (skeleton_type_binding_to_string skel) in
+                    let () = Printf.printf "Number of input variables %d\n" (List.length skel.bindings) in
+                    let () = Printf.printf "Number of elements per variable is: %s\n"
+                                (String.concat ~sep:", " (List.map skel.bindings (fun b -> Int.to_string (List.length (b.fromvars_index_nesting))))) in
 					()
 				else () in
                 (* Each elt in the skel bindings is a list of possible dimvars *)
@@ -53,6 +57,7 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
                     let () = Printf.printf "Post flattening are %s\n" (
                         flat_single_variable_binding_list_list_to_string bindings
                     ) in
+                    let () = Printf.printf "Number of variables is %d\n" (List.length bindings) in
                     () else () in
 				bindings
 		)
@@ -66,6 +71,8 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 		Printf.printf "Produced results of length %d \n " (List.length result)
 	else () in
 	(* There must be more things after we expand them. *)
+    (* Failure of this assertion implies that there is something odd going on
+    with the dimension variables.  *)
 	let () = assert ((List.length result) >= (List.length skels)) in
 	let result = List.filter result length_variable_compatability in
 	result

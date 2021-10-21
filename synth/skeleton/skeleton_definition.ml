@@ -37,6 +37,10 @@ and skeleton_dimension_group_type =
     (* Except for this one :) because it's really a type and has a name *)
 	| SArray of name_reference * skeleton_dimension_group_type * dimension_type
 
+(* This is for bindings, to keep track of things that are more/less likely.  *)
+type skeleton_dimension_probabilistic_group_type =
+	Probability of skeleton_dimension_group_type * float
+
 type assignment_type =
     (* ie. this is trying to keep track of where the list
        index should go, e.g. complexes[i].real vs complexes.real[i].
@@ -54,7 +58,8 @@ type single_variable_binding_option_group = {
 	(* Which dimensions is this assignment valid over? *)
 	(* Again, we have one element for each list, but
 	provide a list of possible options here.  *)
-	valid_dimensions_set: dimvar_mapping list list
+	valid_dimensions_set: dimvar_mapping list list;
+	probability: float;
 }
 
 (* Storing one binding for every variable.  *)

@@ -145,10 +145,10 @@ let cxx_dimension_value_to_string typemap dvalue =
 
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)
-let cxx_dimtype_to_name typemap dimtype =
+let cxx_dimtype_to_name typemap context dimtype =
     match dimtype with
     | Dimension(x) ->
-            (cxx_dimension_value_to_string typemap x)
+            context ^ (cxx_dimension_value_to_string typemap x)
             (* Think this can be achieved in the gen_json call.
                Just return a TODO note, since that's what
                has to happen.  If it's (incorrectly)
@@ -177,11 +177,11 @@ let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_
             (* If it's another type, then use the simple type generator *)
             (cxx_type_signature_synth_type_to_string othertyp, "")
 
-let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dimratio_modifier =
+let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap context typ dimratio_modifier =
     match typ with
     | Array(stype, dimtype) ->
-            let prefix, subsize = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
-            let dim = cxx_dimtype_to_name typemap dimtype in
+            let prefix, subsize = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap context stype dimratio_modifier in
+            let dim = cxx_dimtype_to_name typemap context dimtype in
             (* THe concept is this will be expanded as:
                 prefix NAME = (prefix) malloc(size);
                But, we only use malloc if this is actually
@@ -189,7 +189,7 @@ let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ 
                 *)
             prefix ^ "*", subsize ^ "*" ^ dim
 	| Pointer(stype) ->
-			let prefix, subsize = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap stype dimratio_modifier in
+			let prefix, subsize = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap context stype dimratio_modifier in
 			prefix ^ "*", subsize
     | othertyp ->
             let tyname = cxx_type_signature_synth_type_to_string othertyp in
@@ -264,20 +264,14 @@ let use_dim_ratio_modifier adim =
 	| Dimension(DimVariable(_)) -> true
 	| EmptyDimension -> false (* This can arise wehn doing json generation. *)
 
-(* definitions use array formatting so that arrays
-   can be allocated on the stack.  *)
-let rec cxx_definition_synth_type_to_string options typemap alignment escapes typ base_type name =
-	(* What ratio should be infered by the difference
-	between the sizes of the respective types.  *)
-	let dim_ratio_modifier =
-		compute_dimension_ratio_modifier typ base_type in
-	let alignment_value = match alignment with
-	| None -> "0"
-	| Some(a) -> (string_of_int a)
-	in
+let assignment_for_type options typemap escapes alignment dim_ratio_modifier name typ  =
 	let static_prefix = match options.compile_settings.allocation_mode with
 	| StaticAllocationMode -> "static "
 	| HeapAllocationMode | StackAllocationMode -> ""
+	in
+	let alignment_value = match alignment with
+	| None -> string_of_int 0
+	| Some(a) -> string_of_int a
 	in
 	let assignment =
 		match options.compile_settings.allocation_mode with
@@ -312,13 +306,13 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 				if escapes then
 					(* If the variable escapes, then we need to malloc it.  *)
 					let usemalloc = is_malloc_type typemap typ in
-					let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dim_ratio_modifier in
+					let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap "" typ dim_ratio_modifier in
 					if usemalloc then
 						(* Malloc'ed values are not static.  *)
 						prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") facc_malloc (" ^ alignment_value ^ ", " ^ asize ^ ");"
 					else
 						(* Unless it is a primitive *)
-						static_prefix ^ prefix ^ " " ^ name ^ align_postfix
+						static_prefix ^ " " ^ prefix ^ " " ^ name ^ align_postfix
 				else
 					let (prefix, postfix) =
 						cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier in
@@ -328,7 +322,7 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 					static_prefix ^ prefix ^ " " ^ name ^ postfix ^ align_postfix
 		| HeapAllocationMode ->
 				let usemalloc = is_malloc_type typemap typ in
-				let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap typ dim_ratio_modifier in
+				let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap "" typ dim_ratio_modifier in
 				if usemalloc then
 					(* Malloc'ed values are not static.  *)
 					prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") facc_malloc (" ^ alignment_value ^ ", " ^ asize ^ ");"
@@ -343,6 +337,114 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 	in
 	assignment
 
+(* definitions use array formatting so that arrays
+   can be allocated on the stack.  *)
+(* 'Context' refers to the context that any variable might exist in.  *)
+let rec cxx_definition_synth_type_to_string options typemap alignment escapes typ base_type context name =
+	(* What ratio should be infered by the difference
+	between the sizes of the respective types.  *)
+	let dim_ratio_modifier =
+		compute_dimension_ratio_modifier typ base_type in
+	(* Allocate the space for the item.   *)
+	let alloc = assignment_for_type options typemap escapes alignment dim_ratio_modifier name typ in
+
+	(* If the type we are defining is an array, there are several classes of subtype that
+       we need to generate an assignment loop for:  other arrays, pointers, structs (sometimes, opts probably
+	   good).  *)
+	let generate_assign_loop_for dim sub_def sub_def_name =
+		let dim_length = cxx_dimtype_to_name typemap context dim in
+
+		let index_variable = generate_ivar_tmp () in
+		String.concat [
+			alloc; "\n";
+			"for (int "; index_variable; " = 0; "; index_variable; "++; "; index_variable; " < "; dim_length; ") {\n";
+			sub_def; ";\n";
+			name; "["; index_variable; "] = "; sub_def_name; ";\n";
+			"}"
+		]
+	in
+	match typ with
+	| Array(sty, dim) ->
+			let base_type_stype =
+				match base_type with
+				| Array(ssty, sdim) -> ssty
+				| _ -> assert false (* Think this isn't possible right now? *)
+			in
+			(* Go through an initialize each elt of the array if requierd.  *)
+			(
+			match sty with
+			(* These two need allocations, everything else does not.  *)
+			| Array(ssty, sdim) ->
+					let sub_def_name = name ^ "_sub_element" in
+					(* Alignment doesn't pass onto sub elts? Do we need a decision here eventually? *)
+					let sub_def = cxx_definition_synth_type_to_string options typemap None escapes sty base_type_stype context sub_def_name in
+
+					generate_assign_loop_for dim sub_def sub_def_name
+			| Pointer(pointed) ->
+					let sub_def_name = name ^ "_sub_element" in
+					let sub_def = cxx_definition_synth_type_to_string options typemap None escapes sty base_type_stype context sub_def_name in
+
+					generate_assign_loop_for dim sub_def sub_def_name
+			| Struct(structname) ->
+					(* Really, this doesn't have to happen like this --- we need a heuristic that tells
+					us whether the struct has to be initialized ---- expect that this might be relevant. *)
+					let sub_def_name = name ^ "_sub_element" in
+					let sub_def = cxx_definition_synth_type_to_string options typemap None escapes sty base_type_stype context sub_def_name in
+
+					generate_assign_loop_for dim sub_def sub_def_name
+			| other ->
+					(* These are arrays of primitive types, which means that they don't actually need complex
+					assignment types.  *)
+					alloc
+			)
+	| Struct(s) ->
+			(* Depending on the elements of the struct, we may or may not need to go through it.  *)
+			let meta = Hashtbl.find_exn typemap.classmap s in
+			let members = get_class_members meta in
+			let class_typemap = get_class_typemap meta in
+
+			(* Get the type of each member, and if we have to alloc, then do that.  *)
+			let struct_assignments = List.map members (fun member ->
+				let member_type = Hashtbl.find_exn class_typemap member in
+				if is_malloc_type typemap member_type then
+					(* Do the sub-malloc: *)
+					let sub_def_name = name ^ "_" ^ member ^ "_alloc" in
+
+					(* Note that we use the same type for the member type and the base_type for that member --- not
+					100% sure this is correct, but I can't otherwise remember where I put it... *)
+					let sub_typemap = { typemap with variable_map = class_typemap } in
+					let subdef = cxx_definition_synth_type_to_string options sub_typemap None escapes member_type member_type (context ^ "." ^ name) sub_def_name in
+					let assign =
+						name ^ "." ^ member ^ " = " ^ sub_def_name ^ ";"
+					in
+					subdef ^ "\n" ^ assign
+				else
+					""
+			) in
+
+			String.concat ~sep:"\n" ([
+				alloc
+			] @ struct_assignments)
+	| Pointer(p) ->
+			let sub_base_type = match base_type with
+			| Pointer(sub_p) -> sub_p
+			| _ -> assert false (* Don't think this is possible right now? *)
+			in
+			let subtypdef = 
+				if is_malloc_type typemap p then
+					let subdef = cxx_definition_synth_type_to_string options typemap None escapes p sub_base_type context (name ^ "_sub_elem") in
+					subdef ^ "\n" ^
+					(* TODO --- pretty sure this is broken?  What should it be? *)
+					name ^ " = " ^ (name ^ "_sub_elem") ^ ";"
+				else
+					""
+			in
+			alloc ^ "\n" ^ subtypdef
+	| other ->
+			(* Don't need to malloc anything *)
+			alloc
+
+
 let cxx_names_to_type_definition variable_map names =
     List.map names (fun name -> (cxx_type_signature_synth_type_to_string (Hashtbl.find_exn variable_map name)) ^ " " ^ name)
 
@@ -354,7 +456,7 @@ let rec cxx_generate_from_gir options (typemap: typemap) gir =
 			| Some(x) -> x
 			| None -> raise (CXXGenerationException "Error: untyped def: see generate_gir:get_definition_type_for ")
 			in
-            cxx_definition_synth_type_to_string options typemap alignment escapes definition_type definition_type (cxx_gir_name_to_string nref)
+            cxx_definition_synth_type_to_string options typemap alignment escapes definition_type definition_type "" (cxx_gir_name_to_string nref)
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir options typemap))
     | Assignment(fromv, tov) ->
@@ -711,7 +813,7 @@ let rec generate_input_assigns options (typemap: typemap) inps livein json_ref =
         let typ = Hashtbl.find_exn iotypemap.variable_map inp in
 		let alignment = Hashtbl.find iotypemap.alignment_map inp in
 		(* Things that go into the API are assumed to be dead-in.  *)
-		cxx_definition_synth_type_to_string deadin_assignment_options typemap alignment false typ infered_type inp
+		cxx_definition_synth_type_to_string deadin_assignment_options typemap alignment false typ infered_type "" inp
     ) in
 	(* Hope and pray we don't end up needing to topo sort
 	this shit. *)
@@ -755,14 +857,18 @@ and generate_output_assign options typemap program (infered_typ, typ) out out_pr
 		let artypname = cxx_vectors_type_signature_synth_type_to_string artyp in
 		let outtmp = generate_out_tmp () in
         let ivar = generate_ivar_tmp() in
-		let length = cxx_dimtype_to_name typemap adim in
+		(* Note that using the out_prefix here is a bit simplistic: it restricts the use
+		   of length variables to those that exist in the context of the struct.   This
+		   isn't a problem right now, but one could imagine odd situations where
+		   variable X has length *)
+		let length = cxx_dimtype_to_name typemap out_prefix adim in
 		let vecres = "std::vector<json> " ^ outtmp ^ ";" in
 		(* TODO--- need to actually properly handle multi-dimensions here.  *)
 		(* (Array indexing like this won't work for the C view of the world --probaly
 		need multipied indexes or some shit. ) *)
 		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ (dim_ratio_modifier length) ^ "; " ^ ivar ^ "++) {" in
 		let newout = generate_out_tmp() in
-		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ out ^ "[" ^ ivar ^ "];" in
+		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ (out_prefix ^ out) ^ "[" ^ ivar ^ "];" in
 		let assbody, assresvar = generate_output_assign options typemap program (artyp, artyp) newout out_prefix "." in
 		(* Add to the array. *)
 		let inloopassign = outtmp ^ ".push_back(" ^ assresvar ^ ");" in
@@ -780,7 +886,7 @@ and generate_output_assign options typemap program (infered_typ, typ) out out_pr
 		let ptyp = cxx_vectors_type_signature_synth_type_to_string styp in
 		let outtmp = generate_out_tmp() in
 		let outtmp_assign = ptyp ^ " " ^ outtmp ^ " = " ^ "*" ^ out ^ ";" in
-		let sub_ass, assresvar = generate_output_assign options typemap program (infered_subtyp, styp) outtmp out_prefix "->" in
+		let sub_ass, assresvar = generate_output_assign options typemap program (infered_subtyp, styp) outtmp out_prefix "." in
 		(String.concat ~sep:"\n" [
 			outtmp_assign; sub_ass
 		], assresvar)

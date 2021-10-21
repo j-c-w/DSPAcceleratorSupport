@@ -28,13 +28,23 @@ let one_dimension_mapping_equal m1 m2 =
 			(fconst1 = fconst2)
     | _, _ -> false
 
-let one_dimension_mapping_equal_commutative m1 m2 =
+let one_dimension_mapping_equal_commutative equivalence_map m1 m2 =
+    let get_equivalent_variables map v =
+        let equivalents = Hashtbl.find map (name_reference_to_string v) in
+        match equivalents with
+        | Some(vs) -> (name_reference_to_string v) :: vs
+        | None -> [(name_reference_to_string v)]
+    in
 	match m1, m2 with
 	| VarMatch(fromv1, tov1, DimEqualityRelation), VarMatch(fromv2, tov2, DimEqualityRelation) ->
-			((name_reference_equal fromv1 fromv2) &&
-			 (name_reference_equal tov1 tov2)) ||
-			((name_reference_equal fromv1 tov2) &&
-			 (name_reference_equal fromv2 tov1))
+            let from1alternatives = get_equivalent_variables equivalence_map fromv1 in
+            let from2alternatives = get_equivalent_variables equivalence_map fromv2 in
+            let to1alternatives = get_equivalent_variables equivalence_map tov1 in
+            let to2alternatives = get_equivalent_variables equivalence_map tov2 in
+			((Utils.strings_any_equal from1alternatives from2alternatives) &&
+			 (Utils.strings_any_equal to1alternatives to2alternatives)) ||
+			((Utils.strings_any_equal from1alternatives to2alternatives) &&
+			 (Utils.strings_any_equal from2alternatives to1alternatives))
             (* TODO --- something for pow2? *)
 	| other1, other2 ->
 			(* No difference for constant matching *)
@@ -44,10 +54,10 @@ let dimvar_equal m1 m2 =
 	match m1, m2 with
 	| DimvarOneDimension(map1), DimvarOneDimension(map2) -> one_dimension_mapping_equal map1 map2
 
-let dimvar_equal_commutative m1 m2 =
+let dimvar_equal_commutative equivalence_map m1 m2 =
 	match m1, m2 with
 	| DimvarOneDimension(map1), DimvarOneDimension(map2) ->
-			one_dimension_mapping_equal_commutative map1 map2
+			one_dimension_mapping_equal_commutative equivalence_map map1 map2
 
 let dimvar_list_equal m1 m2 =
     let zipped = List.zip m1 m2 in
@@ -91,6 +101,14 @@ let rec skeleton_dimension_group_type_to_string stype =
 
 let skeleton_dimension_group_type_list_to_string typs =
 	String.concat ~sep:", " (List.map typs skeleton_dimension_group_type_to_string)
+
+let skeleton_dimension_probabilistic_group_type_to_string stype =
+	match stype with
+	| Probability(sgroup, p) ->
+			skeleton_dimension_group_type_to_string sgroup ^ " (probability" ^ (Float.to_string p) ^ ") "
+
+let skeleton_dimension_probabilistic_group_type_list_to_string stypes =
+	String.concat ~sep:"\n" (List.map stypes skeleton_dimension_probabilistic_group_type_to_string)
 
 let flat_single_variable_binding_to_string (binding: flat_single_variable_binding) =
 	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^

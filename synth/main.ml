@@ -34,6 +34,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         dump_behavioural_synth debug_fft_synthesizer compiler_flags
 		debug_range_check dump_range_check pre_accel_dump_function
 		param_constant_generation_threshold debug_skeleton_constant_gen
+		debug_skeleton_verify
 		debug_skeleton_multiple_lengths_filter range_size_diff_factor
         debug_skeleton_range_filter debug_skeleton_filter
 		execution_timeout skip_test mse_threshold
@@ -108,6 +109,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		
 		debug_skeleton_flatten = debug_skeleton_flatten;
         debug_skeleton_constant_gen = debug_skeleton_constant_gen;
+		debug_skeleton_verify = debug_skeleton_verify;
 		debug_skeleton_multiple_lengths_filter = debug_skeleton_multiple_lengths_filter;
         debug_skeleton_range_filter = debug_skeleton_range_filter;
 		debug_skeleton_filter = debug_skeleton_filter;
@@ -264,6 +266,9 @@ let debug_skeleton_flatten =
 let debug_skeleton_constant_gen =
     let doc = "Debug the constant generation pass" in
     Arg.(value & flag & info ["debug-skeleton-constant-generation"] ~docv:"DebugSkeletonConstGen" ~doc)
+let debug_skeleton_verify =
+	let doc = "Debug skeleton verify" in
+	Arg.(value & flag & info ["debug-skeleton-verify"] ~docv:"DebugSkeletonVerify" ~doc)
 let debug_skeleton_multiple_lengths_filter =
 	let doc = "Debug multiple lengths removal pass" in
 	Arg.(value & flag & info ["debug-multiple-length-filter"] ~docv:"DebugMultipleLengthFilter" ~doc)
@@ -349,6 +354,7 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     $ dump_behavioural_synth $ debug_fft_synthesizer $ compiler_flags
 	$ debug_range_check $ dump_range_check $ pre_accel_dump_function $
 	param_constant_generation_threshold $ debug_skeleton_constant_gen $
+	debug_skeleton_verify $
 	debug_skeleton_multiple_lengths_filter $ range_size_difference_factor
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $

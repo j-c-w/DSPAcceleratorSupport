@@ -135,20 +135,28 @@ and names_from_type typemap classmap x typ =
 	| other ->
 			[Name(x)]
 
-let verify_pre typemap (iospec: iospec) (apispec: apispec) pre_binding_list =
+let verify_pre options typemap (iospec: iospec) (apispec: apispec) pre_binding_list =
+	let () = if options.debug_skeleton_verify then
+		Printf.printf "Verifying pre\n"
+	else ()
+	in
     let () = check_all_defined (get_names typemap.variable_map typemap.classmap apispec.livein) pre_binding_list in
 	let () = check_not_double_defined pre_binding_list in
     ()
 
-let verify_post typemap (iospec: iospec) (apispec: apispec) post_binding_list =
-    let () = check_all_defined (get_names typemap.variable_map typemap.classmap iospec.liveout) post_binding_list in
+let verify_post options typemap (iospec: iospec) (apispec: apispec) post_binding_list =
+	let () = if options.debug_skeleton_verify then
+		Printf.printf "Verifying post\n"
+	else ()
+	in
+    let () = check_all_defined (get_names typemap.variable_map typemap.classmap (iospec.liveout @ iospec.returnvar)) post_binding_list in
 	let () = check_not_double_defined post_binding_list in
     ()
 
 let verify_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) pairs =
     ignore(List.map pairs (fun (skeleton: skeleton_pairs) ->
-        let () = verify_pre typemap iospec apispec skeleton.pre in
-        let () = verify_post typemap iospec apispec skeleton.post in
+        let () = verify_pre options typemap iospec apispec skeleton.pre in
+        let () = verify_post options typemap iospec apispec skeleton.post in
         ()
     )
     )

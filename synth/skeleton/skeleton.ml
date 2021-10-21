@@ -23,6 +23,11 @@ type binding_mode =
 	| PostBinding (* from api variables to user code variables *)
 	| PreBinding (* from user code variables to api variables.  *)
 
+let binding_mode_to_string b =
+    match b with
+    | PostBinding -> "PostBinding"
+    | PreBinding -> "PreBinding"
+
 (* THis function turns a SType into a list of types
    by flattening them.  (i.e. SType(A,B,C) -> A,B,C*)
 let rec flatten_stype_list stype =
@@ -36,6 +41,12 @@ let rec flatten_stype_list stype =
 	   before the call to inspect this type.  *)
 	| SArray(name, subtyps, lenvar) as t -> [t]
 
+let rec flatten_stype_probability_list stype =
+    match stype with
+    | Probability(SType(_), p) as t -> [t]
+    | Probability(STypes(typs), p) -> List.concat (List.map typs (fun t -> flatten_stype_probability_list (Probability(t, p))))
+    | Probability(SArray(name, subtyps, lenvar), p) as t -> [t]
+
 let rec contains x ys =
 	match ys with
 	| [] -> false
@@ -46,7 +57,9 @@ let get_plausible_constants_for optsmap name =
 	let () = Printf.printf "table keys are %s\n " (String.concat ~sep:", " (Hashtbl.keys optsmap)) in *)
     match Hashtbl.find optsmap (name_reference_to_string (name_refs_from_skeleton name)) with
     | Some(opts) ->
-            List.map opts (fun opt -> AssignConstant(opt))
+			(* We should really have a better probabilistic likelyhood calculator -- as-is this calculation
+			   might push out more likely variables.  *)
+            List.map opts (fun opt -> (1.0, AssignConstant(opt)))
     | None -> []
 
 let rec big_intersection lists =
@@ -68,9 +81,11 @@ let variable_in_type var typ =
 let rec flatten_stypes sty = 
 	List.concat (List.filter_map sty
 	(fun ty -> match ty with
-	| SType(x) -> Some([x])
-	| STypes(x) -> Some(flatten_stypes x)
-	| SArray(_, _, _) -> None))
+	| Probability(SType(x), prob) -> Some([(x, prob)])
+	| Probability(STypes(x), prob) ->
+			let sub_flattened = flatten_stypes (List.map x (fun l -> Probability(l, prob))) in
+			Some(sub_flattened)
+	| Probability(SArray(_, _, _), prob) -> None))
 
 let rec prepend_all prep all =
 	match all with
@@ -156,10 +171,19 @@ let rec dim_has_overlap direction x y =
 	List.concat (List.map x (fun xel -> dimvar_contains direction xel y ))
 
 let rec dimensions_overlap direction x y =
-	match x, y with
+    (* let () =
+        Printf.printf "Dimensions are given by %s and %s\n" (dimension_type_to_string x) (dimension_type_to_string y)
+    in *)
+    let result = match x, y with
 	| EmptyDimension, _ -> []
 	| _, EmptyDimension -> []
 	| Dimension(nrefs), Dimension(nrefs2) -> dim_has_overlap direction [nrefs] [nrefs2]
+    in
+    (* let () =
+        Printf.printf "Computed overlap is %s\n"
+            (dimvar_mapping_list_to_string result)
+    in *)
+    result
 
 let add_name_nr name ty =
 	match ty with
@@ -187,8 +211,9 @@ let name_from_opt opt =
     | Some(n) -> Name(n)
 
 (* Generates the base typesets for a class. *)
-let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_type =
-	match inptype with
+let rec generate_typesets classmap inptype parentname inpname: skeleton_dimension_group_type =
+    let () = Printf.printf "Looking at intput type %s, with inpname %s\n" (synth_type_to_string inptype) (match inpname with | None -> "None" | Some(inpname) ->  inpname) in
+    let result = match inptype with
 	| Struct(name) ->
 			(
             let (members, structtypemap) = (match Hashtbl.find classmap name with
@@ -198,10 +223,18 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
             in
             (* Use the struct typemap to find the types of the members. *)
             let subtypes = List.map members (fun mem -> (Hashtbl.find_exn structtypemap mem, mem)) in
+            let input_variable_name = match inpname with
+            | Some(vname) -> Name(vname)
+            | None -> AnonymousName
+            in
+            let new_parentname = match parentname with
+            | None -> Some(input_variable_name)
+            | Some(supername) -> Some(name_reference_concat supername (input_variable_name))
+            in
             (* But need to use the classmap to recurse. *)
 			let types = List.map subtypes
-				(fun (memtyp, memname) -> (generate_typesets classmap memtyp (Some(memname)))) in
-			(* Prepend teh class names *)
+				(fun (memtyp, memname) -> (generate_typesets classmap memtyp new_parentname (Some(memname)))) in
+			(* Prepend the class names that are for representing array indexes.   *)
 			let class_ref_types =
 				match inpname with
 				| None -> types
@@ -210,17 +243,28 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
 			in
 			STypes(class_ref_types))
 	| Array(subtyp, lenvar) ->
-			(* So here's the thing with passing inpname rather than None here.
-			   Let's say you've got char x[] --- what has the name?  the array?
-			   or the char?  Passing inpname here basically says both
-			   get that name.  Not 100% sure it's the right decision.
-			   passing None would mean the char is anon and the array
-			   get sthe name.  *)
-            let subtyps = generate_typesets classmap subtyp None in
+			(* Do the subcall with no parentname --- that has to be split out into a dimvar.  *)
+            let subtyps = generate_typesets classmap subtyp None None in
+            (* So, when lenvars are assigned in the typemap, they are assigned
+            relative to the base class.  This makes them 'contextless' in some sense,
+            as it's not clear from the original assignment which instance they
+            refer to.  To address that problem, we build up the len var here
+            to refer to this particular instance.  *)
+            let full_lenvar = match parentname with
+            | None -> lenvar
+            | Some(parent) ->
+                    match lenvar with
+                    | EmptyDimension -> assert false (* No idea WTF to do here.  *)
+                    | Dimension(DimConstant(_)) -> lenvar (* Keep the constant -- that doesn't need the context prepending.  *)
+                    | Dimension(DimVariable(nr, rel)) ->
+                            (* Relation stays the same, but we prepend the context that this particular
+                               instance exists within.  *)
+                            Dimension(DimVariable(name_reference_concat parent nr, rel))
+            in
 			(* This gives the array the name, so 'x' belongs to '[]'.  *)
-			SArray(name_from_opt inpname, subtyps, lenvar)
+			SArray(name_from_opt inpname, subtyps, full_lenvar)
 	| Pointer(styp) ->
-			generate_typesets classmap styp inpname
+			generate_typesets classmap styp parentname inpname
 	| Unit -> raise (SkeletonGenerationException "Can't Unit typesets")
 	| Fun(_, _) -> raise (SkeletonGenerationException "Cannot generate typesets from a fun")
 	(* Everything else goes to itself.  *)
@@ -234,9 +278,22 @@ let rec generate_typesets classmap inptype inpname: skeleton_dimension_group_typ
 	| Float16 -> SType(SFloat(name_from_opt inpname))
 	| Float32 -> SType(SFloat(name_from_opt inpname))
 	| Float64 -> SType(SFloat(name_from_opt inpname))
+    in
+    let () = Printf.printf "Generated result types %s\n" (skeleton_dimension_group_type_to_string result) in
+    result
 
 let skeleton_type_lookup typemap names =
-    List.map names (fun name -> generate_typesets typemap.classmap (Hashtbl.find_exn typemap.variable_map name) (Some(name)))
+    List.map names (fun name -> generate_typesets typemap.classmap (Hashtbl.find_exn typemap.variable_map name) (None) (Some(name)))
+
+let build_dimension_groups likely unlikely =
+	(* So this function should be more powerful.  The type supports any float of precedence,
+	   which is meant to be some kind of fuzzy thing that allows us to consider the probability
+	   of a match.
+
+	   I think that it should be expanded to consider things like likelyhood of names mapping
+	   to each other.   *)
+	(List.map likely (fun l -> Probability(l, 1.0))) @
+	(List.map unlikely (fun l -> Probability(l, 0.5)))
 
 let rec repeat n item =
     match n with
@@ -297,27 +354,27 @@ let rec compatible_types from_t to_t: bool =
    since it was designed for many output variables.  However,
    it should eventually be modified to consider more than
    just binary conversions.  *)
-and bindings_for (typesets_in: skeleton_type list) (output: skeleton_type): assignment_type list =
+and bindings_for (typesets_in: (skeleton_type * float) list) (output: skeleton_type): (float * assignment_type) list =
 	(* Create all reasonable sets of bindings.  *)
 	match typesets_in with
 	| [] ->
 			(* No matches possible from an enpty list of assigning
 			   variables! *)
 			[]
-	| itypeset :: rtypesets_in ->
+	| (itypeset, iprobability) :: rtypesets_in ->
 			(* If there is type overlap, then get that out. *)
             let types_compatible = compatible_types itypeset output in
 			(* Try using this variable to assign to the output
 			   variable and also try not using it.  *)
 			(* With the assignments made here. *)
-			let subtask_with_intersection: assignment_type list =
+			let subtask_with_intersection: (float * assignment_type) list =
                 (* The match wasn't complete, so skip *)
 				if not types_compatible then
                     []
 				else
                     (* The match was complete --- there is no point in recursing, this assignment
                        is good endouh. *)
-                    [AssignVariable([name_refs_from_skeleton itypeset])]
+                    [(iprobability, AssignVariable([name_refs_from_skeleton itypeset]))]
 			in
 			(* Without the assignments made here. *)
 			let subtask_without_intersection =
@@ -331,7 +388,7 @@ and bindings_for (typesets_in: skeleton_type list) (output: skeleton_type): assi
 
    Need to get a set of assignments for each
    output. *)
-and possible_bindings options direction constant_options_map (typesets_in: skeleton_dimension_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
+and possible_bindings options direction constant_options_map (typesets_in: skeleton_dimension_probabilistic_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
     List.concat (List.map types_out (fun type_out ->
 		(*  Make sure that all the possible assingments
 		    have the same dimension.  *)
@@ -342,13 +399,15 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 		   those). *)
 		| SArray(sarray_nam, array_subtyps, dim_options) ->
 				let valid_dimensioned_typesets_in, dim_mappings  = List.unzip (List.filter_map typesets_in (fun intype ->
+                    let () = Printf.printf "Variable name is %s\n" (skeleton_dimension_probabilistic_group_type_to_string intype) in
 					match intype with
-					| SArray(_, _, in_dim_options) ->
+					| Probability(SArray(_, _, in_dim_options), p) ->
 							(* Get the set of possible typevar
 							   bindings that would make this mapping
 							   possible.  *)
                             let dimoverlap = dimensions_overlap direction dim_options in_dim_options in
 							Some(intype, dimoverlap)
+                    | Probability(STypes(_), _) -> raise (SkeletonGenerationException "Unexepcted STypes --- need to be flattened")
 					(* non-dimension types can't be included. *)
 					| _ -> None
 				)) in
@@ -357,32 +416,37 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 				let valid_undimensioned_typesets_in =
 						List.map valid_dimensioned_typesets_in (fun intype ->
 							match intype with
-							| SArray(parent_array_name, artyp, dims) -> (parent_array_name, artyp)
+							| Probability(SArray(parent_array_name, artyp, dims), probability) -> (parent_array_name, artyp, probability)
 							| _ -> raise (SkeletonGenerationException "")
 						) in
 				let () = if options.debug_generate_skeletons then
-					Printf.printf "Recursing from ARRAY_ASSIGN using valid assignment vars %s\n"
-						(skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b) -> b)))
+					Printf.printf "Recursing from ARRAY_ASSIGN (%s) using valid assignment vars %s\n"
+                        (name_reference_to_string sarray_nam)
+						(skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b, p) -> b)))
 				else () in
 				(* Flatten the arstyles into a list.  *)
 				let flattened_arr_stypes = flatten_stype_list array_subtyps in
-				let flattened_undimensioned_typesets = List.map valid_undimensioned_typesets_in (fun (nam, typ) -> (nam, flatten_stype_list typ)) in
+				let flattened_undimensioned_typesets = List.map valid_undimensioned_typesets_in (fun (nam, typ, prob) -> (nam, flatten_stype_list typ, prob)) in
 				let () = if options.debug_generate_skeletons then
+                    let () = Printf.printf "unflattened is %s\n" (skeleton_dimension_group_type_to_string array_subtyps) in
+                    let () = Printf.printf "flattened is %s\n" (skeleton_dimension_group_type_list_to_string flattened_arr_stypes) in
 					Printf.printf "Have %d assigns to generate.\n" (List.length flattened_undimensioned_typesets)
 				else () in
 				(* Recurse for the matches.  *)
 				let recurse_assignments: single_variable_binding_option_group list list list =
 					(* Put the undimensioned typelists back with their types.  *)
-					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun ((arrnam, flattened_undimensioned_typeset), dim_mapping) ->
+					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun ((arrnam, flattened_undimensioned_typeset, prob), dim_mapping) ->
 						let () = if options.debug_generate_skeletons then
 							let () = Printf.printf "Looking at array with name %s\n" (name_reference_to_string arrnam) in
-							let () = Printf.printf "Has flattened undimed typeset %s\n" (skeleton_dimension_group_type_list_to_string flattened_undimensioned_typeset) in
+							let () = Printf.printf "Has flattened undimed typeset %s%!\n" (skeleton_dimension_group_type_list_to_string flattened_undimensioned_typeset) in
 							()
 						else () in
                         let () = assert ((List.length dim_mapping) > 0) in
+						let flattened_undimensioned_probability_typeset =
+							List.map flattened_undimensioned_typeset (fun l -> Probability(l, prob)) in
 						(* Get the possible bindings.  *)
 						let poss_bindings: single_variable_binding_option_group list list =
-							possible_bindings options direction constant_options_map flattened_undimensioned_typeset flattened_arr_stypes in
+							possible_bindings options direction constant_options_map flattened_undimensioned_probability_typeset flattened_arr_stypes in
 						let () = verify_single_binding_option_groups poss_bindings in
 						(* Now add the required dimension mappings.  *)
 						(* For each variable assignment *)
@@ -393,7 +457,10 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 								{
                                     fromvars_index_nesting = prepend_all arrnam bind.fromvars_index_nesting;
                                     tovar_index_nesting = sarray_nam :: bind.tovar_index_nesting;
-                                    valid_dimensions_set = dim_mapping :: bind.valid_dimensions_set
+									valid_dimensions_set = dim_mapping :: bind.valid_dimensions_set;
+									(* Note that since the probabilities are the same for every sub-element,
+									   this is OK.  Not that I'd like it to stay like this forever.  *)
+									probability = prob
                                 }
 							)
                         ) in
@@ -404,9 +471,10 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 				let concated_recurse_assignments = merge_skeleton_assigns recurse_assignments in
 				let () = if options.debug_generate_skeletons then
 					let () = Printf.printf "ARRAY_ASSIGN: For the flattened subtypes %s\n" (skeleton_dimension_group_type_list_to_string flattened_arr_stypes) in
+                    let () = Printf.printf "Found %d options\n" (List.length flattened_arr_stypes) in
 					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string concated_recurse_assignments) in
-					let () = Printf.printf "Had the following types available to find these assignments %s\n" (skeleton_dimension_group_type_list_to_string typesets_in) in
-					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b) -> b)))
+					let () = Printf.printf "Had the following types available to find these assignments %s\n" (skeleton_dimension_probabilistic_group_type_list_to_string typesets_in) in
+					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b, p) -> b)))
 				else
 					() in
 				let () = verify_single_binding_option_groups concated_recurse_assignments in
@@ -430,7 +498,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 				else () in
 				let () = if options.debug_generate_skeletons then
                     let () = Printf.printf "SINGLE_ASSIGN: Assiging to variable '%s' using bindings %s\n" (name_reference_to_string (name_refs_from_skeleton stype_out))
-						((skeleton_dimension_group_type_list_to_string typesets_in )) in
+						((skeleton_dimension_probabilistic_group_type_list_to_string typesets_in )) in
                     let () = if (List.length all_binds) = 0 then
                         let () = Printf.printf "Found no possible bindings for variable %s%!\n" (name_reference_to_string (name_refs_from_skeleton stype_out)) in
                         ()
@@ -440,11 +508,12 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
         (* The bindings_for doesn't create the whole skeleton_type_binding or
            name_binding types.  This needs to add the informtion about
            the out variable to each set to achieve that.  *)
-			let results = [List.map all_binds (fun binding ->
+			let results = [List.map all_binds (fun (prob, binding) ->
 			{
                 fromvars_index_nesting = [binding];
                 tovar_index_nesting = [name_refs_from_skeleton stype_out];
                 valid_dimensions_set = [];
+				probability = prob;
             })] in
 			let () = verify_single_binding_option_groups results in
 			results
@@ -495,30 +564,45 @@ let rec define_bindings_for direction valid_dimvars vs =
                 raise (SkeletonGenerationException "Can't have empty dim")
 		| SArray(arnam, _, Dimension(dms)) ->
                 let dimvar_bindings = dim_has_overlap direction [dms] valid_dimvars in
+                let () = Printf.printf "Got potential dimvars %s\n" (dimension_value_list_to_string valid_dimvars) in
+                let () =
+                    if (List.length dimvar_bindings) = 0 then
+                        let () = Printf.printf "Define binding has no valid dim vars.\n" in
+                        let () = Printf.printf "Direction is %s\n" (binding_mode_to_string direction) in
+                        let () = Printf.printf "array dms is %s\n" (dimension_type_to_string (Dimension(dms))) in
+                        let () = Printf.printf "Valid dimvars is %s\n" (dimension_value_list_to_string valid_dimvars) in
+                        assert false
+                    else ()
+                in
+                let () = (assert (List.length dimvar_bindings > 0)) in
 				[{
 					(* May have to properly
 					deal with array childer. *)
 					tovar_index_nesting = [name_reference_base_name arnam; AnonymousName];
 					fromvars_index_nesting = [];
-                    valid_dimensions_set = [dimvar_bindings]
+					valid_dimensions_set = [dimvar_bindings];
+					probability = 1.0
                 }]
 		| SType(SInt(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];
 					fromvars_index_nesting = [AssignConstant(Int64V(0))];
-                    valid_dimensions_set = []
+					valid_dimensions_set = [];
+					probability = 1.0
                 }]
 		| SType(SBool(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];
 					fromvars_index_nesting = [AssignConstant(BoolV(false))];
-					valid_dimensions_set = []
+					valid_dimensions_set = [];
+					probability = 1.0
 				}]
 		| SType(SFloat(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];
 					fromvars_index_nesting = [AssignConstant(Float32V(0.0))];
-                    valid_dimensions_set = []
+					valid_dimensions_set = [];
+					probability = 1.0
                 }]
         | STypes(ts) ->
                 (* Think we can get away with nly defing
@@ -533,27 +617,82 @@ let possible_skeletons options possible_bindings_for_var =
 	(* Get the skeletons for assigining to variables.  *)
 	find_possible_skeletons options possible_bindings_for_var
 
-let get_dimvars_used typeset =
+let rec get_dimvars_used typeset =
+    (* let () = Printf.printf "input typeset is %s\n" (skeleton_dimension_probabilistic_group_type_list_to_string typeset) in *)
     let with_dups =
         List.concat (
             List.map typeset (fun typ ->
                 match typ with
-                | SArray(_, _, EmptyDimension) -> []
-                | SArray(_, _, Dimension(vs)) -> [vs]
+                | Probability(SArray(_, _, EmptyDimension), _) -> []
+                | Probability(SArray(_, _, Dimension(vs)), _) -> [vs]
+                | Probability(STypes(subtype), p) ->
+                        get_dimvars_used (List.map subtype (fun s -> Probability(s, p)))
                 | _ -> []
             )
         )in
-    remove_duplicates dimension_value_equal with_dups
+    let result = remove_duplicates dimension_value_equal with_dups in
+    (* let () = Printf.printf "Length variables from typeset are %s\n" (dimension_value_list_to_string result) in *)
+    result
+
+(* So this is the function that tries to hit a tradeoff between compile
+   time and odds of success.  *)
+(* The aim is to try more things if thre are lots of likely things,
+   and if there are no likely things, then to pick some unlikely ones.  *)
+let cut_unlikely_bindings options binds =
+	(* TODO --- come up with a better way of tracking this.  *)
+	let _ =
+		if options.debug_generate_skeletons then
+			Printf.printf "cutting unlikely bindings: input bindings are %s\n"
+				(single_variable_binding_list_to_string binds)
+		else ()
+	in
+	let max_threshold_difference = 0.4 in
+	let compare = (fun (a: single_variable_binding_option_group) -> fun (b: single_variable_binding_option_group) ->
+		Float.compare a.probability b.probability
+	) in
+	let sorted = List.rev (List.sort binds compare) in
+	(* Cut off when the threshold difference is too big from the first element.  *)
+	let result = match sorted with
+	| [] -> []
+	| head :: rest ->
+			let head_prob = head.probability in
+			let value_check = (fun r -> ((Float.compare (head_prob -. max_threshold_difference) r.probability) = -1)) in
+			(* Want to take all the elements that have prob greater than the prob diff.  *)
+			head :: (List.take_while rest value_check)
+	in
+	let _ =
+		if options.debug_generate_skeletons then
+			let () = Printf.printf "Post cutting binding are %s\n"
+				(single_variable_binding_list_to_string result) in
+			Printf.printf "Number of bindings cut are %d\n" ((List.length sorted) - (List.length result))
+		else ()
+	in
+	result
 
 let assign_and_define_bindings options direction constant_options_map typesets_in typesets_out typesets_define_only =
 	(* Need to flatten the output typesets to make sure we only
 	   look for one type at a type --- this takes the STypes([...])
 	   and converts it to [...] *)
 	let flattened_typesets_out = List.concat (List.map typesets_out flatten_stype_list) in
+    let () =
+        if options.debug_skeleton_multiple_lengths_filter then
+            Printf.printf "After flattenening, the output types are %s\n" (skeleton_dimension_group_types_to_string flattened_typesets_out)
+        else ()
+    in
+    let flattened_typesets_in = List.concat (List.map typesets_in flatten_stype_probability_list) in
 	(* Get a list of list of possible inputs for each
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
-	let possible_bindings_list: single_variable_binding_option_group list list = possible_bindings options direction constant_options_map typesets_in flattened_typesets_out in
+	let possible_bindings_list = possible_bindings options direction constant_options_map flattened_typesets_in flattened_typesets_out in
+    let () =
+        if options.debug_skeleton_multiple_lengths_filter then
+            Printf.printf ""
+        else ()
+    in
+	let likely_bindings: single_variable_binding_option_group list list =
+		(* Cut bindings per element *)
+		List.map possible_bindings_list (cut_unlikely_bindings options)
+	in
 	let () = verify_single_binding_option_groups possible_bindings_list in
 	(* Now, generate a set of empty assigns for the variables
 	that don't have to have anything assigned to them.
@@ -563,9 +702,20 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
     let valid_dimvars = get_dimvars_used typesets_in in
 	let define_bindings =
 		define_bindings_for direction valid_dimvars typesets_define_only in
-	List.concat [
-			possible_bindings_list; define_bindings
+    let result = List.concat [
+			likely_bindings; define_bindings
 		]
+    in
+    let _ =
+        List.map result (fun b ->
+            List.map b (fun c ->
+                match c.valid_dimensions_set with
+                | [] -> ()
+                | x :: xs -> (assert (List.length x > 0))
+            )
+        )
+    in
+    result
 
 (* The algorithm should produce bindings from the inputs
    the outputs. *)
@@ -582,7 +732,7 @@ let binding_skeleton options direction typemap constant_options_map typesets_in 
 	(* Debug info: *)
 	if options.debug_generate_skeletons then
 		(Printf.printf "Call to binding_skeleton\n";
-		Printf.printf "Typesets in is %s\n" (skeleton_dimension_group_types_to_string typesets_in);
+		Printf.printf "Typesets in is %s\n" (skeleton_dimension_probabilistic_group_type_list_to_string typesets_in);
 		Printf.printf "Typesets out is %s\n" (skeleton_dimension_group_types_to_string typesets_out);
 		Printf.printf "Number of possible bindings is %d\n" (List.length possible_bindings_list);
 		Printf.printf "Number of sensible bindings is %d\n" (List.length sensible_bindings);
@@ -605,13 +755,21 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let livein_api_types = skeleton_type_lookup typemap apispec.livein in
     let liveout_api_types = skeleton_type_lookup typemap apispec.liveout in
     let liveout_types = skeleton_type_lookup typemap (Utils.remove_duplicates Utils.string_equal (iospec.returnvar @ iospec.liveout)) in
+    let () = Printf.printf "Liveout types are %s\n" (skeleton_dimension_group_type_list_to_string liveout_types) in
     (* Get the types that are not livein, but are function args.  *)
     let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the binds.  *)
     let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types (livein_api_types @ liveout_types) in
     (* Now use these to create skeletons.  *)
-	let pre_skeletons: skeleton_type_binding list = binding_skeleton options PreBinding typemap constant_options_map livein_types livein_api_types define_only_api_types in
-	let post_skeletons = binding_skeleton options PostBinding typemap constant_options_map liveout_api_types liveout_types [] in
+	(* Prebinds *)
+	let prebind_inputs = build_dimension_groups livein_types [] in
+	let pre_skeletons: skeleton_type_binding list = binding_skeleton options PreBinding typemap constant_options_map prebind_inputs livein_api_types define_only_api_types in
+	(* Postbinds *)
+	(* Aim is to get the types bound using the liveout api types, but with the original
+	livein types being used if required.  *)
+	let postbind_inputs = build_dimension_groups liveout_api_types livein_types in
+	let post_skeletons = binding_skeleton options PostBinding typemap constant_options_map postbind_inputs liveout_types [] in
+	let _ = Printf.printf "Types are: \n(postbind: %s)\n(prebind: %s)\n" (skeleton_dimension_probabilistic_group_type_list_to_string postbind_inputs) (skeleton_dimension_probabilistic_group_type_list_to_string prebind_inputs) in
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
@@ -639,7 +797,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
         }
     ) in
     (* Do joint filtering *)
-    let sensible_skeleton_pairs = List.filter skeleton_pair_objects (skeleton_pair_check options) in
+    let sensible_skeleton_pairs = List.filter skeleton_pair_objects (skeleton_pair_check options apispec) in
 	let () = if options.debug_generate_skeletons then
         (Printf.printf "Number of types (livein IO=%d, livein API=%d, liveout API=%d, liveout IO=%d)\n"
             (List.length livein_types) (List.length livein_api_types)
@@ -679,7 +837,9 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
 let generate_all_skeleton_pairs opts typemaps iospec apispec =
 	let result = List.concat (
 		List.map typemaps (fun typemap ->
-			generate_skeleton_pairs opts typemap iospec apispec
+            let result = generate_skeleton_pairs opts typemap iospec apispec in
+            let () = Printf.printf "Keys in typemap are %s%!\n" (String.concat ~sep:"\n" (List.map result (fun r -> (String.concat ~sep:", " (Hashtbl.keys r.typemap.variable_map))))) in
+            result
 		)
 	) in
     let deduplicated =

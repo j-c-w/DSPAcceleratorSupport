@@ -23,13 +23,18 @@ let filter_dimvar_set dms =
 			| Some(n) -> false
 			| None -> true
 	in
+    (* let () = Printf.printf "Length of input dms is %d\n" (List.length dms) in *)
     let filtered = List.filter dms (fun dm ->
         match dm with
         | DimvarOneDimension(VarMatch(f, t, mode)) -> (
-			(tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t))
+            let result = (tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t)) in
+            (* let () = Printf.printf "Inspecting variable %s, with results %b\n" (dimvar_mapping_to_string dm) (result) in *)
+            result
 		)
         (* TODO -- do we also need to do some filtering here? *)
-		| DimvarOneDimension(ConstantMatch(f)) -> true
+		| DimvarOneDimension(ConstantMatch(f)) ->
+                (* let () = Printf.printf "Looking at a constant, %s\n" (dimvar_mapping_to_string dm) in *)
+                true
     )
     in
     let unique_dimvar_set = Utils.remove_duplicates dimvar_equal filtered in
@@ -70,6 +75,84 @@ let rec build_whole_arnm_internal arnms =
 			let sub_build = build_whole_arnm_internal xs in
 			[x] :: (prepend_all x sub_build)
 
+let is_in_api_list var varlist =
+    let checkvar v =
+        (* OK, so this is a super stupid way of doing this, but
+           it is dirty and quick.  The problem is the granularity of
+           the API liveout list, which is currently low (whole-variable).  *)
+        (String.equal var v) || (String.is_prefix ~prefix:(var ^ ".") v)
+    in
+    List.exists varlist checkvar
+
+(* Compute equivalence classes between variables.  For example, we might
+   do:
+       api_len = input_len
+       ...
+       output_len = api_len
+    in which case, api_len, output_len and input_len are an equivalence
+    class.
+
+    Note that there are some edge cases to deal with.  Most notably,
+    we can only keep track of things that are not "live out" from the API
+    --- of course, we should be careful with that concept, e.g. if the API
+    takes a scratch workspace.
+
+    Anyway, right now, we don't handle APIs with things like scratch
+    spaces that are written to, but are arguably not liveout. *)
+(* Note that equivalence classes may not be complete (see API spec liveout
+part), but they will be correct.  *)
+let compute_equivalence_classes options api pre_skel post_skel =
+    let equivalence_class_map = Hashtbl.create (module String) in
+    let _ = List.map (pre_skel.flat_bindings @ post_skel.flat_bindings) (fun b ->
+        let conversion_function = b.conversion_function in
+        let fromvar = match b.fromvars_index_nesting with
+        | [] -> []
+        (* Note we are assuming that assignments are from single variables only.  *)
+        | [fromv] -> (match fromv with
+                | AssignConstant(_) -> []
+                | AssignVariable(v) -> [name_reference_to_string (name_reference_list_concat v)]
+        )
+        | _ -> raise  (SkeletonFilter "Unexpected multiple var ")
+        in
+        let tovar = name_reference_to_string (name_reference_list_concat b.tovar_index_nesting) in
+        (* Build the actual hashmap.  *)
+        (* Note that we only cover identity conversions, although
+        equivalence could exist in some other cases (? would it be useful to find it though?) *)
+        let build_equivalence_class =
+            if (is_in_api_list tovar api.liveout) || (List.exists fromvar (fun f -> is_in_api_list f api.liveout)) then
+                (* If either variable is in the liveout, just don't build the equivalence
+                    class --- liveout means that the variable could be changed by the function.
+                    It also means this equivalence class isn't complete, but we aim
+                    for a correct equivalence class instead. *)
+                false
+            else
+                true
+        in
+        if build_equivalence_class && (is_identity_conversion conversion_function) then
+            let _ =
+                List.map fromvar (fun f ->
+                    let result = tovar:: (match Hashtbl.find equivalence_class_map f with
+                    | None -> []
+                    | Some(xs) -> xs
+                    )
+                    in
+                    let _ = Hashtbl.set equivalence_class_map f result in
+                    ()
+                )
+            in
+            (* This is meant to compute equivalence classes --- but not clear what this means if
+                you have more than one variable.  *)
+            let () = assert ((List.length fromvar) <= 1) in
+            let tos = match Hashtbl.find equivalence_class_map tovar with
+            | None -> fromvar
+            | Some(xs) -> fromvar @ xs
+            in
+            let _ = Hashtbl.set equivalence_class_map tovar tos in
+            ()
+        else ()
+    ) in
+    equivalence_class_map
+
 let build_whole_arnm arnms =
 	let arnms = build_whole_arnm_internal arnms in
 	List.map arnms (fun anm -> StructName(anm))
@@ -99,13 +182,14 @@ let length_variable_compatability (skel: flat_skeleton_binding) =
 		)
 	)
 
-let no_multiple_lengths options tbl binding_list =
+let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
 	let () = if options.debug_skeleton_multiple_lengths_filter then
-		let () = Printf.printf "Trying to check if  has multiple lengths: %s\n" (flat_skeleton_type_binding_to_string binding_list) in
+		let () = Printf.printf "Trying to check if  has multiple lengths: %s\n%s\n" (flat_skeleton_type_binding_to_string pre_binding_list) (flat_skeleton_type_binding_to_string post_binding_list) in
 		()
 	else ()
 	in
-    let result = List.for_all binding_list.flat_bindings (fun fb ->
+    let equivalence_classes = compute_equivalence_classes options apispec pre_binding_list post_binding_list in
+    let result = List.for_all (pre_binding_list.flat_bindings @ post_binding_list.flat_bindings) (fun fb ->
 		let tname_so_far = ref [] in
 		let fname_so_far = ref [] in
         let fromvars = match fb.fromvars_index_nesting with
@@ -154,7 +238,7 @@ let no_multiple_lengths options tbl binding_list =
 							let () = Printf.printf "Comparing (tbinds) %s and %s\n" (dimvar_mapping_to_string dimvar) (dimvar_mapping_to_string other) in
 							() else ()
 						in
-						dimvar_equal_commutative dimvar other
+						dimvar_equal_commutative equivalence_classes dimvar other
 			in
 			let fbinds_valid =
 				match has_fbinds with
@@ -171,7 +255,7 @@ let no_multiple_lengths options tbl binding_list =
                         in different directions depending on
                         whether this is pre or post, so this triggers
                         false-negatives here.  Ditto above.  *)
-						dimvar_equal_commutative dimvar other
+						dimvar_equal_commutative equivalence_classes dimvar other
 			in
 			(* Now, set the used dimensions for the tvar *)
 			let _ = Hashtbl.set tbl (name_reference_list_to_string !tname_so_far) dimvar in
@@ -187,53 +271,79 @@ let no_multiple_lengths options tbl binding_list =
     in
     result
 
-let no_multiple_lengths_check options skeleton =
+let no_multiple_lengths_check options apispec skeleton =
 	let lenvar_ass = Hashtbl.create (module String) in
-	let pre_asses = no_multiple_lengths options lenvar_ass skeleton.pre in
-	let post_asses = no_multiple_lengths options lenvar_ass skeleton.post in
-	pre_asses && post_asses
+	let result = no_multiple_lengths options apispec lenvar_ass skeleton.pre skeleton.post in
+    let () = if options.debug_skeleton_multiple_lengths_filter then
+        let () = Printf.printf "Result of multiple lengths check is %b\n" (result) in
+        ()
+    else ()
+    in
+    result
 
 let dim_assign_equal dimlist dimvar =
     (* Don't currently support non-square multi-dimensional
     arrays, although we presumably could do.  *)
     name_reference_equal (name_reference_list_concat dimlist) dimvar
 
-let check_assignment_compatability options skel dimensions =
+let dim_assign_any_equal fvars fvar =
+    List.exists fvars (fun f ->
+        String.equal f (name_reference_to_string fvar)
+    )
+
+let check_assignment_compatability options api_spec pre_skel post_skel dimensions =
 	(* Build up a table of the conversion functions
 	   used to assign between variables.  *)
-	List.for_all skel.flat_bindings (fun bind ->
-        let conversion_function = bind.conversion_function in
-        let fromvars = match bind.fromvars_index_nesting with
-        | [] -> []
-        | [fromv] ->
-                (match fromv with
-                | AssignConstant(_) -> []
-                | AssignVariable(v) -> v
-                )
-        (* To be honest, I'd just skip this here and go through
-        to true.  I'm sure a betteer check dependending
-        on the conversion function is pssible.  *)
-        (* We could just replace this with an empty list ---
-        doing this to give a hint when/if this multi variable
-        assignment thing is fianlly supported.  *)
-        | x :: xs -> raise (SkeletonFilter "Multiple from assignvars not currently supported")
-        in
-        let tovars = bind.tovar_index_nesting in
-        (* This is just an heuristic check -- admittedly,
-        later passes can crash if it fails, but in
-        those could be (easily) fixed on their own. *)
-        (* As a result, we aren't trying to handle anything complex
-        here. *)
+	(* Iterate over all the dimensions used in this skeleton.  *)
+	(* These are gathered together by another function. *)
+	(* Check that there is an assignment matching the
+	   dimension relation.  *)
+    let equivalence_map = compute_equivalence_classes options api_spec pre_skel post_skel in
+	List.for_all dimensions (fun dim ->
+		let () =
+			if options.debug_skeleton_multiple_lengths_filter then
+			Printf.printf "Starting analysis of new dimension %s\n" (dimvar_mapping_to_string dim)
+			else ()
+		in
+		(* Check that a suitable defining binding exists for each dimension.  *)
+		List.exists (pre_skel.flat_bindings @ post_skel.flat_bindings) (fun bind ->
+			let conversion_function = bind.conversion_function in
+			let fromvars = match bind.fromvars_index_nesting with
+			| [] -> []
+			| [fromv] ->
+					(match fromv with
+					| AssignConstant(_) -> []
+					| AssignVariable(v) -> v
+					)
+			(* To be honest, I'd just skip this here and go through
+			to true.  I'm sure a betteer check dependending
+			on the conversion function is pssible.  *)
+			(* We could just replace this with an empty list ---
+			doing this to give a hint when/if this multi variable
+			assignment thing is fianlly supported.  *)
+			| x :: xs -> raise (SkeletonFilter "Multiple from assignvars not currently supported")
+			in
+            let fromvar_name = (name_reference_to_string (name_reference_list_concat fromvars)) in
+            let fromvars_equivalents =
+                match Hashtbl.find equivalence_map fromvar_name with
+                | None -> []
+                | Some(fvars) -> fvars
+            in
+            let equiv_fromvars = fromvar_name :: fromvars_equivalents in
+			let tovars = bind.tovar_index_nesting in
+			(* This is just an heuristic check -- admittedly,
+			later passes can crash if it fails, but in
+			those could be (easily) fixed on their own. *)
+			(* As a result, we aren't trying to handle anything complex
+			here. *)
 
-        (* Iterate over all the dimensions used in this skeleton.  *)
-		(* These are gathered together by another function. *)
-        List.for_all dimensions (fun dim ->
 			(* Now, for that dimension assignment, check that
 			it is compatible with this particular assignment.  *)
             let () = 
                 if options.debug_skeleton_multiple_lengths_filter then
-                    let () = Printf.printf "Looking at assignment %s to %s with conversion %s and dimvar assumption %s\n"
+                    let () = Printf.printf "Looking at assignment %s (equiv %s) to %s with conversion %s and dimvar assumption %s\n"
                     (if (List.length fromvars) = 0 then "(Const)" else name_reference_list_to_string fromvars)
+                    (if (List.length fromvars_equivalents) = 0 then "None" else (String.concat ~sep:", " fromvars_equivalents))
                     (name_reference_list_to_string tovars)
                     (conversion_function_to_string conversion_function)
                     (dimvar_mapping_to_string dim)
@@ -246,12 +356,13 @@ let check_assignment_compatability options skel dimensions =
 					although the order should be normalized. *)
                     if dim_assign_equal tovars tov then
 						(* conversion function must preserve the dimension relation.  *)
-						(dim_assign_equal fromvars fromv) &&
+                        (* let () = Printf.printf "Tovars equal\n" in*)
+						(dim_assign_any_equal equiv_fromvars fromv) &&
 						(is_identity_conversion conversion_function)
                     else
                         (* This dimension has no overlap with
                         the assignment we are considering. *)
-                        true
+						false
 			| DimvarOneDimension(VarMatch(tov, fromv, DimPo2Relation)) ->
 					if dim_assign_equal tovars tov then
 						(* as above.  *)
@@ -259,7 +370,7 @@ let check_assignment_compatability options skel dimensions =
 						(is_po2_conversion conversion_function)
 					else
 						(* no overlap.  *)
-						true
+						false
 			| DimvarOneDimension(VarMatch(tov, fromv, DimDivByRelation(x))) ->
 					if dim_assign_equal tovars tov then
 						(* as above *)
@@ -269,9 +380,9 @@ let check_assignment_compatability options skel dimensions =
 						| _ -> false)
 					else
 						(* no overlap.  *)
-						true
+						false
             | DimvarOneDimension(ConstantMatch(_)) ->
-                    true
+					true
             in
             let () = 
                 if options.debug_skeleton_multiple_lengths_filter then
@@ -283,13 +394,13 @@ let check_assignment_compatability options skel dimensions =
 	)
 
 let get_dimension_assignments skel =
-	Utils.remove_duplicates dimvar_equal_commutative (List.concat (List.map skel.flat_bindings (fun bind ->
+	Utils.remove_duplicates (dimvar_equal_commutative (Hashtbl.create (module String))) (List.concat (List.map skel.flat_bindings (fun bind ->
                 bind.valid_dimensions
             )
         )
     )
 	
-let length_assignment_check options skeleton =
+let length_assignment_check options api_spec skeleton =
 	(* Check that dimvars have the same assignments as
 	are actually going to be performed in the code.  *)
 	let () = if options.debug_skeleton_multiple_lengths_filter then
@@ -297,9 +408,7 @@ let length_assignment_check options skeleton =
 	else ()
 	in
 	let dimensions_list = (get_dimension_assignments skeleton.pre) @ (get_dimension_assignments skeleton.post) in
-	let pre_asses = check_assignment_compatability options skeleton.pre dimensions_list in
-	let post_asses = check_assignment_compatability options skeleton.post dimensions_list in
-	let result = pre_asses && post_asses in
+	let result = check_assignment_compatability options api_spec skeleton.pre skeleton.post dimensions_list in
 	let () = if options.debug_skeleton_multiple_lengths_filter then
 		Printf.printf "Keeping: %b\n" result
 	else ()
@@ -313,11 +422,11 @@ let skeleton_check skel =
 	unlikely to happen in most contexts.  *)
 	no_multiple_cloning_check skel
 
-let skeleton_pair_check options p =
+let skeleton_pair_check options api_spec p =
 	(* Don't assign to/from a variable using different
 	length parameters.  *)
-	let multi_assign_check = no_multiple_lengths_check options p in
-	let length_check = length_assignment_check options p in
+	let multi_assign_check = no_multiple_lengths_check options api_spec p in
+	let length_check = length_assignment_check options api_spec p in
 	let result = multi_assign_check && length_check in
 	let () = if options.debug_skeleton_multiple_lengths_filter then
 		let () = Printf.printf "Pair Check - (multi assign: %b) (length_check: %b)" (multi_assign_check) (length_check) in

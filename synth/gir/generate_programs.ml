@@ -89,7 +89,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 	   before they are used.  *)
 	let scheduled_pre = topological_program_sort opts girpair.typemap ~predefed:iospec.livein ~preassigned:iospec.livein girpair.pre in
 	(* May need to fiddle with the preassigned /defined with function return values.  *)
-	let scheduled_post = topological_program_sort opts girpair.typemap ~predefed:(iospec.liveout @ apispec.livein @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) ~preassigned:(apispec.livein @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) girpair.post in
+	let scheduled_post = topological_program_sort opts girpair.typemap ~predefed:(iospec.liveout @ apispec.livein @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout) @ iospec.returnvar) ~preassigned:(apispec.livein @ apispec.liveout @ (disjoint_union iospec.livein iospec.liveout)) girpair.post in
 	(* Finally rebuild the body.  *)
 	let final_body = match rettype with
 	| [] ->
