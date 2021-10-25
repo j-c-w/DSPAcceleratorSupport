@@ -87,6 +87,7 @@ type options = {
 	debug_generate_skeletons: bool;
 	debug_generate_gir: bool;
     debug_generate_program: bool;
+	debug_generate_malloc: bool;
     debug_generate_code: bool;
 	debug_build_code: bool;
 	debug_generate_io_tests: bool;
@@ -174,6 +175,7 @@ let default_options = {
 	debug_expand_typemaps = false;
 	debug_generate_gir = false;
 	debug_generate_program = false;
+	debug_generate_malloc = false;
 	debug_generate_code = false;
 	debug_build_code = false;
 	debug_generate_io_tests = false;

@@ -412,6 +412,36 @@ let is_class smeta =
 	| ClassMetadata(_) -> true
 	| StructMetadata(_) -> false
 
+let sort_members_by_type typemap members =
+	(* This is like a shitty topology sort that isn't actually 
+	a topology sort.  *)
+	(* It puts the simple types first, then the more complex
+	ones, and hopes you don't have any stupid shit around
+	array length limits.  *)
+	let member_priority_pairs = List.map members (fun mem ->
+		(mem, match Hashtbl.find_exn typemap.variable_map mem with
+		| Bool -> 0
+		| Int16 -> 0
+		| Int32 -> 0
+		| Int64 -> 0
+		| UInt16 -> 0
+		| UInt32 -> 0
+		| UInt64 -> 0
+		| Float16 -> 0
+		| Float32 -> 0
+		| Float64 -> 0
+		| Unit -> 0
+		| Pointer(p) -> 1
+		| Array(_, _) -> 2
+		| Struct(s) -> 3
+		| Fun(_, _) -> 4
+		)
+	) in
+	let compare_func = fun (_, p) -> fun (_, p2) -> Int.compare p p2 in
+	let sorted = List.sort member_priority_pairs compare_func in
+	List.map sorted (fun (a, _) -> a)
+
+
 let name_reference_list_equal n1 n2 =
 	let zipped = List.zip n1 n2 in
 	match zipped with

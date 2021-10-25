@@ -26,7 +26,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_generate_program dump_generate_program
 		print_synth_program_nums target execution_folder
 		compiler_cmd debug_build_code debug_gir_topology_sort
-        debug_generate_code number_of_tests debug_generate_io_tests
+		debug_generate_code number_of_tests debug_generate_io_tests
         debug_synth_topology debug_iospec_manipulator
 		skip_build dump_test_results debug_test debug_skeleton_flatten
 		stop_before_build only_test debug_gir_reduce debug_comparison
@@ -41,7 +41,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         debug_input_map_generation generate_timing_code
 		array_length_threshold no_parmap
         debug_gir_generate_define_statements debug_infer_structs
-		debug_expand_typemaps dump_typemaps =
+		debug_expand_typemaps dump_typemaps debug_generate_malloc =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -94,6 +94,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_expand_typemaps = debug_expand_typemaps;
 		debug_generate_gir = debug_generate_gir;
 		debug_generate_program = debug_generate_program;
+		debug_generate_malloc = debug_generate_malloc;
 		debug_generate_code = debug_generate_code;
 		debug_build_code = debug_build_code;
         debug_generate_io_tests = debug_generate_io_tests;
@@ -317,6 +318,9 @@ let debug_load =
 let debug_generate_program =
 	let doc = "Debug the generate program pass" in
 	Arg.(value & flag & info ["debug-generate-program"] ~docv:"DebugGenProgram" ~doc)
+let debug_generate_malloc =
+	let doc = "Debug malloc generation" in
+	Arg.(value & flag & info ["debug-generate-malloc"] ~docv:"DebugGenMalloc" ~doc)
 let debug_generate_code =
 	let doc = "Debug the generate code pass" in
 	Arg.(value & flag & info ["debug-generate-code"] ~docv:"DebugGenCode" ~doc)
@@ -359,5 +363,5 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
-	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps)
+	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc)
 let () = Term.exit @@ Term.eval (args_t, info)

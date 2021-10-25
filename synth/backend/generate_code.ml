@@ -264,7 +264,7 @@ let use_dim_ratio_modifier adim =
 	| Dimension(DimVariable(_)) -> true
 	| EmptyDimension -> false (* This can arise wehn doing json generation. *)
 
-let assignment_for_type options typemap escapes alignment dim_ratio_modifier name typ  =
+let assignment_for_type options typemap escapes alignment dim_ratio_modifier context name typ  =
 	let static_prefix = match options.compile_settings.allocation_mode with
 	| StaticAllocationMode -> "static "
 	| HeapAllocationMode | StackAllocationMode -> ""
@@ -306,7 +306,7 @@ let assignment_for_type options typemap escapes alignment dim_ratio_modifier nam
 				if escapes then
 					(* If the variable escapes, then we need to malloc it.  *)
 					let usemalloc = is_malloc_type typemap typ in
-					let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap "" typ dim_ratio_modifier in
+					let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap context typ dim_ratio_modifier in
 					if usemalloc then
 						(* Malloc'ed values are not static.  *)
 						prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") facc_malloc (" ^ alignment_value ^ ", " ^ asize ^ ");"
@@ -322,7 +322,7 @@ let assignment_for_type options typemap escapes alignment dim_ratio_modifier nam
 					static_prefix ^ prefix ^ " " ^ name ^ postfix ^ align_postfix
 		| HeapAllocationMode ->
 				let usemalloc = is_malloc_type typemap typ in
-				let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap "" typ dim_ratio_modifier in
+				let (prefix, asize) = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap context typ dim_ratio_modifier in
 				if usemalloc then
 					(* Malloc'ed values are not static.  *)
 					prefix ^ " " ^ name ^ " = (" ^ prefix ^ ") facc_malloc (" ^ alignment_value ^ ", " ^ asize ^ ");"
@@ -340,24 +340,26 @@ let assignment_for_type options typemap escapes alignment dim_ratio_modifier nam
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
 (* 'Context' refers to the context that any variable might exist in.  *)
-let rec cxx_definition_synth_type_to_string options typemap alignment escapes typ base_type context name =
+let rec cxx_definition_synth_type_to_string options typemap bindings alignment escapes typ base_type context name =
 	(* What ratio should be infered by the difference
 	between the sizes of the respective types.  *)
 	let dim_ratio_modifier =
 		compute_dimension_ratio_modifier typ base_type in
 	(* Allocate the space for the item.   *)
-	let alloc = assignment_for_type options typemap escapes alignment dim_ratio_modifier name typ in
+	let alloc = assignment_for_type options typemap bindings escapes alignment dim_ratio_modifier context name typ in
 
 	(* If the type we are defining is an array, there are several classes of subtype that
        we need to generate an assignment loop for:  other arrays, pointers, structs (sometimes, opts probably
 	   good).  *)
 	let generate_assign_loop_for dim sub_def sub_def_name =
+		let () = Printf.printf "Context is %s\n" context in
 		let dim_length = cxx_dimtype_to_name typemap context dim in
+		let () = Printf.printf "Dim length is %s\n" dim_length in
 
 		let index_variable = generate_ivar_tmp () in
 		String.concat [
 			alloc; "\n";
-			"for (int "; index_variable; " = 0; "; index_variable; "++; "; index_variable; " < "; dim_length; ") {\n";
+			"for (int "; index_variable; " = 0; "; index_variable; "++; "; index_variable; " < "; used_dim_length; ") {\n";
 			sub_def; ";\n";
 			name; "["; index_variable; "] = "; sub_def_name; ";\n";
 			"}"
@@ -365,6 +367,11 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 	in
 	match typ with
 	| Array(sty, dim) ->
+			let () =
+				if options.debug_generate_malloc then
+					Printf.printf "Looking at mallocing of array subtype %s\n" (synth_type_to_string sty)
+				else ()
+			in
 			let base_type_stype =
 				match base_type with
 				| Array(ssty, sdim) -> ssty
@@ -398,13 +405,19 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 					alloc
 			)
 	| Struct(s) ->
+			let () = if options.debug_generate_malloc then
+				Printf.printf "generating malloc call for strct with name %s\n" s
+			else ()
+			in
 			(* Depending on the elements of the struct, we may or may not need to go through it.  *)
 			let meta = Hashtbl.find_exn typemap.classmap s in
 			let members = get_class_members meta in
 			let class_typemap = get_class_typemap meta in
 
 			(* Get the type of each member, and if we have to alloc, then do that.  *)
+			let members = sort_members_by_type { typemap with variable_map = class_typemap } members in
 			let struct_assignments = List.map members (fun member ->
+				let () = Printf.printf "Doing sub-struct assignment for member %s\n" (member) in
 				let member_type = Hashtbl.find_exn class_typemap member in
 				if is_malloc_type typemap member_type then
 					(* Do the sub-malloc: *)
@@ -413,7 +426,7 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 					(* Note that we use the same type for the member type and the base_type for that member --- not
 					100% sure this is correct, but I can't otherwise remember where I put it... *)
 					let sub_typemap = { typemap with variable_map = class_typemap } in
-					let subdef = cxx_definition_synth_type_to_string options sub_typemap None escapes member_type member_type (context ^ "." ^ name) sub_def_name in
+					let subdef = cxx_definition_synth_type_to_string options sub_typemap None escapes member_type member_type (context ^ name ^ ".") sub_def_name in
 					let assign =
 						name ^ "." ^ member ^ " = " ^ sub_def_name ^ ";"
 					in
@@ -426,21 +439,30 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 				alloc
 			] @ struct_assignments)
 	| Pointer(p) ->
+			(* Note that this computes tthe sub-malloc for the subtype regardless of the sub-type mallocable
+			property.  *)
+			let pointer_is_malloc = is_malloc_type typemap p in
+			let () = if options.debug_generate_malloc then
+				Printf.printf "Looking at malloc of (%s).  Subtype is malloc: %b\n" (synth_type_to_string (Pointer(p))) (pointer_is_malloc)
+			else ()
+			in
 			let sub_base_type = match base_type with
 			| Pointer(sub_p) -> sub_p
 			| _ -> assert false (* Don't think this is possible right now? *)
 			in
 			let subtypdef = 
-				if is_malloc_type typemap p then
-					let subdef = cxx_definition_synth_type_to_string options typemap None escapes p sub_base_type context (name ^ "_sub_elem") in
-					subdef ^ "\n" ^
-					(* TODO --- pretty sure this is broken?  What should it be? *)
-					name ^ " = " ^ (name ^ "_sub_elem") ^ ";"
-				else
-					""
+				let subdef = cxx_definition_synth_type_to_string options typemap None escapes p sub_base_type context (name ^ "_sub_elem") in
+				subdef ^ "\n" ^
+				(* TODO --- pretty sure this is broken?  What should it be? *)
+				"*" ^ name ^ " = " ^ (name ^ "_sub_elem") ^ ";"
 			in
 			alloc ^ "\n" ^ subtypdef
 	| other ->
+			let () = if options.debug_generate_malloc then
+				let () = Printf.printf "Type (%s) did not require full sub-malloc, using top-level malloc.  " (synth_type_to_string other) in
+				Printf.printf "That alloc is %s\n" (alloc)
+			else ()
+			in
 			(* Don't need to malloc anything *)
 			alloc
 
