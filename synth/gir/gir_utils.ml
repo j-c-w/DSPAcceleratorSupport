@@ -8,6 +8,10 @@ let gir_name_to_string gname =
     match gname with
     | Name(n) -> n
 
+let gir_name_to_name_reference gname =
+	match gname with
+	| Name(n) -> name_reference_from_string n
+
 let gir_name_list_to_string gnames =
 	String.concat ~sep:", " (List.map gnames gir_name_to_string)
 
@@ -176,3 +180,15 @@ let rec build_reference_chain parent child =
 			(* Note that this won't work if the cast is
 			ntested  somewhere within the reference... *)
 			Cast(build_reference_chain parent ref, t)
+
+let rec get_top_gir_name n =
+    match n with
+    | Variable(n) -> Variable(n)
+    | MemberReference(cls, mem) ->
+            get_top_gir_name cls
+    | IndexReference(clslist, mem) ->
+            get_top_gir_name clslist
+    | Constant(c) ->
+            Constant(c)
+    | Cast(ref, t) ->
+            get_top_gir_name ref

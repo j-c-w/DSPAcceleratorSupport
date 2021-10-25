@@ -149,8 +149,26 @@ let expand_use_defs typemap (uds: use_def_info list): use_def_info list =
 		}
 	)
 
+let rec ud_name_from_name_reference (nmref: name_reference) =
+	match nmref with
+	| Name(n) -> UDName(Name(n))
+	| StructName(n :: ns) ->
+			List.fold_left ns ~init:(ud_name_from_name_reference n) ~f:(fun n1 -> fun (n2: name_reference) ->
+				match n2 with
+				| Name(n) ->
+					UDNameNest(n1, Name(n))
+				| _ -> assert false (* needs to be properly formatted name ref.  *)
+			)
+	| StructName([]) -> assert false (* needs to be properly formatted *)
+	| AnonymousName -> assert false (* not sure what to do.  *)
+
+let ud_name_from_string s =
+	ud_name_from_name_reference (name_reference_from_string s)
+
 let ud_name_from_gir n =
-	UDName(n)
+	(* let () = Printf.printf "Looking at name %s\n" (gir_name_to_string n) in *)
+	match n with
+	| Name(nms) -> ud_name_from_name_reference (name_reference_canonicalize (name_reference_from_string nms))
 
 let rec gnames_from_ud ud =
 	match ud with
@@ -392,6 +410,7 @@ let ud_member x y =
 	(* let () = Printf.printf "Checking membership of %s in %s\n" (ud_name_to_string x) (ud_name_to_string y) in *)
 	let xlist = ud_name_to_list x in
 	let ylist = ud_name_to_list y in
+	(* let () = Printf.printf "Names as lists are %s and %s\n" (gir_name_list_to_string xlist) (gir_name_list_to_string ylist) in *)
 	(* Check if y is a prefix of x *)
 	let res = is_prefix ylist xlist in
 	(* let () = Printf.printf "Result was %b\n" res in *)
@@ -407,6 +426,24 @@ let rec has_overlap xs ys =
     match xs with
     | [] -> false
     | x :: xs -> (member x ys) || (has_overlap xs ys)
+
+let rec expand_types typemap name =
+	let name_type = Hashtbl.find_exn typemap.variable_map name in
+	let rec subtyps_of n =
+		match n with
+		| Array(sub, _) ->
+				subtyps_of sub
+		| Struct(sname) ->
+				let meta = Hashtbl.find_exn typemap.classmap sname in
+				let submap = get_class_typemap meta in
+				let members = get_class_fields meta in
+				let subtypemap = { typemap with variable_map = submap } in
+				let subvars = List.concat (List.map members (fun m -> expand_types subtypemap m)) in
+				List.map subvars (fun svar -> name ^ "." ^ svar)
+		(* The other types don't have subtypes.  Although I would like a more future-proof way of doing this.  *)
+		| _ -> [name]
+	in
+	subtyps_of name_type
 
 let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info list) (defed: use_def_name list) (assigned: use_def_name list) accum: gir list = match s with
     | [] ->
@@ -444,6 +481,8 @@ let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info
                 ) in
 			let () = if options.debug_gir_topology_sort then
 			let () = Printf.printf "Adding %d shcdulable girs!\n" (List.length schedulable_girs) in
+			let () = Printf.printf "Have follwing girs assigned: %s\n" (ud_name_list_to_string (assigned)) in
+			let () = Printf.printf "Have following girs defed: %s\n" (ud_name_list_to_string (defed)) in
 			let () = Printf.printf "Have %d girs left to shecule and %d girs that are schedulable\n" (List.length dependent_girs) (List.length (schedulable_girs @ ss)) in
 			() else () in
             khan_accum options dependent_girs (schedulable_girs @ ss) defed assigned (n.gir :: accum)
@@ -452,10 +491,27 @@ let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info
 let khan (options: options) (gir_uses: use_def_info list) predefed preassed =
     (* Get all the nodes with no dependencies, that
        is, no uses/assigns and put them in a list/stack.  *)
+	let () = if options.debug_gir_topology_sort then
+		Printf.printf "Predefs %s, preasses %s\n" (ud_name_list_to_string predefed) (ud_name_list_to_string preassed)
+	else ()
+	in
     let s =
         List.filter gir_uses (fun gir ->
-            (List.for_all gir.uses (fun u -> member u preassed)) &&
-            (List.for_all gir.assigns (fun u -> member u predefed))
+			let () = Printf.printf "Looking at GIR %s\n" (use_def_to_string gir) in
+            (List.for_all gir.uses (fun u ->
+				if (member u preassed) then
+					true
+				else
+					let () = Printf.printf "Has unassed use %s\n" (ud_name_to_string u) in
+					false
+			)) &&
+            (List.for_all gir.assigns (fun u ->
+				if (member u predefed) then
+					true
+				else
+					let () = Printf.printf "Has undefed ass %s\n" (ud_name_to_string u) in
+					false
+			))
                     ) in
     (* Everthing that is not in the 's' stack should
        be in th rest of the nodes to consdier. *)
@@ -474,14 +530,20 @@ let khan (options: options) (gir_uses: use_def_info list) predefed preassed =
 	let reversed_result = khan_accum options non_starting_girs s predefed preassed [] in
 	List.rev reversed_result
 
-let topo_sort (options: options) (gir_uses: use_def_info list) (predefed: string list) (preassigned: string list) =
+let topo_sort (options: options) (typemap) (gir_uses: use_def_info list) (predefed: string list) (preassigned: string list) =
 	(* Remove any of the predefined vars from the gir_uses *)
 	let () = if options.debug_gir_topology_sort then
-		let () = Printf.printf "Predefed vnames is %s" (String.concat ~sep:", " predefed) in
-		Printf.printf "Preassed vnames is %s" (String.concat ~sep:", " preassigned)
+		let () = Printf.printf "Predefed vnames is %s\n" (String.concat ~sep:", " predefed) in
+		Printf.printf "Preassed vnames is %s\n" (String.concat ~sep:", " preassigned)
 		else () in
-	let predefined_vars_name_refs = List.map predefed (fun nr -> UDName(Name(nr))) in
-    let preassigned_vars_name_refs = List.map preassigned (fun nr -> UDName(Name(nr))) in
+	let all_predefed_vars =
+		List.concat (List.map predefed (fun p -> expand_types typemap p))
+	in
+	let all_preassed_vars =
+		List.concat (List.map preassigned (fun p -> expand_types typemap p))
+	in
+	let predefined_vars_name_refs = List.map all_predefed_vars (fun nr -> ud_name_from_string nr) in
+    let preassigned_vars_name_refs = List.map all_preassed_vars (fun nr -> ud_name_from_string nr) in
 	let () = if options.debug_gir_topology_sort then
 		Printf.printf "Running new TOPO SORT==========\n"
 	else () in
@@ -502,7 +564,7 @@ let rec topological_gir_sort (options: options) typemap gir predefed preassed =
 		   returning e.g. whole classes.  *)
 		let elementary_use_defs = expand_use_defs typemap use_defs in
 		(* Do a topo sort on the use/defs *)
-		let sorted_use_defs = topo_sort options elementary_use_defs predefed preassed in
+		let sorted_use_defs = topo_sort options typemap elementary_use_defs predefed preassed in
 		(* Then recreate the sequence in the right order.  *)
 		Sequence(sorted_use_defs)
 	 | _ -> raise (TopologicalSortException "Can't topo sort a non-sequence") in

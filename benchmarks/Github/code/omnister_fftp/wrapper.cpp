@@ -25,7 +25,7 @@ void StopAcceleratorTimer() {
 		(clock()) - AcceleratorStart;
 }
 
-void write_output(COMPLEX * array, int n, COMPLEX * array) {
+void write_output(int n, COMPLEX * array) {
 
     json output_json;
 std::vector<json> output_temp_1;
@@ -39,17 +39,6 @@ output_temp_4["im"] = output_temp_3.im;
 output_temp_1.push_back(output_temp_4);
 }
 output_json["array"] = output_temp_1;
-std::vector<json> output_temp_5;
-for (unsigned int i6 = 0; i6 < n; i6++) {
-COMPLEX output_temp_7 = array[i6];
-json output_temp_8;
-
-output_temp_8["re"] = output_temp_7.re;
-
-output_temp_8["im"] = output_temp_7.im;
-output_temp_5.push_back(output_temp_8);
-}
-output_json["array"] = output_temp_5;
 std::ofstream out_str(output_file); 
 out_str << std::setw(4) << output_json << std::endl;
 }
@@ -69,13 +58,9 @@ array_vec.push_back(array_inner);
 COMPLEX *array = &array_vec[0];
 int n = input_json["n"];
 clock_t begin = clock();
-COMPLEX *out;
-for (int i = 0; i < TIMES; i ++) {
-	out = fft_1d(array, n);
-	// don't free since out == array.
-}
+array = fft_1d(array, n);
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
-write_output(array, n, array);
+write_output(n, array);
 }

@@ -92,6 +92,8 @@ and check_elt_for_uninitialized_read typemap name typ json =
 	| `Null, Float16 -> raise JSONCheckFailed
 	| `Null, Float32 -> raise JSONCheckFailed
 	| `Null, Float64 -> raise JSONCheckFailed
+	(* Pointers are invisible in the JSON file *)
+	| v, Pointer(sty) -> check_elt_for_uninitialized_read typemap name sty v
 	(* We could just thrwo the JSON check fialed in these cases
 	I expect -- just trying to avoid the weird silent failures that
 	this thing is going to create... *)

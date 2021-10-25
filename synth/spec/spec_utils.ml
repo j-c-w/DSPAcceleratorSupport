@@ -29,6 +29,43 @@ let name_reference_concat n1 n2 =
 	| _, AnonymousName -> n1
 	| AnonymousName, _ -> n2
 
+let rec name_reference_list_concat ns =
+    match ns with
+    | [] -> AnonymousName
+    | x :: xs ->
+            let rest = name_reference_list_concat xs in
+            name_reference_concat x rest
+
+let rec name_reference_canonicalize nms =
+	match nms with
+	| Name(x) -> Name(x)
+	| StructName(xs) ->
+			let nms = List.concat (
+				List.map xs (fun xs ->
+					match xs with
+					| Name(x) -> [Name(x)]
+					| AnonymousName -> []
+					| StructName(xs) ->
+							match name_reference_canonicalize (StructName(xs)) with
+							| Name(x) -> [Name(x)]
+							| AnonymousName -> []
+							| StructName(xs) -> xs
+				)
+			) in
+			StructName(nms)
+	| AnonymousName -> AnonymousName
+
+let name_reference_from_string ns =
+    let result =
+        if String.equal ns "" then
+            AnonymousName
+        else
+            let chrs = (String.split_on_chars ~on:['.'] ns) |> (List.filter ~f:(fun x -> not (String.equal x ""))) in
+            StructName(List.map chrs (fun c -> Name(c)))
+    in
+    (* let () = Printf.printf "From input name %s, computed name reference %s\n" (ns) (name_reference_to_string result) in *)
+    result
+
 let rec name_reference_equal n1 n2 =
     match (n1, n2) with
 	| AnonymousName, AnonymousName -> true
@@ -41,6 +78,14 @@ let rec name_reference_equal n1 n2 =
 	(* Assume no funny-business with
 	oddly nested structnames *)
 	| _, _ -> false
+
+(* compare two lists of variables.  Return true if any two are equal.  *)
+let name_reference_any_equal ns1 ns2 =
+    List.exists ns1 (fun n1 ->
+        List.exists ns2 (fun n2 ->
+            name_reference_equal n1 n2
+        )
+    )
 
 let rec name_reference_top_level_name n =
 	match n with
@@ -62,6 +107,9 @@ let dimension_value_to_string (dim: dimension_value) =
 	match dim with
 	| DimConstant(i) -> (string_of_int i)
 	| DimVariable(n, rel) -> (name_reference_to_string n) ^ (dim_relation_to_string rel)
+
+let dimension_value_list_to_string dimlist =
+    String.concat ~sep:", " (List.map dimlist dimension_value_to_string)
 
 let dim_relation_equal r1 r2 = match r1, r2 with
 	| DimEqualityRelation, DimEqualityRelation -> true
@@ -364,6 +412,36 @@ let is_class smeta =
 	| ClassMetadata(_) -> true
 	| StructMetadata(_) -> false
 
+let sort_members_by_type typemap members =
+	(* This is like a shitty topology sort that isn't actually 
+	a topology sort.  *)
+	(* It puts the simple types first, then the more complex
+	ones, and hopes you don't have any stupid shit around
+	array length limits.  *)
+	let member_priority_pairs = List.map members (fun mem ->
+		(mem, match Hashtbl.find_exn typemap.variable_map mem with
+		| Bool -> 0
+		| Int16 -> 0
+		| Int32 -> 0
+		| Int64 -> 0
+		| UInt16 -> 0
+		| UInt32 -> 0
+		| UInt64 -> 0
+		| Float16 -> 0
+		| Float32 -> 0
+		| Float64 -> 0
+		| Unit -> 0
+		| Pointer(p) -> 1
+		| Array(_, _) -> 2
+		| Struct(s) -> 3
+		| Fun(_, _) -> 4
+		)
+	) in
+	let compare_func = fun (_, p) -> fun (_, p2) -> Int.compare p p2 in
+	let sorted = List.sort member_priority_pairs compare_func in
+	List.map sorted (fun (a, _) -> a)
+
+
 let name_reference_list_equal n1 n2 =
 	let zipped = List.zip n1 n2 in
 	match zipped with
@@ -413,6 +491,9 @@ let rec type_of_name_reference (typemap: typemap) nr =
 			type_of_name_reference updated_typemap (StructName(xs))
 	| StructName(_) -> raise (SpecException ("Ill-formatted" ^ (name_reference_to_string nr)))
 	| AnonymousName -> raise (SpecException "no type for anon name")
+
+let type_option_of_name_reference typemap nr =
+	try (Some(type_of_name_reference typemap nr)) with SpecException(i) -> None
 
 let rec name_reference_cannonicalize ns =
 	let rec flatten x =

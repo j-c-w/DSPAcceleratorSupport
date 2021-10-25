@@ -87,6 +87,7 @@ type options = {
 	debug_generate_skeletons: bool;
 	debug_generate_gir: bool;
     debug_generate_program: bool;
+	debug_generate_malloc: bool;
     debug_generate_code: bool;
 	debug_build_code: bool;
 	debug_generate_io_tests: bool;
@@ -105,6 +106,7 @@ type options = {
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten: bool;
     debug_skeleton_constant_gen: bool;
+	debug_skeleton_verify: bool;
 	debug_skeleton_multiple_lengths_filter: bool;
     debug_skeleton_range_filter: bool;
 	debug_skeleton_filter: bool;
@@ -173,6 +175,7 @@ let default_options = {
 	debug_expand_typemaps = false;
 	debug_generate_gir = false;
 	debug_generate_program = false;
+	debug_generate_malloc = false;
 	debug_generate_code = false;
 	debug_build_code = false;
 	debug_generate_io_tests = false;
@@ -191,6 +194,7 @@ let default_options = {
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten = false;
     debug_skeleton_constant_gen = false;
+	debug_skeleton_verify = false;
 	debug_skeleton_multiple_lengths_filter = false;
     debug_skeleton_range_filter = false;
     debug_skeleton_filter = false;

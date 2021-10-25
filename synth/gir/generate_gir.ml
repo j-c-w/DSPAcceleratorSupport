@@ -191,25 +191,38 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 			)
 		)
 
-let get_define_for definition_type define_internal_before_assign escaping_vars vnameref =
+let get_define_for options typemap definition_type define_internal_before_assign escaping_vars vnameref =
     let escapes = List.mem escaping_vars (variable_reference_to_string vnameref) Utils.string_equal in
-	if (define_internal_before_assign || escapes) then
+	let () = if options.debug_generate_gir then
+        let () = Printf.printf "Looking for definition type of %s, have esjjcapeing vars %s\n" (variable_reference_to_string vnameref) (String.concat ~sep:", " escaping_vars) in
+        Printf.printf "Getting define for type%s\n" (Option.value (Option.map definition_type synth_type_to_string) ~default:"None")
+	else ()
+	in
+	let result = if (define_internal_before_assign || escapes) then
 		match vnameref with
 		| Variable(nam) ->
-			Definition(nam, escapes, definition_type)
-		(* It's hard to say for sure what to do here --- eg.
-		if you have
-		struct {
-			int *args;
-		} mystruct;
-		you'd want to eb able to define args to point e.g. to
-		the stack.  But perhaps it's just better to define
-		that at the same point you define the mystruct?
-		Not really sure.  *)
+                (* Note that this might not be the same as the definition type --- it might e.g. be
+                an int member of a struct, making htis a struct.  *)
+                let top_def_type = (Hashtbl.find_exn typemap.variable_map (gir_name_to_string nam)) in
+                Definition(nam, escapes, Some(top_def_type))
+        | Constant(c) ->
+                (* Constants shouldn't need a def type?  And also probably shouldn't be being generated
+                here? *)
+            EmptyGIR
+        (* More complicated types shouldn't reach here --- get_define_for should only be called
+        with the top-level types.  The aim is for the backend to expand out the definition
+        into whatever complex shit is required for that definition, e.g. with a struct { int *name }
+        setup.  *)
 		| _ -> raise (GenerateGIRException "Don't know how to define a more complicated type right now!")
 	else
 		(* Don't want to define anything that doesn't escape and has already been defined! *)
 		EmptyGIR
+	in
+	let () = if options.debug_generate_gir then
+		Printf.printf "Got result %s\n" (gir_to_string result)
+	else ()
+	in
+	result
 
 (* TODO -- really need to fix this crappy conversion
 from the name_references to gir names --- there's way
@@ -225,7 +238,8 @@ let rec define_name_of index_points =
 	match index_points with
 	| [] -> raise (GenerateGIRException "Can't define empty varaiable")
 	(* Do the define before the first index? idk *)
-	| Some(x) :: xs -> x
+	| Some(x) :: xs ->
+			get_top_gir_name x
 	(* Pretty sure it should always hit ^^^ *)
 	| None :: xs -> define_name_of xs
 
@@ -336,9 +350,9 @@ let generate_conversion_function conv = match conv with
 let get_definition_type_for options escapes validmap typemap v =
 	match options.compile_settings.allocation_mode with
     | StackAllocationMode -> (* Variable length supported. *)
-            Some(Hashtbl.find_exn typemap.variable_map v)
+            Some(type_of_name_reference typemap v)
     | HeapAllocationMode -> (* Also have variable length.  *)
-            Some(Hashtbl.find_exn typemap.variable_map v)
+            Some(type_of_name_reference typemap v)
     | StaticAllocationMode ->
 			if escapes then
 				(* Right now, we still heap allocated
@@ -349,7 +363,7 @@ let get_definition_type_for options escapes validmap typemap v =
                 skeleton_range_checker/generate_post_check_ranges
                 which needs to be expanded to include the user types.
                 *)
-				Some(Hashtbl.find_exn typemap.variable_map v)
+				Some(type_of_name_reference typemap v)
 			else
             (* We need to allocate the biggest
             array that might have been used.  *)
@@ -393,7 +407,7 @@ let get_definition_type_for options escapes validmap typemap v =
                 (* Note: I don't think that we will have to, since
                  those don't have variable length. *)
             in
-            size_concreteization (Hashtbl.find_exn typemap.variable_map v)
+            size_concreteization (type_of_name_reference typemap v)
 
 (* Definitions should be for the outer-most variable I think. 
  (e.g. if we have a complex[].real, we just need to define
@@ -403,7 +417,7 @@ let get_definition_type_for_tovar options validmap typemap escaping_variables to
 	| [] -> raise (GenerateGIRException "Defining empty variable")
 	| x :: xs ->
             let escapes = List.mem escaping_variables (name_reference_to_string x) Utils.string_equal in
-			get_definition_type_for options escapes validmap typemap (name_reference_to_string x)
+			get_definition_type_for options escapes validmap typemap x
 
 let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_internal_before_assign insert_return (options: options) validmap (skeleton: flat_skeleton_binding) =
 	(* First, compute the expression options for each
@@ -447,7 +461,7 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
 			() else () in
 			(* This returns an empty GIR if the define shouldn't be made
 			(e.g. this is a post code and doesn't escape.)  *)
-			get_define_for definition_type define_internal_before_assign escaping_variables (define_name_of (generate_gir_names_for tovar_indexes))
+			get_define_for options typemap definition_type define_internal_before_assign escaping_variables (define_name_of (generate_gir_names_for tovar_indexes))
 		in
         let () =
             if options.debug_generate_gir then
@@ -571,7 +585,7 @@ let rec toposort names =
 			(toposort befores) @ (nm :: (toposort afters))
 
 
-let generate_define_statemens_for options validmap typemap (iospec: iospec) api =
+let generate_define_statemetns_for options validmap typemap (iospec: iospec) api =
 	(* Need to make sure that types that are dependent on each
 	   other are presented in the right order.  *)
 	(* Compute any defines that are needed for the returnvars. *)
@@ -589,7 +603,7 @@ let generate_define_statemens_for options validmap typemap (iospec: iospec) api 
 	in
 	let typed_sorted_names = List.map sorted_names (fun n ->
         let escapes = List.mem unpassed_returnvars (gir_name_to_string n) Utils.string_equal in
-		(n, get_definition_type_for options escapes validmap typemap (gir_name_to_string n))
+		(n, get_definition_type_for options escapes validmap typemap (gir_name_to_name_reference n))
 	) in
     (* Generate a define for each input variable in the API *)
 	List.map typed_sorted_names (fun (x, xtyp) ->

@@ -126,3 +126,10 @@ let rec unzip3 ls =
 			(a :: xs, b :: ys, c :: zs)
 
 let power_of_two i = 1 lsl i
+
+let strings_any_equal s1s s2s =
+	List.exists s1s (fun s1 ->
+		List.exists s2s (fun s2 ->
+			string_equal s1 s2
+		)
+	)
