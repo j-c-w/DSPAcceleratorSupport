@@ -24,7 +24,7 @@ type synth_type =
 	| Array of synth_type * dimension_type
 	| Unit
 	| Struct of string
-	| Fun of synth_type * synth_type
+	| Fun of (synth_type list) * synth_type
 and dimension_type =
 	(* For each array variable, this keeps the
 	   /prospective/ dimensions that it could have. *)

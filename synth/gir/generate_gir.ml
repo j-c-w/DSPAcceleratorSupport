@@ -304,7 +304,7 @@ let generate_conversion_function conv = match conv with
 			(* TODO --- We should be smarter about the types. *)
 			let _ = Hashtbl.add typelookup (gir_name_to_string argname) (Int64) in
 			let _ = Hashtbl.add typelookup (gir_name_to_string returnvar) (Int64) in
-			let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun(Int64, Int64)) in
+			let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun([Int64], Int64)) in
 			let functiondef = FunctionDef(fname, [argname],
 				Sequence([
 					Definition(returnvar, true, Some(Int64));
@@ -333,7 +333,7 @@ let generate_conversion_function conv = match conv with
             (* And add the functions to it.  *)
             let _ = Hashtbl.add typelookup (gir_name_to_string argname) ftype in
             let _ = Hashtbl.add typelookup (gir_name_to_string returnvar) ttype in
-            let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun(ftype, ttype)) in
+            let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun([ftype], ttype)) in
             FunctionDef(fname, [argname],
                 Sequence([
 					Definition(returnvar, true, Some(ttype));

@@ -183,8 +183,11 @@ let rec synth_type_to_string t =
     | Array(x, dims) -> "array(" ^ (synth_type_to_string x) ^ ": with dims " ^
         (dimension_type_to_string dims) ^ ")"
     | Struct(name) -> name
-    | Fun(from, fto) -> (synth_type_to_string from) ^ "->" ^ (synth_type_to_string fto)
+    | Fun(from, fto) -> (synth_type_list_to_string from) ^ "->" ^ (synth_type_to_string fto)
 	| Unit -> "unit"
+
+and synth_type_list_to_string stlist =
+	String.concat ~sep:", " (List.map stlist synth_type_to_string)
 
 let rec synth_type_equal s1 s2 =
 	match s1, s2 with
@@ -207,7 +210,12 @@ let rec synth_type_equal s1 s2 =
 			(String.compare nm nm2) = 0
 	| Unit, Unit -> true
 	| Fun(f, t), Fun(f2, t2) ->
-			(synth_type_equal f f2) &&
+			let from_types_equal =
+				match List.zip f f2 with
+				| Ok(l) -> List.forall (fun (a, b) -> synth_type_equal a b) l
+				| Unequal_lengths -> false
+			in
+			(from_types_equal) &&
 			(synth_type_equal t t2)
 	| _ -> false
 

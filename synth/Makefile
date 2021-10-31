@@ -15,6 +15,7 @@ utilities: plugin
 	ocamlbuild -j $(PARALLELISM) utilities/json_compare.native $(FLAGS)
 	ocamlbuild -j $(PARALLELISM) utilities/injectivity_comparison.native $(FLAGS)
 	ocamlbuild -j $(PARALLELISM) utilities/io_gen.native $(FLAGS)
+	ocamlbuild -j $(PARALLELISM) utilities/constant_gen.native $(FLAGS)
 
 test: plugin
 	ocamlbuild -j $(PARALLELISM) tests/main_test.byte $(FLAGS) -pkg alcotest

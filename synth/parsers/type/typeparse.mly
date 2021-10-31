@@ -21,6 +21,7 @@
 %token HASH
 %token DOT
 %token EOF
+%token COMMA
 %token <string> IDENT
 %token <int> INTEGER
 
@@ -32,8 +33,12 @@
 %%
 
 t:
- | tsub; ARROW; t {Fun($1, $3)}
+ | tlist; ARROW; t {Fun($1, $3)}
  | tsub; EOF {$1};
+
+tlist:
+ | tsub; { [$1] };
+ | tsub; COMMA; tlist { $1 :: $3 };
 
 tident:
  | IDENT { Name($1) }

@@ -30,6 +30,7 @@ rule read =
     | "(" { LPAREN }
 	| "#" { HASH }
 	| "." { DOT }
+	| "," { COMMA }
 	| integer as i { INTEGER (int_of_string i) }
 	| ident as id { IDENT id }
 	| eof {EOF}

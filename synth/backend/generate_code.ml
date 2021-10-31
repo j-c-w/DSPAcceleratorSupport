@@ -340,13 +340,13 @@ let assignment_for_type options typemap escapes alignment dim_ratio_modifier con
 (* definitions use array formatting so that arrays
    can be allocated on the stack.  *)
 (* 'Context' refers to the context that any variable might exist in.  *)
-let rec cxx_definition_synth_type_to_string options typemap bindings alignment escapes typ base_type context name =
+let rec cxx_definition_synth_type_to_string options typemap alignment escapes typ base_type context name =
 	(* What ratio should be infered by the difference
 	between the sizes of the respective types.  *)
 	let dim_ratio_modifier =
 		compute_dimension_ratio_modifier typ base_type in
 	(* Allocate the space for the item.   *)
-	let alloc = assignment_for_type options typemap bindings escapes alignment dim_ratio_modifier context name typ in
+	let alloc = assignment_for_type options typemap escapes alignment dim_ratio_modifier context name typ in
 
 	(* If the type we are defining is an array, there are several classes of subtype that
        we need to generate an assignment loop for:  other arrays, pointers, structs (sometimes, opts probably
@@ -359,7 +359,7 @@ let rec cxx_definition_synth_type_to_string options typemap bindings alignment e
 		let index_variable = generate_ivar_tmp () in
 		String.concat [
 			alloc; "\n";
-			"for (int "; index_variable; " = 0; "; index_variable; "++; "; index_variable; " < "; used_dim_length; ") {\n";
+			"for (int "; index_variable; " = 0; "; index_variable; "++; "; index_variable; " < "; dim_length; ") {\n";
 			sub_def; ";\n";
 			name; "["; index_variable; "] = "; sub_def_name; ";\n";
 			"}"
