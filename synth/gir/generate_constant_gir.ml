@@ -28,6 +28,7 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 	match iospec.returnvar with
 	| [] -> FunctionDef(Name(iospec.funname), funargs, EmptyGIR, funtable)
 	| [returnvar] ->
+			let () = Printf.printf "Generating constant return value\n" in
 		let toposorted_classmap = generate_toposorted_classmap options typemap typemap in
 		let rangemap = iospec.rangemap in
         (* TODO --- we should use the value profiles ehre.  *)
