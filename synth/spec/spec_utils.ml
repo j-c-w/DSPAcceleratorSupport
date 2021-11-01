@@ -212,7 +212,7 @@ let rec synth_type_equal s1 s2 =
 	| Fun(f, t), Fun(f2, t2) ->
 			let from_types_equal =
 				match List.zip f f2 with
-				| Ok(l) -> List.forall (fun (a, b) -> synth_type_equal a b) l
+				| Ok(l) -> List.for_all l (fun (a, b) -> synth_type_equal a b)
 				| Unequal_lengths -> false
 			in
 			(from_types_equal) &&

@@ -5,6 +5,7 @@ open Parse_iospec;;
 open Parse_api;;
 open Parse_classmap;;
 open Spec_definition;;
+open Spec_utils;;
 open Options;;
 open Gir;;
 open Program;;
@@ -22,6 +23,17 @@ let main iospec_file output_file =
 	let options = default_options in
     let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
+	(* Setup the entry for the functio ntuype in the typemap.  *)
+	let fromtypes = List.map iospec.funargs (fun a -> Hashtbl.find_exn iotypemap a) in
+	let totype = match iospec.returnvar with
+	| [] -> Unit
+	| [x] -> Hashtbl.find_exn iotypemap x
+	| y :: ys -> assert false
+	in
+	let _ = Hashtbl.add iotypemap iospec.funname (Fun(fromtypes, totype)) in
+	let () = Printf.printf "Added function type for %s (type %s)\n" (iospec.funname) (synth_type_to_string (Fun(fromtypes, totype))) in
+
+	(* Build the actual typemap.  *)
 	let rec typemap = {
 		variable_map = iotypemap;
 		classmap = classspec;
