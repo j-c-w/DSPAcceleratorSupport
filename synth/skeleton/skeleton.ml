@@ -406,7 +406,12 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 							   bindings that would make this mapping
 							   possible.  *)
                             let dimoverlap = dimensions_overlap direction dim_options in_dim_options in
-							Some(intype, dimoverlap)
+							(
+							match dimoverlap with
+							| [] -> None
+							| _ ->
+								Some(intype, dimoverlap)
+							)
                     | Probability(STypes(_), _) -> raise (SkeletonGenerationException "Unexepcted STypes --- need to be flattened")
 					(* non-dimension types can't be included. *)
 					| _ -> None
