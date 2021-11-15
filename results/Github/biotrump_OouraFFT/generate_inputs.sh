@@ -22,7 +22,7 @@ done
 
 # This uses an input template that gets extended.
 template="{
-	\"n\": $(( $1 * 2)),
+	\"n\": $(( $1 )),
 	\"a\": [
 	"${inputs[@]}"
 	]
