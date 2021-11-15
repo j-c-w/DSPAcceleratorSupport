@@ -79,7 +79,7 @@ for (int i = 0; i < TIMES; i ++) {
 	// not escape in a normal usage pattern) so
 	// are not liveout.
 	write_output(n, isgn, a, ip, w);
-	cdft(n, isgn, a, ip, w);
+	cdft_w(n, isgn, a, ip, w);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
