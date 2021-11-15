@@ -1,2 +1,1 @@
-INSERT: #define t_float float
 fft64.c: 1,83 # literally all the code
