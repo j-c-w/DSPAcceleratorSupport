@@ -4,10 +4,13 @@ PARALLELISM = 4
 
 all: main utilities
 
+clibs:
+	cd libs/clib/ && make
+
 plugin:
 	ocamlbuild -just-plugin
 
-main: plugin
+main: plugin clibs
 	ocamlbuild -j $(PARALLELISM) main.byte $(FLAGS)
 
 utilities: plugin
