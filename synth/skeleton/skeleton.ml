@@ -399,7 +399,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 		   those). *)
 		| SArray(sarray_nam, array_subtyps, dim_options) ->
 				let valid_dimensioned_typesets_in, dim_mappings  = List.unzip (List.filter_map typesets_in (fun intype ->
-                    let () = Printf.printf "Variable name is %s\n" (skeleton_dimension_probabilistic_group_type_to_string intype) in
+                    (* let () = Printf.printf "Variable name is %s\n" (skeleton_dimension_probabilistic_group_type_to_string intype) in *)
 					match intype with
 					| Probability(SArray(_, _, in_dim_options), p) ->
 							(* Get the set of possible typevar

@@ -19,6 +19,7 @@ let getIdentityConversionFunction options r1 r2 =
 	if (range_size_less_than overlap_fraction options.range_size_difference_factor) then
 		identityConversionFunction r1 r2
 	else
+		(* let () = Printf.printf "For ranges %s and %s, did not get the identity conversion" (range_set_to_string r1) (range_set_to_string r2) in *)
 		(* If there isn't enough direct overlap of the two range sets, then
 			we probably shouldn't do this assignment as an identity assignment. *)
 		[]
