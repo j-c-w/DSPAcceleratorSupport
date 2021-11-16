@@ -15,5 +15,6 @@ open_source_project_distribution.eps
 __pycache__
 *.png
 compile_times.eps
+fraction_supported.eps
 SyntacticSimilarity.eps
 *.pyc
