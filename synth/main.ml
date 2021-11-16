@@ -41,7 +41,8 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         debug_input_map_generation generate_timing_code
 		array_length_threshold no_parmap
         debug_gir_generate_define_statements debug_infer_structs
-		debug_expand_typemaps dump_typemaps debug_generate_malloc =
+		debug_expand_typemaps dump_typemaps debug_generate_malloc
+		debug_skeleton_deduplicate =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -110,6 +111,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		
 		debug_skeleton_flatten = debug_skeleton_flatten;
         debug_skeleton_constant_gen = debug_skeleton_constant_gen;
+		debug_skeleton_deduplicate = debug_skeleton_deduplicate;
 		debug_skeleton_verify = debug_skeleton_verify;
 		debug_skeleton_multiple_lengths_filter = debug_skeleton_multiple_lengths_filter;
         debug_skeleton_range_filter = debug_skeleton_range_filter;
@@ -267,6 +269,9 @@ let debug_skeleton_flatten =
 let debug_skeleton_constant_gen =
     let doc = "Debug the constant generation pass" in
     Arg.(value & flag & info ["debug-skeleton-constant-generation"] ~docv:"DebugSkeletonConstGen" ~doc)
+let debug_skeleton_deduplicate =
+	let doc = "Debug skeleton deduplicate" in
+	Arg.(value & flag & info ["debug-skeleton-deduplicate"] ~docv:"DebugSkeletonDeduplicate" ~doc)
 let debug_skeleton_verify =
 	let doc = "Debug skeleton verify" in
 	Arg.(value & flag & info ["debug-skeleton-verify"] ~docv:"DebugSkeletonVerify" ~doc)
@@ -363,5 +368,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     $ debug_skeleton_range_filter $ debug_skeleton_filter $ execution_timeout
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
-	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc)
+	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
+	$ debug_skeleton_deduplicate)
 let () = Term.exit @@ Term.eval (args_t, info)

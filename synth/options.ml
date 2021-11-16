@@ -106,6 +106,7 @@ type options = {
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten: bool;
     debug_skeleton_constant_gen: bool;
+	debug_skeleton_deduplicate: bool;
 	debug_skeleton_verify: bool;
 	debug_skeleton_multiple_lengths_filter: bool;
     debug_skeleton_range_filter: bool;
@@ -194,6 +195,7 @@ let default_options = {
 	(* Skeleton passes debug.  *)
 	debug_skeleton_flatten = false;
     debug_skeleton_constant_gen = false;
+	debug_skeleton_deduplicate = false;
 	debug_skeleton_verify = false;
 	debug_skeleton_multiple_lengths_filter = false;
     debug_skeleton_range_filter = false;

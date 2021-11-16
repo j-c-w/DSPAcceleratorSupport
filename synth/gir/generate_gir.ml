@@ -203,7 +203,7 @@ let get_define_for options typemap definition_type define_internal_before_assign
 		| Variable(nam) ->
                 (* Note that this might not be the same as the definition type --- it might e.g. be
                 an int member of a struct, making htis a struct.  *)
-                let top_def_type = (Hashtbl.find_exn typemap.variable_map (gir_name_to_string nam)) in
+                let top_def_type = definition_type in
                 Definition(nam, escapes, Some(top_def_type))
         | Constant(c) ->
                 (* Constants shouldn't need a def type?  And also probably shouldn't be being generated
