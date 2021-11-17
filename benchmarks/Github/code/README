@@ -7,3 +7,11 @@ that FACC needs to run.
 Typemaps etc. are already specified.
 
 
+#Computing IDLCheckDataFFT:
+IDLCheckData is a measure of how well IDL does with an FFT pattern.
+The first step is to clone IDL (see instructions in Ginsbach 2020).
+Second step is to place the FFTIdiom.idl file in-place of the idl
+file within IDL.
+Third step is to repeatedly run ./idl_check.sh <path to IDL> while
+deleteing 10 lines at a time from the ComplexReductionsAndHistograms
+pattern that has been modified to match FFTs
