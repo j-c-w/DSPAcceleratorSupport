@@ -4,3 +4,9 @@ fakufaku_esp32-fft: Buggy: Crashing when I try it
 SproutOrc_MSP430FFT: Buggy: Incorrect outputs
 ericlyon_pd-fftease: Buggy: Incorrect outputs
 983_fft: Buggy: Incorrect outputs
+biotrump_OouraFFT: Non-Standard Array Lengths
+biotrump_OouraFFT_2: Non-Standard Array Lengths
+biotrump_OouraFFT_3: Non-Standard Array Lengths
+biotrump_OouraFFT_4: Non-Standard Array Lengths
+biotrump_OouraFFT_5: Non-Standard Array Lengths
+biotrump_OouraFFT_6: Non-Standard Array Lengths

@@ -15,3 +15,4 @@ cpuimage_StockhamFFT: Supported:None
 akw0088_fft: Supported:None
 cpuimage_cpuFFT: Supported:None
 mozanunal_SimpleDSP: Supported:ValueProfiling
+omnister_fftp: Supported:None
