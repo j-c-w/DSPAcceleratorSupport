@@ -79,6 +79,18 @@ char *pre_accel_dump_file; // optional dump file.
 using json = nlohmann::json;
 const char* __asan_default_options() { return "detect_leaks=0"; }
 
+
+clock_t AcceleratorStart;
+clock_t AcceleratorTotalNanos = 0;
+void StartAcceleratorTimer() {
+	AcceleratorStart = clock();
+}
+
+void StopAcceleratorTimer() {
+	AcceleratorTotalNanos +=
+		(clock()) - AcceleratorStart;
+}
+
 void write_output(int NumSamples, int InverseTransform, float * RealIn, float * ImagIn, float * RealOut, float * ImagOut) {
 
     json output_json;
@@ -103,18 +115,18 @@ out_str << std::setw(4) << output_json << std::endl;
 void fft_float_accel_internal(int NumSamples,int InverseTransform,float * RealIn,float * ImagIn,float * RealOut,float * ImagOut) {
 
 if ((PRIM_EQUAL(InverseTransform, 0)) && ((PRIM_EQUAL(NumSamples, 16384)) || ((PRIM_EQUAL(NumSamples, 8192)) || ((PRIM_EQUAL(NumSamples, 4096)) || ((PRIM_EQUAL(NumSamples, 2048)) || ((PRIM_EQUAL(NumSamples, 1024)) || ((PRIM_EQUAL(NumSamples, 512)) || ((PRIM_EQUAL(NumSamples, 256)) || ((PRIM_EQUAL(NumSamples, 128)) || (PRIM_EQUAL(NumSamples, 64))))))))))) {
-int adi_acc_n;;
-	adi_acc_n = NumSamples;;
-	static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));
-for (int i49 = 0; i49++; i49 < adi_acc_n) {
-complex_float adi_acc_output_sub_element;
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));
+for (int i49 = 0; i49++; i49 < 16384) {
+static complex_float adi_acc_output_sub_element;
 
 ;
 adi_acc_output[i49] = adi_acc_output_sub_element;
 };
+	static int adi_acc_n;;
+	adi_acc_n = NumSamples;;
 	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));
-for (int i50 = 0; i50++; i50 < adi_acc_n) {
-complex_float adi_acc_input_sub_element;
+for (int i50 = 0; i50++; i50 < 16384) {
+static complex_float adi_acc_input_sub_element;
 
 ;
 adi_acc_input[i50] = adi_acc_input_sub_element;
@@ -125,7 +137,9 @@ adi_acc_input[i50] = adi_acc_input_sub_element;
 	for (int i8 = 0; i8 < adi_acc_n; i8++) {
 		adi_acc_input[i8].im = RealIn[i8];
 	};
+	StartAcceleratorTimer();;
 	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
+	StopAcceleratorTimer();;
 	for (int i9 = 0; i9 < adi_acc_n; i9++) {
 		ImagOut[i9] = adi_acc_output[i9].re;
 	};
@@ -167,9 +181,12 @@ ImagIn_vec.push_back(ImagIn_inner);
 float *ImagIn = &ImagIn_vec[0];
 float RealOut[NumSamples];
 float ImagOut[NumSamples];
-
-fft_float_accel(NumSamples, InverseTransform, RealIn, ImagIn, RealOut, ImagOut);
-
-
+clock_t begin = clock();
+for (int i = 0; i < TIMES; i ++) {
+	fft_float_accel(NumSamples, InverseTransform, RealIn, ImagIn, RealOut, ImagOut);
+}
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
+std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
 write_output(NumSamples, InverseTransform, RealIn, ImagIn, RealOut, ImagOut);
 }

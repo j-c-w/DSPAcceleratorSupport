@@ -66,7 +66,7 @@ w_vec.push_back(w_inner);
 double *w = &w_vec[0];
 clock_t begin = clock();
 for (int i = 0; i < TIMES; i ++) {
-	cdft(n, isgn, a, ip, w);
+	cdft_w(n, isgn, a, ip, w);
 }
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;

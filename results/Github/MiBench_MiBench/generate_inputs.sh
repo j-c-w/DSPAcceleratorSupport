@@ -23,18 +23,27 @@ fi
 mkdir -p inputs
 # I haven't yet seen a data-dependent FFT algorithm,
 # so we'll just use a constnat input.
-contents="{ \"re\":2.510045379820, \"im\":21.72443302820}"
-typeset -a inputs
-inputs=("$contents")
+re_contents="2.510045379820"
+im_contents="21.7244"
+typeset -a re_inputs
+typeset -a im_inputs
+re_inputs=("$re_contents")
+im_inputs=("$im_contents")
+
 for i in $(seq 1 $(( $inplen - 1 ))); do
-	inputs+=(",$contents")
+	re_inputs+=(",$re_contents")
+	im_inputs+=(",$im_contents")
 done
 
 # This uses an input template that gets extended.
 template="{
-	\"N\":$inplen,
-	\"vector\": [
-	"${inputs[@]}"
+	\"NumSamples\":$inplen,
+	\"InverseTransform\": 0,
+	\"RealIn\": [
+	"${re_inputs[@]}"
+	],
+	\"ImagIn\": [
+	"${im_inputs[@]}"
 	]
 }"
 

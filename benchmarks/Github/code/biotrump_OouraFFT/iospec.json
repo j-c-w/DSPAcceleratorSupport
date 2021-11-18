@@ -3,7 +3,7 @@
 	"liveout": ["a"],
 	"returnvarname": [],
 	"execcmd": "../benchmarks/Github/code/biotrump_OouraFFT/exec",
-	"funname": "cdft",
+	"funname": "cdft_w",
 	"funargs": ["n", "isgn", "a", "ip", "w"],
 	"typemap": {
 		"n": "int32",

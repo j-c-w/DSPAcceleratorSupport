@@ -12,12 +12,12 @@ import sys
 with open(sys.argv[1]) as f:
     json = json.load(f)
 
-RealIn = json['InRealData']
-ImagIn = json['InImagData']
+# RealIn = json['InRealData']
+# ImagIn = json['InImagData']
 
 a = []
-for i in range(len(RealIn)):
-    a.append(RealIn[i] + ImagIn[i] * 1j)
+for i in range(len(json['a']) // 2):
+    a.append(json['a'][2*i] + json['a'][2*i + 1] * 1j)
 
 print ("Forward fft")
 print (numpy.fft.fft(a,))

@@ -79,6 +79,18 @@ char *pre_accel_dump_file; // optional dump file.
 using json = nlohmann::json;
 const char* __asan_default_options() { return "detect_leaks=0"; }
 
+
+clock_t AcceleratorStart;
+clock_t AcceleratorTotalNanos = 0;
+void StartAcceleratorTimer() {
+	AcceleratorStart = clock();
+}
+
+void StopAcceleratorTimer() {
+	AcceleratorTotalNanos +=
+		(clock()) - AcceleratorStart;
+}
+
 void write_output(int NumSamples, int InverseTransform, float * RealIn, float * ImagIn, float * RealOut, float * ImagOut) {
 
     json output_json;
@@ -125,7 +137,9 @@ power_quad_acc_input[i50] = power_quad_acc_input_sub_element;
 	for (int i18 = 0; i18 < power_quad_acc_n; i18++) {
 		power_quad_acc_input[i18].re = ImagIn[i18];
 	};
+	StartAcceleratorTimer();;
 	fft_api(power_quad_acc_input, power_quad_acc_output, power_quad_acc_n);;
+	StopAcceleratorTimer();;
 	for (int i19 = 0; i19 < power_quad_acc_n; i19++) {
 		ImagOut[i19] = power_quad_acc_output[i19].re;
 	};
@@ -167,9 +181,12 @@ ImagIn_vec.push_back(ImagIn_inner);
 float *ImagIn = &ImagIn_vec[0];
 float RealOut[NumSamples];
 float ImagOut[NumSamples];
-
-fft_float_accel(NumSamples, InverseTransform, RealIn, ImagIn, RealOut, ImagOut);
-
-
+clock_t begin = clock();
+for (int i = 0; i < TIMES; i ++) {
+	fft_float_accel(NumSamples, InverseTransform, RealIn, ImagIn, RealOut, ImagOut);
+}
+clock_t end = clock();
+std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
+std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
 write_output(NumSamples, InverseTransform, RealIn, ImagIn, RealOut, ImagOut);
 }
