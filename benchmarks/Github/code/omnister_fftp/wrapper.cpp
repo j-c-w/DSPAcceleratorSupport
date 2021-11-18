@@ -58,7 +58,9 @@ array_vec.push_back(array_inner);
 COMPLEX *array = &array_vec[0];
 int n = input_json["n"];
 clock_t begin = clock();
-array = fft_1d(array, n);
+for (int i = 0; i < TIMES; i ++) {
+	array = fft_1d(array, n);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
