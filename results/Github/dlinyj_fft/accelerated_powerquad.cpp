@@ -140,8 +140,8 @@ int power_quad_acc_n;;
 if (GREATER_THAN(norm, -1)) {
 long int bi_1;;
 	bi_1 = Pow2(p);;;
-	ARRAY_HALF_NORM(out, f32_1, bi_1);;
-	ARRAY_HALF_NORM(out, f32_2, bi_1);
+	ARRAY_HALF_NORM_POSTIND(out, f32_1, bi_1);;
+	ARRAY_HALF_NORM_POSTIND(out, f32_2, bi_1);
 } else {
 ;
 }

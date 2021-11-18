@@ -140,8 +140,8 @@ static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
 if (GREATER_THAN(norm, -1)) {
 static long int bi_1;;
 	bi_1 = Pow2(p);;;
-	ARRAY_HALF_NORM(out, f32_1, bi_1);;
-	ARRAY_HALF_NORM(out, f32_2, bi_1);
+	ARRAY_HALF_NORM_POSTIND(out, f32_1, bi_1);;
+	ARRAY_HALF_NORM_POSTIND(out, f32_2, bi_1);
 } else {
 ;
 }

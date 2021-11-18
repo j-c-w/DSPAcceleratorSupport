@@ -16,46 +16,46 @@ With conversion function IdentityConversion
 >(new binding): 
 
 With the array index wrappers adi_acc_input,re
-And (fromvars) [x, real]
+And (fromvars) [array, re]
 Under dimensions [adi_acc_n = n (=) ]
 With conversion function IdentityConversion
 
 >(new binding): 
 
 With the array index wrappers adi_acc_input,im
-And (fromvars) [x, imag]
+And (fromvars) [array, im]
 Under dimensions [adi_acc_n = n (=) ]
 With conversion function IdentityConversion
 Post: SKELETON:
 
-With the array index wrappers x,real
-And (fromvars) [adi_acc_output, re]
+With the array index wrappers array,im
+And (fromvars) [adi_acc_output, im]
 Under dimensions [adi_acc_n = n (=) ]
 With conversion function IdentityConversion
 
 >(new binding): 
 
-With the array index wrappers x,imag
-And (fromvars) [adi_acc_output, im]
+With the array index wrappers array,re
+And (fromvars) [adi_acc_output, re]
 Under dimensions [adi_acc_n = n (=) ]
 With conversion function IdentityConversion
 */
 
 /* Typemap is :
- i5: int32
-x: array(complex_t: with dims n (=) )
-i2: int32
+ i14: int32
 adi_acc_n: int32
-i3: int32
+i12: int32
+array: array(COMPLEX: with dims n (=) )
 adi_acc_input: array(complex_float: with dims adi_acc_n (=) )
-i4: int32
+i13: int32
 n: int32
+i15: int32
 adi_acc_output: array(complex_float: with dims adi_acc_n (=) )
 */
 
-#include <clib/fft_synth/lib.h>
+
 extern "C" {
-#include "../../benchmarks/Github/code/cpuimage_StockhamFFT/self_contained_code.c"
+#include "../../benchmarks/Github/code/omnister_fftp/self_contained_code.c"
 }
 
 
@@ -90,65 +90,73 @@ void StopAcceleratorTimer() {
 		(clock()) - AcceleratorStart;
 }
 
-void write_output(complex_t * x, int n) {
+void write_output(int n, COMPLEX * array) {
 
     json output_json;
-std::vector<json> output_temp_33;
-for (unsigned int i34 = 0; i34 < n; i34++) {
-complex_t output_temp_35 = x[i34];
-json output_temp_36;
+std::vector<json> output_temp_43;
+for (unsigned int i44 = 0; i44 < n; i44++) {
+COMPLEX output_temp_45 = array[i44];
+json output_temp_46;
 
-output_temp_36["real"] = output_temp_35.real;
+output_temp_46["re"] = output_temp_45.re;
 
-output_temp_36["imag"] = output_temp_35.imag;
-output_temp_33.push_back(output_temp_36);
+output_temp_46["im"] = output_temp_45.im;
+output_temp_43.push_back(output_temp_46);
 }
-output_json["x"] = output_temp_33;
+output_json["array"] = output_temp_43;
 std::ofstream out_str(output_file); 
 out_str << std::setw(4) << output_json << std::endl;
 }
 
-void fft_accel_internal(complex_t * x,int n) {
+COMPLEX * fft_1d_accel_internal(COMPLEX * array,int n) {
 
 if ((PRIM_EQUAL(n, 16384)) || ((PRIM_EQUAL(n, 8192)) || ((PRIM_EQUAL(n, 4096)) || ((PRIM_EQUAL(n, 2048)) || ((PRIM_EQUAL(n, 1024)) || ((PRIM_EQUAL(n, 512)) || ((PRIM_EQUAL(n, 256)) || ((PRIM_EQUAL(n, 128)) || (PRIM_EQUAL(n, 64)))))))))) {
-static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));;
+static complex_float adi_acc_output[16384]__attribute__((__aligned__(64)));
+for (int i41 = 0; i41++; i41 < 16384) {
+static complex_float adi_acc_output_sub_element;
+
+;
+adi_acc_output[i41] = adi_acc_output_sub_element;
+};
 	static int adi_acc_n;;
 	adi_acc_n = n;;
-	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));;
-	for (int i2 = 0; i2 < adi_acc_n; i2++) {
-		adi_acc_input[i2].re = x[i2].real;
+	static complex_float adi_acc_input[16384]__attribute__((__aligned__(64)));
+for (int i42 = 0; i42++; i42 < 16384) {
+static complex_float adi_acc_input_sub_element;
+
+;
+adi_acc_input[i42] = adi_acc_input_sub_element;
+};
+	for (int i12 = 0; i12 < adi_acc_n; i12++) {
+		adi_acc_input[i12].re = array[i12].re;
 	};
-	for (int i3 = 0; i3 < adi_acc_n; i3++) {
-		adi_acc_input[i3].im = x[i3].imag;
+	for (int i13 = 0; i13 < adi_acc_n; i13++) {
+		adi_acc_input[i13].im = array[i13].im;
 	};
 	StartAcceleratorTimer();;
 	accel_cfft_wrapper(adi_acc_input, adi_acc_output, adi_acc_n);;
 	StopAcceleratorTimer();;
-	for (int i4 = 0; i4 < adi_acc_n; i4++) {
-		x[i4].real = adi_acc_output[i4].re;
+	for (int i14 = 0; i14 < adi_acc_n; i14++) {
+		array[i14].im = adi_acc_output[i14].im;
 	};
-	for (int i5 = 0; i5 < adi_acc_n; i5++) {
-		x[i5].imag = adi_acc_output[i5].im;
+	for (int i15 = 0; i15 < adi_acc_n; i15++) {
+		array[i15].re = adi_acc_output[i15].re;
 	};
 	
-;
+return array;;
 	
 ;
 	
 ;
 	
-if (GREATER_THAN(n, -1)) {
-ARRAY_NORM_POSTIND(x, real, n);;
-	ARRAY_NORM_POSTIND(x, imag, n);
+
 } else {
-;
-}
-} else {
-fft(x, n);
+
+return fft_1d(array, n);;
 }
 }
-void fft_accel(complex_t * x, int n) {
-fft_accel_internal((complex_t *) x, (int) n);
+COMPLEX * fft_1d_accel(COMPLEX * array, int n) {
+return (COMPLEX *)fft_1d_accel_internal((COMPLEX *) array, (int) n);
 }
 int main(int argc, char **argv) {
     char *inpname = argv[1]; 
@@ -156,19 +164,21 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
-std::vector<complex_t> x_vec;
-for (auto& elem : input_json["x"]) {
-float x_innerreal = elem["real"];
-float x_innerimag = elem["imag"];
-complex_t x_inner = { x_innerreal, x_innerimag};
-x_vec.push_back(x_inner);
+std::vector<COMPLEX> array_vec;
+for (auto& elem : input_json["array"]) {
+float array_innerre = elem["re"];
+float array_innerim = elem["im"];
+COMPLEX array_inner = { array_innerre, array_innerim};
+array_vec.push_back(array_inner);
 }
-complex_t *x = &x_vec[0];
+COMPLEX *array = &array_vec[0];
 int n = input_json["n"];
 clock_t begin = clock();
-fft_accel(x, n);
+for (int i = 0; i < TIMES; i ++) {
+	array = fft_1d_accel(array, n);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
-write_output(x, n);
+write_output(n, array);
 }

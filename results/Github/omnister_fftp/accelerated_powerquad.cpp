@@ -16,46 +16,46 @@ With conversion function IdentityConversion
 >(new binding): 
 
 With the array index wrappers power_quad_acc_input,im
-And (fromvars) [x, imag]
+And (fromvars) [array, im]
 Under dimensions [power_quad_acc_n = n (=) ]
 With conversion function IdentityConversion
 
 >(new binding): 
 
 With the array index wrappers power_quad_acc_input,re
-And (fromvars) [x, real]
+And (fromvars) [array, re]
 Under dimensions [power_quad_acc_n = n (=) ]
 With conversion function IdentityConversion
 Post: SKELETON:
 
-With the array index wrappers x,real
-And (fromvars) [power_quad_acc_output, re]
+With the array index wrappers array,im
+And (fromvars) [power_quad_acc_output, im]
 Under dimensions [power_quad_acc_n = n (=) ]
 With conversion function IdentityConversion
 
 >(new binding): 
 
-With the array index wrappers x,imag
-And (fromvars) [power_quad_acc_output, im]
+With the array index wrappers array,re
+And (fromvars) [power_quad_acc_output, re]
 Under dimensions [power_quad_acc_n = n (=) ]
 With conversion function IdentityConversion
 */
 
 /* Typemap is :
- power_quad_acc_n: int32
-i14: int32
-x: array(complex_t: with dims n (=) )
+ i5: int32
+power_quad_acc_n: int32
 power_quad_acc_input: array(complex_type: with dims power_quad_acc_n (=) )
-i12: int32
-i13: int32
+i2: int32
+i3: int32
+array: array(COMPLEX: with dims n (=) )
+i4: int32
 n: int32
-i15: int32
 power_quad_acc_output: array(complex_type: with dims power_quad_acc_n (=) )
 */
 
-#include <clib/fft_synth/lib.h>
+
 extern "C" {
-#include "../../benchmarks/Github/code/cpuimage_StockhamFFT/self_contained_code.c"
+#include "../../benchmarks/Github/code/omnister_fftp/self_contained_code.c"
 }
 
 
@@ -90,65 +90,73 @@ void StopAcceleratorTimer() {
 		(clock()) - AcceleratorStart;
 }
 
-void write_output(complex_t * x, int n) {
+void write_output(int n, COMPLEX * array) {
 
     json output_json;
-std::vector<json> output_temp_33;
-for (unsigned int i34 = 0; i34 < n; i34++) {
-complex_t output_temp_35 = x[i34];
-json output_temp_36;
+std::vector<json> output_temp_43;
+for (unsigned int i44 = 0; i44 < n; i44++) {
+COMPLEX output_temp_45 = array[i44];
+json output_temp_46;
 
-output_temp_36["real"] = output_temp_35.real;
+output_temp_46["re"] = output_temp_45.re;
 
-output_temp_36["imag"] = output_temp_35.imag;
-output_temp_33.push_back(output_temp_36);
+output_temp_46["im"] = output_temp_45.im;
+output_temp_43.push_back(output_temp_46);
 }
-output_json["x"] = output_temp_33;
+output_json["array"] = output_temp_43;
 std::ofstream out_str(output_file); 
 out_str << std::setw(4) << output_json << std::endl;
 }
 
-void fft_accel_internal(complex_t * x,int n) {
+COMPLEX * fft_1d_accel_internal(COMPLEX * array,int n) {
 
-if ((PRIM_EQUAL(n, 16384)) || ((PRIM_EQUAL(n, 8192)) || ((PRIM_EQUAL(n, 4096)) || ((PRIM_EQUAL(n, 2048)) || ((PRIM_EQUAL(n, 1024)) || ((PRIM_EQUAL(n, 512)) || ((PRIM_EQUAL(n, 256)) || ((PRIM_EQUAL(n, 128)) || (PRIM_EQUAL(n, 64)))))))))) {
+if ((PRIM_EQUAL(n, 2048)) || ((PRIM_EQUAL(n, 1024)) || ((PRIM_EQUAL(n, 512)) || ((PRIM_EQUAL(n, 256)) || ((PRIM_EQUAL(n, 128)) || (PRIM_EQUAL(n, 64))))))) {
 int power_quad_acc_n;;
 	power_quad_acc_n = n;;
-	complex_type power_quad_acc_output[power_quad_acc_n]__attribute__((__aligned__(64)));;
-	complex_type power_quad_acc_input[power_quad_acc_n]__attribute__((__aligned__(64)));;
-	for (int i12 = 0; i12 < power_quad_acc_n; i12++) {
-		power_quad_acc_input[i12].im = x[i12].imag;
+	complex_type power_quad_acc_output[power_quad_acc_n]__attribute__((__aligned__(64)));
+for (int i41 = 0; i41++; i41 < power_quad_acc_n) {
+complex_type power_quad_acc_output_sub_element;
+
+;
+power_quad_acc_output[i41] = power_quad_acc_output_sub_element;
+};
+	complex_type power_quad_acc_input[power_quad_acc_n]__attribute__((__aligned__(64)));
+for (int i42 = 0; i42++; i42 < power_quad_acc_n) {
+complex_type power_quad_acc_input_sub_element;
+
+;
+power_quad_acc_input[i42] = power_quad_acc_input_sub_element;
+};
+	for (int i2 = 0; i2 < power_quad_acc_n; i2++) {
+		power_quad_acc_input[i2].im = array[i2].im;
 	};
-	for (int i13 = 0; i13 < power_quad_acc_n; i13++) {
-		power_quad_acc_input[i13].re = x[i13].real;
+	for (int i3 = 0; i3 < power_quad_acc_n; i3++) {
+		power_quad_acc_input[i3].re = array[i3].re;
 	};
 	StartAcceleratorTimer();;
 	fft_api(power_quad_acc_input, power_quad_acc_output, power_quad_acc_n);;
 	StopAcceleratorTimer();;
-	for (int i14 = 0; i14 < power_quad_acc_n; i14++) {
-		x[i14].real = power_quad_acc_output[i14].re;
+	for (int i4 = 0; i4 < power_quad_acc_n; i4++) {
+		array[i4].im = power_quad_acc_output[i4].im;
 	};
-	for (int i15 = 0; i15 < power_quad_acc_n; i15++) {
-		x[i15].imag = power_quad_acc_output[i15].im;
+	for (int i5 = 0; i5 < power_quad_acc_n; i5++) {
+		array[i5].re = power_quad_acc_output[i5].re;
 	};
 	
-;
+return array;;
 	
 ;
 	
 ;
 	
-if (GREATER_THAN(n, -1)) {
-ARRAY_NORM_POSTIND(x, real, n);;
-	ARRAY_NORM_POSTIND(x, imag, n);
+
 } else {
-;
-}
-} else {
-fft(x, n);
+
+return fft_1d(array, n);;
 }
 }
-void fft_accel(complex_t * x, int n) {
-fft_accel_internal((complex_t *) x, (int) n);
+COMPLEX * fft_1d_accel(COMPLEX * array, int n) {
+return (COMPLEX *)fft_1d_accel_internal((COMPLEX *) array, (int) n);
 }
 int main(int argc, char **argv) {
     char *inpname = argv[1]; 
@@ -156,19 +164,21 @@ int main(int argc, char **argv) {
 
     std::ifstream ifs(inpname); 
     json input_json = json::parse(ifs);
-std::vector<complex_t> x_vec;
-for (auto& elem : input_json["x"]) {
-float x_innerreal = elem["real"];
-float x_innerimag = elem["imag"];
-complex_t x_inner = { x_innerreal, x_innerimag};
-x_vec.push_back(x_inner);
+std::vector<COMPLEX> array_vec;
+for (auto& elem : input_json["array"]) {
+float array_innerre = elem["re"];
+float array_innerim = elem["im"];
+COMPLEX array_inner = { array_innerre, array_innerim};
+array_vec.push_back(array_inner);
 }
-complex_t *x = &x_vec[0];
+COMPLEX *array = &array_vec[0];
 int n = input_json["n"];
 clock_t begin = clock();
-fft_accel(x, n);
+for (int i = 0; i < TIMES; i ++) {
+	array = fft_1d_accel(array, n);
+}
 clock_t end = clock();
 std::cout << "Time: " << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
 std::cout << "AccTime: " << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;
-write_output(x, n);
+write_output(n, array);
 }
