@@ -1,48 +1,48 @@
 Starting runs for size 64:
-Time: 0.000111960000
+Time: 0.000312478000
 AccTime: 0.000000000000
 Runs finished for size 64
 Starting runs for size 128:
-Time: 0.000238980000
+Time: 0.000686442000
 AccTime: 0.000000000000
 Runs finished for size 128
 Starting runs for size 256:
-Time: 0.000529138000
+Time: 0.001548322000
 AccTime: 0.000000000000
 Runs finished for size 256
 Starting runs for size 512:
-Time: 0.001161002000
+Time: 0.003464508000
 AccTime: 0.000000000000
 Runs finished for size 512
 Starting runs for size 1024:
-Time: 0.002534364000
+Time: 0.007695994000
 AccTime: 0.000000000000
 Runs finished for size 1024
 Starting runs for size 2048:
-Time: 0.005494624000
+Time: 0.016925480000
 AccTime: 0.000000000000
 Runs finished for size 2048
 Starting runs for size 64:
-Time: 0.000107712000
+Time: 0.000296686000
 AccTime: 0.000000000000
 Runs finished for size 64
 Starting runs for size 128:
-Time: 0.000238986000
+Time: 0.000680424000
 AccTime: 0.000000000000
 Runs finished for size 128
 Starting runs for size 256:
-Time: 0.000529148000
+Time: 0.001542440000
 AccTime: 0.000000000000
 Runs finished for size 256
 Starting runs for size 512:
-Time: 0.001160864000
+Time: 0.003448456000
 AccTime: 0.000000000000
 Runs finished for size 512
 Starting runs for size 1024:
-Time: 0.002534388000
+Time: 0.007660140000
 AccTime: 0.000000000000
 Runs finished for size 1024
 Starting runs for size 2048:
-Time: 0.005498766000
+Time: 0.016851346000
 AccTime: 0.000000000000
 Runs finished for size 2048

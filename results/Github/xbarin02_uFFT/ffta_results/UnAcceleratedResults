@@ -1,72 +1,48 @@
 Starting runs for size 64:
-Time: 0.000172050000
+Time: 0.000291804000
 AccTime: 0.000000000000
 Runs finished for size 64
 Starting runs for size 128:
-Time: 0.000492237969
+Time: 0.000641226000
 AccTime: 0.000000000000
 Runs finished for size 128
 Starting runs for size 256:
-Time: 0.001085710000
+Time: 0.001456018000
 AccTime: 0.000000000000
 Runs finished for size 256
 Starting runs for size 512:
-Time: 0.002895794063
+Time: 0.003267822000
 AccTime: 0.000000000000
 Runs finished for size 512
 Starting runs for size 1024:
-Time: 0.005496541875
+Time: 0.007249622000
 AccTime: 0.000000000000
 Runs finished for size 1024
 Starting runs for size 2048:
-Time: 0.013872986250
+Time: 0.015962446000
 AccTime: 0.000000000000
 Runs finished for size 2048
-Starting runs for size 4096:
-Time: 0.026579665630
-AccTime: 0.000000000000
-Runs finished for size 4096
-Starting runs for size 8192:
-Time: 0.064657362500
-AccTime: 0.000000000000
-Runs finished for size 8192
-Starting runs for size 16384:
-Time: 0.124479700000
-AccTime: 0.000000000000
-Runs finished for size 16384
 Starting runs for size 64:
-Time: 0.000171730000
+Time: 0.000279320000
 AccTime: 0.000000000000
 Runs finished for size 64
 Starting runs for size 128:
-Time: 0.000492150031
+Time: 0.000640880000
 AccTime: 0.000000000000
 Runs finished for size 128
 Starting runs for size 256:
-Time: 0.001085866000
+Time: 0.001455640000
 AccTime: 0.000000000000
 Runs finished for size 256
 Starting runs for size 512:
-Time: 0.002896422188
+Time: 0.003267596000
 AccTime: 0.000000000000
 Runs finished for size 512
 Starting runs for size 1024:
-Time: 0.005497918125
+Time: 0.007249582000
 AccTime: 0.000000000000
 Runs finished for size 1024
 Starting runs for size 2048:
-Time: 0.013874613750
+Time: 0.015953208000
 AccTime: 0.000000000000
 Runs finished for size 2048
-Starting runs for size 4096:
-Time: 0.026577918750
-AccTime: 0.000000000000
-Runs finished for size 4096
-Starting runs for size 8192:
-Time: 0.064654587500
-AccTime: 0.000000000000
-Runs finished for size 8192
-Starting runs for size 16384:
-Time: 0.124483012500
-AccTime: 0.000000000000
-Runs finished for size 16384
