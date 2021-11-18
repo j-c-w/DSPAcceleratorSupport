@@ -28,18 +28,20 @@ def plot_graph(results):
         unmatched.append(i.unmatched)
     print("Plotting " + str(len(names)))
 
-    plt.ylabel('Fraction of Projects')
+    plt.ylabel('Fraction of FFTs')
     xpos = np.arange(0, len(names))
     width = 0.25
-    plt.bar(xpos, compiled, width, label='Compiled', color='blue', hatch='.')
+    plt.ylim([0, 1])
+    plt.grid()
+    plt.bar(xpos, compiled, width, label='Compiled', color='blue', hatch='o')
     plt.bar(xpos + width, matched, width, label='Matched', color='red', hatch='-')
-    plt.bar(xpos + 2 * width, unmatched, width, label='Unmatched', color='pink')
-    plt.legend()
+    plt.bar(xpos + 2 * width, unmatched, width, label='Unmatched', color='purple')
+    plt.legend(loc="upper left")
 
     plt.xticks(xpos + width, names)
 
     plt.tight_layout()
-    plt.savefig('fraction_supported.png')
+    plt.savefig('fraction_supported.eps')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

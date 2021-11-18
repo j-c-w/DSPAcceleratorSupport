@@ -3,41 +3,59 @@ import argparse
 import csv
 
 class Datum:
-    def __init__(self, name, xs, ys):
+    def __init__(self, name, xs, ys, maxs):
         self.name = name
-        self.xs = xs
-        self.ys = ys
+        self.xs = []
+        self.ys = []
+
+        for i in range(len(xs)):
+            self.xs.append(int(xs[i]))
+            self.ys.append(float(ys[i]) / float(maxs[i]))
 
 def plot(fs):
     for f in fs:
-        plt.line(fs.xs, fs.ys, label=fs.name)
+        plt.plot(f.xs, f.ys, label=f.name)
 
     plt.xlabel("Number of Lines of IDL")
-    plt.ylabel("Number of FFTs Matched")
+    plt.ylabel("Fraction of FFTs Matched")
+    plt.ylim([0, 1])
+    plt.xlim([0, 70])
     plt.legend()
     plt.savefig("idl_graph.eps")
 
-def load_files(files):
+def load_files(files, names):
     lines = []
-    for f in files:
-        with open(f, "r") as dat:
-            reader = csv.reader(f)
+    for i in range(len(names)):
+        f = files[i]
+        name = names[i]
+        print ("Loading ", f)
+        with open(f) as dat:
+            reader = csv.reader(dat)
             next(reader, None) # skip headers
 
             xs = []
             ys = []
+            maxs = []
             for line in reader:
+                print (line)
                 xs.append(line[0])
                 ys.append(line[1])
-        lines.appens(Datum(f, xs, ys))
+                maxs.append(line[2])
+        lines.append(Datum(name, xs, ys, maxs))
     return lines
 
 if __name__ == "__main__":
-    parser = argparse.ArugmentParser()
+    parser = argparse.ArgumentParser()
 
     parser.add_argument('DataFiles', nargs='+')
 
-    args = praser.parse_args()
+    args = parser.parse_args()
+    files, names = [], []
+    for i in range(len(args.DataFiles)):
+        if i % 2 == 0:
+            files.append(args.DataFiles[i])
+        else:
+            names.append(args.DataFiles[i])
 
-    datas = load_files(args.DataFiles)
+    datas = load_files(files, names)
     plot(datas)
