@@ -13,7 +13,7 @@ def parse_reason(r):
             print ("adding nline")
             res += "\n"
     print(res)
-    return res
+    return res.strip()
 
 
 if __name__ == "__main__":
@@ -25,9 +25,12 @@ if __name__ == "__main__":
     total_size = 0
     with open(args.InfoFile) as f:
         reasons = {}
+        reasons['Supported'] = 1 # Set supported to start at 1 because MiBench isn't counted in the working file.
         for line in f.readlines():
             print (line)
             reason = parse_reason(line.split(":")[1].strip())
+            print( "Reason is")
+            print ("'" + reason + "'")
             if reason in reasons:
                 reasons[reason] += 1
                 total_size += 1
