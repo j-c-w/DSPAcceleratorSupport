@@ -21,7 +21,22 @@ unsigned int reverseBits(unsigned int num, unsigned int no_bits);
 		}                                            \
 	}
 
-#define ARRAY_NORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i].postind = arr[i].postind / len; }
-#define ARRAY_DENORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i].postind = arr[i].postind * len; }
-#define ARRAY_HALF_NORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i].postind = arr[i].postind / (len / 2); } 
-#define ARRAY_HALF_DENORM(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i].postind = arr[i].postind * (len / 2); } 
+// Every problem is solved by another layer of indirection?
+
+// These are for doing sub-assigns with the connectors already included.
+#define ARRAY_NORM_BASE(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]postind = arr[i]postind / len; }
+#define ARRAY_DENORM_BASE(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]postind = arr[i]postind * len; }
+#define ARRAY_HALF_NORM_BASE(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]postind = arr[i]postind / (len / 2); } 
+#define ARRAY_HALF_DENORM_BASE(arr, postind, len) for (int i = 0; i < len; i ++) { arr[i]postind = arr[i]postind * (len / 2); } 
+
+/// These are for doing arrays with sub-lengths
+#define ARRAY_NORM_POSTIND(arr, postind, len) ARRAY_NORM_BASE(arr, .postind, len)
+#define ARRAY_DENORM_POSTIND(arr, postind, len) ARRAY_DENORM_BASE(arr, .postind, len)
+#define ARRAY_HALF_NORM_POSTIND(arr, postind, len) ARRAY_HALF_NORM_BASE(arr, .postind, len)
+#define ARRAY_HALF_DENORM_POSTIND(arr, postin, len) ARRAY_HALF_DENORM_BASE(arr, .postind, len)
+
+// These are for doing arrays without subelements.
+#define ARRAY_NORM(arr, len) ARRAY_NORM_BASE(arr, , len)
+#define ARRAY_DENORM(arr, len) ARRAY_DENORM_BASE(arr, , len)
+#define ARRAY_HALF_NORM(arr, len) ARRAY_HALF_NORM_BASE(arr, , len)
+#define ARRAY_HALF_DENORM(arr, len) ARRAY_HALF_DENORM_BASE(arr, , len)

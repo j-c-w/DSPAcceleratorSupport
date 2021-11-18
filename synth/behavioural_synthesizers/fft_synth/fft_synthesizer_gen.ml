@@ -117,23 +117,25 @@ let rec generate_gir_program options typemap fft_behaviour =
                         | FSArrayOpHole -> raise (CXXHoleError "Hole")
                 in
                 let post_index = match post with
-                | None -> Variable(Name(""))
-                (* The insertion of a dot here is a bit of a ahck
-                to make the C macro simpler --- it just does an
-                append after the array access and that way
-                doesn't have to worry about putting a dot between
-                things.  *)
-                | Some(n) -> Variable(Name(n))
-                in
-                let fref = FunctionRef(Name(funname)) in
-                (* These are technically macros, but should
-                end up being the smae.   *)
-				Sequence([
-					Expression(FunctionCall(
-						fref,
-						VariableList([vname; post_index; length_name])
-					))
-				])
+                | None ->
+						(* There are syntax issues for rounds without post indexes if
+							we just pass empty args.  *)
+						let fref = FunctionRef(Name(funname)) in
+						Sequence([
+							Expression(FunctionCall(fref,
+							VariableList([vname; length_name])
+							))
+						])
+                | Some(n) ->
+						let fref = FunctionRef(Name(funname ^ "_POSTIND")) in
+						(* These are technically macros, but should
+						end up being the smae.   *)
+						Sequence([
+							Expression(FunctionCall(
+								fref,
+								VariableList([vname; Variable(Name(n)); length_name])
+							))
+						])
             ) in
 			Sequence(precode :: calls)
     | FSSeq(elems) ->
