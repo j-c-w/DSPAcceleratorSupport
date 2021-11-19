@@ -13,6 +13,7 @@ class Datum:
             self.ys.append(float(ys[i]) / float(maxs[i]))
 
 def plot(fs):
+    plt.figure(figsize=(6, 3))
     for f in fs:
         plt.plot(f.xs, f.ys, label=f.name)
 
@@ -21,6 +22,7 @@ def plot(fs):
     plt.ylim([0, 1])
     plt.xlim([0, 70])
     plt.legend()
+    plt.tight_layout()
     plt.savefig("idl_graph.eps")
 
 def load_files(files, names):

@@ -34,15 +34,15 @@ def plot_graph(fftw_results, ffta_results, powerquad_results):
         print (len(fftw_group))
         print (len(xpos))
         width = 0.25
-        axi.bar(xpos, ffta_group, width, label='FFTA', color='green', hatch='-')
-        axi.bar(xpos + width, fftw_group,  width,  label='FFTW', color='orange')
-        axi.bar(xpos + width * 2, powerquad_group, width, label='PowerQuad', color='red', hatch='.')
+        axi.bar(xpos, fftw_group,  width,  label='FFTW', color='orange')
+        axi.bar(xpos + width, powerquad_group, width, label='PowerQuad', color='red', hatch='.')
+        axi.bar(xpos + width * 2, ffta_group, width, label='FFTA', color='green', hatch='-')
         axi.set_xticks(xpos + width)
         axi.set_xticklabels(range(minx, maxx))
 
     ax3.legend()
     ax2.set_xlabel('Project Number')
-    ax1.set_ylabel('Performance Relative to System Baseline')
+    ax1.set_ylabel('Performance Relative to\nSystem Baseline')
 
     plt.tight_layout()
     plt.savefig('barplot_speedup.eps')
@@ -66,6 +66,7 @@ def plot_adi_graph(accres, dspres):
 
         minx = last_maxx
         maxx = minx + len(acc_group)
+        last_maxx = maxx
 
         xpos = np.arange(0, len(acc_group))
         width = 0.25
@@ -161,7 +162,7 @@ if __name__ == "__main__":
                 )
         )
 
-    res = sorted(res, key=lambda x: max([x[0], x[1], x[2]]))
+    res = sorted(res, key=lambda x: max([x[0], x[1], x[2], x[3]]))
 
     fftw_results = []
     ffta_results = []
@@ -170,7 +171,7 @@ if __name__ == "__main__":
     dirs = []
     i = 0
     for r in res:
-        if i == 0 or i == 4 or i == 12:
+        if i == 0 or i == 4 or i == 11:
             # That's where the new groups start --- a better way to do this would be to compute the actual thresholds that are being used for this division.
             ffta_results.append([])
             ffta_dsp_results.append([])

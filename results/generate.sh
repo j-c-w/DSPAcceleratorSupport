@@ -1,5 +1,6 @@
 #!/bin/bash
-set -eu
+#set -eu
+set -u
 
 if [[ $# -eq 1 ]]; then
 	cd $1

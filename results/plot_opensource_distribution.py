@@ -1,5 +1,6 @@
 import argparse
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tkr
 
 def parse_reason(r):
     # break up longer things into multiple lines
@@ -9,7 +10,7 @@ def parse_reason(r):
     for word in words:
         i += 1
         res = res + word + " "
-        if (i % 2) == 0:
+        if (i >= 2):
             print ("adding nline")
             res += "\n"
     print(res)
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     sizes = [v[0] for v in values]
     labels = [v[1] for v in values]
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 3))
     ax.bar(range(0, len(labels)), sizes, color=colors, width=0.5)
     plt.xticks(rotation=90)
     plt.ylabel("Fraction of Benchmarks")
@@ -78,6 +79,10 @@ if __name__ == "__main__":
     plt.tight_layout()
     # ax.pie(sizes, explode=explode, labels=labels, autopct='%1.f%%', shadow=True, startangle=90)
     # ax.axis('equal')
+
+    yloc = tkr.FixedLocator([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+    ax.yaxis.set_major_locator(yloc)
+    ax.grid(which='major', axis='y')
 
     
     # plt.legend()

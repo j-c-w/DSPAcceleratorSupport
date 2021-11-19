@@ -1,5 +1,6 @@
 import argparse
 import matplotlib.pyplot as plt
+import matplotlib.ticker as plticker
 import plot
 import plot_ffta
 import numpy as np
@@ -28,16 +29,23 @@ def plot_graph(results):
         unmatched.append(i.unmatched)
     print("Plotting " + str(len(names)))
 
+    plt.figure(figsize=(6, 3))
     plt.ylabel('Fraction of FFTs')
     xpos = np.arange(0, len(names))
     width = 0.25
     plt.ylim([0, 1])
-    plt.grid()
     plt.bar(xpos, compiled, width, label='Compiled', color='blue', hatch='o')
     plt.bar(xpos + width, matched, width, label='Matched', color='red', hatch='-')
     plt.bar(xpos + 2 * width, unmatched, width, label='Unmatched', color='purple')
     plt.legend(loc="upper left")
 
+    ax = plt.gca()
+    yticks = plticker.FixedLocator([0.2, 0.4, 0.6, 0.8])
+    xticks = plticker.FixedLocator(xpos[:-1] + 0.75)
+    ax.xaxis.set_minor_locator(xticks)
+    ax.yaxis.set_major_locator(yticks)
+    ax.grid(which='minor', axis='x')
+    ax.grid(which='major', axis='y')
     plt.xticks(xpos + width, names)
 
     plt.tight_layout()

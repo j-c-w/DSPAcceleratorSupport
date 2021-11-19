@@ -7,6 +7,7 @@ import plot_compile_times
 
 def plot(ccounts):
     plt.clf()
+    plt.figure(figsize=(6, 3))
     for c in ccounts:
         x, y = c.get_cdf()
         color = plot_compile_times.get_color(c.name)
@@ -22,6 +23,7 @@ def plot(ccounts):
 
     plt.xlabel("Number of Binding Candidates")
     plt.ylabel("CDF")
+    plt.tight_layout()
 
     plt.savefig("candidates.eps")
 

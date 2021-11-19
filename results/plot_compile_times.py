@@ -24,6 +24,7 @@ def get_linestyle(name):
 
 def plot(ctimes):
     plt.clf()
+    plt.figure(figsize=(6, 3))
     for time in ctimes:
         x, y = time.get_cdf()
         color = get_color(time.name)
@@ -38,6 +39,7 @@ def plot(ctimes):
     
     plt.xlabel('Compile Time (s)')
     plt.ylabel('CDF')
+    plt.tight_layout()
 
     plt.savefig('compile_times.eps')
 
