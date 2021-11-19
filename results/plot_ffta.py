@@ -26,6 +26,8 @@ def read_file(fname):
         print (fname)
         return {}, {}
 
+    print ("Looking at file " , fname)
+
     with open(fname) as f:
         linegroups = splitlist(f.readlines(), 4)
 
