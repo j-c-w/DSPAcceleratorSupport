@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tkr
 import argparse
 import csv
 
@@ -21,6 +22,10 @@ def plot(fs):
     plt.ylabel("Fraction of FFTs Matched")
     plt.ylim([0, 1])
     plt.xlim([0, 70])
+    loc = tkr.FixedLocator([0.2, 0.4, 0.6, 0.8])
+    ax = plt.gca()
+    ax.yaxis.set_major_locator(loc)
+    ax.grid(axis='y', which='major')
     plt.legend()
     plt.tight_layout()
     plt.savefig("idl_graph.eps")

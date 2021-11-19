@@ -1,3 +1,4 @@
+import matplotlib.ticker as tkr
 import matplotlib.pyplot as plt
 import argparse
 import os
@@ -34,6 +35,9 @@ def plot(ctimes):
 
     plt.legend()
     axes = plt.gca()
+    loc = tkr.FixedLocator([0.2, 0.4, 0.6, 0.8])
+    axes.yaxis.set_major_locator(loc)
+    axes.grid(which='major', axis='y')
     axes.set_ylim([0.0, 1.001])
     axes.set_xscale('log')
     

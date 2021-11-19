@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tkr
 import argparse
 import os
 import numpy as np
@@ -16,8 +17,11 @@ def plot(ccounts):
         plt.plot(x, y, label=c.name, color=color, linestyle=style)
 
     plt.legend()
+    loc = tkr.FixedLocator([0.2, 0.4, 0.6, 0.8])
     axes = plt.gca()
     axes.set_ylim([0.0, 1.001])
+    axes.yaxis.set_major_locator(loc)
+    axes.grid(which='major', axis='y')
     axes.set_xscale('log')
     axes.set_xlim([1, 1000])
 

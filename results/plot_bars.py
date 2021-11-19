@@ -1,5 +1,6 @@
 import argparse
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tkr
 import plot
 import plot_ffta
 import numpy as np
@@ -18,6 +19,7 @@ def plot_graph(fftw_results, ffta_results, powerquad_results):
     ax3.set_ylim([0.1, 100000])
 
     axes = [ax1, ax2, ax3]
+    onetkr = tkr.FixedLocator([1])
 
     last_maxx = 0
     for i in range(0, len(fftw_results)):
@@ -39,6 +41,8 @@ def plot_graph(fftw_results, ffta_results, powerquad_results):
         axi.bar(xpos + width * 2, ffta_group, width, label='FFTA', color='green', hatch='-')
         axi.set_xticks(xpos + width)
         axi.set_xticklabels(range(minx, maxx))
+        axi.yaxis.set_major_locator(onetkr)
+        axi.grid(axis='y', which='major')
 
     ax3.legend()
     ax2.set_xlabel('Project Number')
@@ -59,6 +63,7 @@ def plot_adi_graph(accres, dspres):
 
     axes = [ax1, ax2, ax3]
     last_maxx = 0
+    onetkr = tkr.FixedLocator([1])
     for i in range(0, len(accres)):
         acc_group = accres[i]
         dsp_group = dspres[i]
@@ -74,6 +79,8 @@ def plot_adi_graph(accres, dspres):
         axi.bar(xpos + width, acc_group, width, label='FACC', color='green', hatch='-')
         axi.set_xticks(xpos + width)
         axi.set_xticklabels(range(minx, maxx))
+        axi.yaxis.set_major_locator(onetkr)
+        axi.grid(axis='y', which='major')
 
     ax2.legend()
     ax2.set_xlabel('Project Number')
