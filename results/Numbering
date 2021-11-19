@@ -1,5 +1,5 @@
-mozanunal_SimpleDSP: 0
-tasimon_FFT: 1
+tasimon_FFT: 0
+mozanunal_SimpleDSP: 1
 cpuimage_StockhamFFT: 2
 xiahouzouxin_fft: 3
 JodiTheTigger_meow_fft: 4

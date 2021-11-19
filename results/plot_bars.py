@@ -81,11 +81,18 @@ def plot_adi_graph(accres, dspres):
         minx = last_maxx
         maxx = minx + len(acc_group)
         last_maxx = maxx
+        # On the first bar, IDL gets the right answer, because we built the pattern for it.
+        width = 0.25
+
+        if minx == 0:
+            axi.bar(0 + 2 * width, acc_group[0], width, label='IDL', color='blue')
 
         xpos = np.arange(0, len(acc_group))
-        width = 0.25
         axi.bar(xpos, dsp_group, width, label='Neural Classifier', color='red', hatch='-')
         axi.bar(xpos + width, acc_group, width, label='FACC', color='green', hatch='-')
+        if i != 3:
+            # hack to get idl in the legend.
+            axi.bar(xpos + width, [0] * len(acc_group), label='IDL', color='blue')
         axi.set_xticks(xpos + width)
         axi.set_xticklabels(range(minx, maxx))
         axi.yaxis.set_minor_locator(onetkr)
@@ -180,6 +187,10 @@ if __name__ == "__main__":
         )
 
     res = sorted(res, key=lambda x: max([x[0], x[1], x[2], x[3]]))
+    # Due to a great fuckup,the order changed after we'd arbitrayily picked project 0
+    # which is not project 1.  Just swap those two so that it's clear why we picked
+    # project 0 for various idl examples.
+    res[0], res[1] = res[1], res[0]
 
     fftw_results = []
     ffta_results = []
