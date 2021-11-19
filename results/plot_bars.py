@@ -10,6 +10,14 @@ def geomean_of(l):
     a = cat
     return a.prod()**(1.0/len(a))
 
+def get_ticks_for_graph(i):
+    if i == 0:
+        return tkr.AutoLocator()
+    elif i == 1:
+        return tkr.AutoLocator()
+    else:
+        return tkr.LogLocator()
+
 def plot_graph(fftw_results, ffta_results, powerquad_results):
     gridspec = {
             'width_ratios': [len(x) for x in fftw_results]
@@ -19,7 +27,7 @@ def plot_graph(fftw_results, ffta_results, powerquad_results):
     ax3.set_ylim([0.1, 100000])
 
     axes = [ax1, ax2, ax3]
-    onetkr = tkr.FixedLocator([1])
+    onetkr = tkr.FixedLocator([0.999])
 
     last_maxx = 0
     for i in range(0, len(fftw_results)):
@@ -41,8 +49,9 @@ def plot_graph(fftw_results, ffta_results, powerquad_results):
         axi.bar(xpos + width * 2, ffta_group, width, label='FFTA', color='green', hatch='-')
         axi.set_xticks(xpos + width)
         axi.set_xticklabels(range(minx, maxx))
-        axi.yaxis.set_major_locator(onetkr)
-        axi.grid(axis='y', which='major')
+        axi.yaxis.set_minor_locator(onetkr)
+        axi.yaxis.set_major_locator(get_ticks_for_graph(i))
+        axi.grid(axis='y', which='minor')
 
     ax3.legend()
     ax2.set_xlabel('Project Number')
@@ -63,7 +72,7 @@ def plot_adi_graph(accres, dspres):
 
     axes = [ax1, ax2, ax3]
     last_maxx = 0
-    onetkr = tkr.FixedLocator([1])
+    onetkr = tkr.FixedLocator([0.999])
     for i in range(0, len(accres)):
         acc_group = accres[i]
         dsp_group = dspres[i]
@@ -79,8 +88,9 @@ def plot_adi_graph(accres, dspres):
         axi.bar(xpos + width, acc_group, width, label='FACC', color='green', hatch='-')
         axi.set_xticks(xpos + width)
         axi.set_xticklabels(range(minx, maxx))
-        axi.yaxis.set_major_locator(onetkr)
-        axi.grid(axis='y', which='major')
+        axi.yaxis.set_minor_locator(onetkr)
+        axi.yaxis.set_major_locator(get_ticks_for_graph(i))
+        axi.grid(axis='y', which='minor')
 
     ax2.legend()
     ax2.set_xlabel('Project Number')
