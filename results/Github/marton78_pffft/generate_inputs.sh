@@ -8,6 +8,10 @@ if [[ $# -ne 1 ]]; then
 fi
 
 inputlen=$(( $1 * 2 ))
+if (( inputlen < 32 )); then
+	echo "input too small"
+	exit 0
+fi
 
 mkdir -p inputs
 # I haven't yet seen a data-dependent FFT algorithm,
