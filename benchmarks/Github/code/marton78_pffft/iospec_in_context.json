@@ -13,13 +13,10 @@
 	},
 	"range": {
 		"direction": "set(0, 1)",
-		"setup.N": "set(power_of_two(2, 15))",
-		"setup.Ncvec": "set(power_of_two(2, 15))"
+		"setup.N": "set(32, 64, 128, 256, 512, 1024, 2048, 4096)",
+		"setup.Ncvec": "set(32, 64, 128, 256, 512, 1024, 2048, 4096)"
 	},
 	"value_profiles": [
-		"../results/Github/marton78_pffft/value_profiles/4.json",
-		"../results/Github/marton78_pffft/value_profiles/8.json",
-		"../results/Github/marton78_pffft/value_profiles/16.json",
 		"../results/Github/marton78_pffft/value_profiles/32.json",
 		"../results/Github/marton78_pffft/value_profiles/64.json",
 		"../results/Github/marton78_pffft/value_profiles/128.json",
@@ -49,7 +46,9 @@
 				"twiddle": "array(float32#N)"
 			},
 			"range": {
-				"transform": "set(0, 1)"
+				"transform": "set(0, 1)",
+				"N": "set(32, 64, 128, 256, 512, 1024, 2048, 4096)",
+				"Ncvec": "set(32, 64, 128, 256, 512, 1024, 2048, 4096)"
 			}
 		}
 	}

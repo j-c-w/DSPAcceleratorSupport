@@ -29,7 +29,7 @@ void write_output(PFFFT_Setup_Desugar * setup, float * input, float * output, fl
 
     json output_json;
 std::vector<json> output_temp_1;
-for (unsigned int i2 = 0; i2 < setup->N; i2++) {
+for (unsigned int i2 = 0; i2 < 2 * setup->N; i2++) {
 float output_temp_3 = output[i2];
 
 output_temp_1.push_back(output_temp_3);

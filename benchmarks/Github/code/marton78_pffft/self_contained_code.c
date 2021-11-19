@@ -2126,6 +2126,7 @@ void FUNC_TRANSFORM_ORDERED(SETUP_STRUCT *setup, const float *input, float *outp
 void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input, float *output, float *work, int direction) {
 	struct PFFFT_Setup setup_struct = {
 		setup->N, setup->Ncvec,
+		setup->ifac[0],
 		setup->ifac[1],
 		setup->ifac[2],
 		setup->ifac[3],
@@ -2140,7 +2141,6 @@ void desugared_transform_ordered(PFFFT_Setup_Desugar *setup, const float *input,
 		setup->ifac[12],
 		setup->ifac[13],
 		setup->ifac[14],
-		setup->ifac[15],
 		(setup->transform == 0 ? PFFFT_REAL : PFFFT_COMPLEX),
 		setup->data, setup->e, setup->twiddle
 	};
