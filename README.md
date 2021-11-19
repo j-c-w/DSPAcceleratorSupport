@@ -20,3 +20,10 @@ The high level structre of this project is:
 synth: contains all the code to implement FACC, and external libraries to support synthesized programs.
 benchmarks: contains target information (SHARC FFTA, NXP PowerQuad, FFTW, and TI FFTC) and benchmarks taken from Github and testsuites.  Input files for FACC come from here.
 results/: contains outputs from runs of FACC on existing benchmarks and plotting scripts.
+
+# Debugging:
+If an example program is not working as expected, there are a few steps to debug:
+
+1. See if FACC is generating the right candidates for it --- these are in synthethizer_temps by default --- look to see if the candidate you are looking for exists.  If it does, the --only-test <N> flag is helpful to debug behaviour on this candidate only.
+2. If it is, check that your wrappers are correct for the program (the json_gen.byte program can help with this) --- you may also need value profiling that is not correctly setup
+3. if it is not, check that range constraints are correct.
