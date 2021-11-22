@@ -12,6 +12,7 @@ open Program;;
 open Generate_constant_gir;;
 
 let () = Printexc.record_backtrace true;;
+let _ = Random.init 0;;
 
 exception ConstantGenException of string
 

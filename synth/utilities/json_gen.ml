@@ -10,6 +10,7 @@ open Gir;;
 open Program;;
 
 let () = Printexc.record_backtrace true;;
+let _ = Random.init 0;;
 
 exception JSONGenException of string
 

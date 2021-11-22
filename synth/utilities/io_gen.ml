@@ -10,6 +10,7 @@ open Gir;;
 open Program;;
 
 let () = Printexc.record_backtrace true;;
+let _ = Random.init 0;;
 
 let main iospec_file num_tests output_folder =
 	let options = { default_options with
