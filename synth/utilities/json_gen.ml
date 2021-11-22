@@ -78,8 +78,9 @@ let main modename iospec_file output_file =
     } in
 	let returntype, _ = cxx_type_from_returnvar iotypemap iospec.returnvar in
 	(* Generate the JSON wrapper: *)
+    let required_includes = cxx_generate_imports iospec.required_includes in
 	let main_helper_funcs, post_accel_helpers, main_func = cxx_main_function options false returntype base_program in
-	let code = otherimports ^ "\n" ^ main_helper_funcs ^ "\n" ^ main_func in
+	let code = required_includes ^ "\n" ^ otherimports ^ "\n" ^ main_helper_funcs ^ "\n" ^ main_func in
 	let () = assert (Filename.check_suffix output_file ".cpp") in
 	Out_channel.write_all output_file ~data:code
 
