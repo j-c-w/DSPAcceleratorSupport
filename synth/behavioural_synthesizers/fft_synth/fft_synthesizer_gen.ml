@@ -136,6 +136,8 @@ let rec generate_gir_program options typemap fft_behaviour =
 								VariableList([vname; Variable(Name(n)); length_name])
 							))
 						])
+				in
+				post_index
             ) in
 			Sequence(precode :: calls)
     | FSSeq(elems) ->
