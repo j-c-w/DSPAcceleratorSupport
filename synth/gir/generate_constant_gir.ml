@@ -6,6 +6,7 @@ open Gir;;
 open Generate_gir;;
 open Gir_clean;;
 open Gir_utils;;
+open Gir_reduce;;
 open Gir_topology;;
 open Utils;;
 open Generate_io_tests;;
@@ -33,13 +34,32 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 		let rangemap = iospec.rangemap in
         (* TODO --- we should use the value profiles ehre.  *)
 		let returnvalue = generate_inputs_for options rangemap (Hashtbl.create (module String)) returnvar returntype returntype toposorted_classmap  in
+		(* Compute the internal assignment --- ie. stack allocte
+		   the thing.  *)
+		let internal_assign =
+			Assignment(LVariable(Variable(Name("temp_variable"))), Expression(VariableReference(Constant(returnvalue))))
+		in
+		(* Now, generate the copy from the stack-allocated variable
+		   to the heap allocated varible.  *)
 
-		FunctionDef(Name(iospec.funname), funargs,
+        (* Generate the actual copying code.  *)
+        let copies = generate_gir_copies typemap ([returnvar]) (["temp_variable"]) returntype in
+		let res_fun = FunctionDef(Name(iospec.funname), funargs,
 			Sequence([
+				(* Define *)
+				Definition(Name(returnvar), true, Some(returntype));
+				Definition(Name("temp_variable"), false, Some(returntype));
+				(* Assign *)
+                internal_assign] @
+                copies @
+                [
+				(* Return *)
 				Return(
-					VariableReference(Constant(returnvalue))
+					VariableReference(Variable(Name(returnvar)))
 				)
 			]),
 			funtable
-		)
+		) in
+		(* Gir likely has nested subexprs, so remove those.  *)
+		reduce_gir options res_fun
 	| x :: xs -> raise (GenerateConstantGIRException "Unexpected multiple returnvar")

@@ -15,6 +15,9 @@ let gir_name_to_name_reference gname =
 let gir_name_list_to_string gnames =
 	String.concat ~sep:", " (List.map gnames gir_name_to_string)
 
+let gir_name_list_list_to_string gnames =
+    String.concat ~sep:";" (List.map gnames gir_name_list_to_string)
+
 let gir_name_equal n1 n2 =
     match (n1, n2) with
     | Name(n1), Name(n2) -> (String.compare n1 n2) = 0
@@ -145,6 +148,11 @@ let variable_reference_option_list_to_string nms =
 		| None -> "None"
 		| Some(n) -> variable_reference_to_string n))
 
+let variable_reference_option_to_string opt =
+    match opt with
+    | None -> "None"
+    | Some(n) -> variable_reference_to_string n
+
 let program_list_to_string (programs: program list) =
     String.concat ~sep:"\n\n" (List.map programs program_to_string)
 
@@ -180,6 +188,32 @@ let rec build_reference_chain parent child =
 			(* Note that this won't work if the cast is
 			ntested  somewhere within the reference... *)
 			Cast(build_reference_chain parent ref, t)
+
+(* Do the same thing as build_refernece_chain, but the child
+   and the parent can be optional.  *)
+let build_reference_chain_optional parent child_option =
+	match child_option with
+	| Some(c) ->
+            (
+            match parent with
+            | Some(p) -> Some(build_reference_chain p c)
+            | None -> None
+            )
+	| None -> parent
+
+(* This should be called with the most nested member at
+the head of the list.  *)
+let rec build_reference_chain_from_reversed_list lst =
+	match lst with
+	| [] -> None
+	| x :: xs ->
+			let tail = build_reference_chain_from_reversed_list xs in
+			match tail with
+			| None -> Some(Variable(x))
+			| Some(tl) -> Some(MemberReference(tl, x))
+
+let build_reference_chain_from_list lst =
+	build_reference_chain_from_reversed_list (List.rev lst)
 
 let rec get_top_gir_name n =
     match n with

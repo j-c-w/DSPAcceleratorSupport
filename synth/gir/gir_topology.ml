@@ -431,6 +431,8 @@ let rec expand_types typemap name =
 	let name_type = Hashtbl.find_exn typemap.variable_map name in
 	let rec subtyps_of n =
 		match n with
+        | Pointer(sub) ->
+                subtyps_of sub
 		| Array(sub, _) ->
 				subtyps_of sub
 		| Struct(sname) ->

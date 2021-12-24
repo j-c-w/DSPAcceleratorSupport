@@ -31,6 +31,13 @@ let new_conversion_function () =
     let () = conversion_function_count := !conversion_function_count + 1 in
     Name("conversion" ^ (string_of_int !conversion_function_count))
 
+let to_gir_name_list_list slist_list: gir_name list list =
+    List.map slist_list (fun slist ->
+        List.map slist (fun s ->
+            Name(s)
+        )
+    )
+
 let generate_gir_name_for nref =
     match nref with
     | AnonymousName -> None
@@ -51,6 +58,70 @@ let generate_gir_name_for nref =
 
 let generate_gir_names_for nrefs =
     List.map nrefs generate_gir_name_for
+
+(* Given a type typ, and a varaible from_basename that has
+ that stored in it, get a breakdown of variable copy triples
+ of the form:
+type, to name, from name
+
+in the right format for use in the below generate_copy_assignment
+function.  *)
+let rec get_copy_types_for typemap typ to_basename from_basename =
+    (* Note that this assumes that the types are the same.  *)
+    (* I would like to reuse the expand_types in gir_topology,
+    but I think this is better with it's own, as it's trying
+    to expand the types in a particular way to match tbe
+    generate_copy_assignment function.  *)
+    let rec subtyps_of n prepend_names_1 prepend_names_2 =
+        match n with
+        | Array(sub_type, dim) ->
+                let stys =
+                    (* Clear both the basenames when
+                    recursing from arrays --- the aim is to
+                    generate an array that is like
+                    [ ['basename'],
+                      []
+                      ['postfix']
+                      ]
+                      etc.  *)
+                    get_copy_types_for typemap sub_type [] [] in
+                (* Add this array to the head of all the things.  *)
+                List.map stys (fun (s, names_1, names_2)->
+                    Array(s, dim),
+                    prepend_names_1 :: names_1,
+                    prepend_names_2 :: names_2
+                )
+        | Struct(sname) ->
+                let meta = Hashtbl.find_exn typemap.classmap sname in
+                let submap = get_class_typemap meta in
+                let members = get_class_fields meta in
+                let subtypemap = { typemap with variable_map = submap } in
+                let subvars = List.concat (List.map members (fun m ->
+                    let mtyp = Hashtbl.find_exn subtypemap.variable_map m in
+                    subtyps_of mtyp [m] [m])) in
+                List.map subvars (fun (sty, names_1, names_2) ->
+                    let new_names_1 = match names_1 with
+                    | x :: xs -> (prepend_names_1 @ x) :: xs
+                    | _ -> assert false (* Think this shouldn't be possible because the subtypes will have to have been expanded? *)
+                    in
+                    let new_names_2 = match names_2 with
+                    | x :: xs -> (prepend_names_2 @ x) :: xs
+                    | _ -> assert false
+                    in
+                    (sty,
+                    new_names_1,
+                    new_names_2)
+                )
+        | Pointer(styp) ->
+                (* Treating pointers as transparent here is the right idea? *)
+                let subcalls = get_copy_types_for typemap styp to_basename from_basename in
+                List.map subcalls (fun (t, name_1, name_2) ->
+                    (Pointer(t), name_1, name_2)
+                )
+        | typ ->
+                [(typ, [prepend_names_1], [prepend_names_2])]
+    in
+    subtyps_of typ to_basename from_basename
 
 let rec generate_variable_reference_to namerefs =
     match namerefs with
@@ -418,6 +489,173 @@ let get_definition_type_for_tovar options validmap typemap escaping_variables to
 	| x :: xs ->
             let escapes = List.mem escaping_variables (name_reference_to_string x) Utils.string_equal in
 			get_definition_type_for options escapes validmap typemap x
+
+(* Build some loops that can do an N-dimensional copy.  *)
+(* This returns two things: a function, from (GIR -> GIR)
+that gives you the loop (the function takes the body
+of the innermost *)
+(* and a list of indexes.  *)
+let rec generate_gir_copy_loop typemap copytype =
+    match copytype with
+        | Array(subty, dims) ->
+                let sub_body, sub_indvars =
+                    generate_gir_copy_loop typemap subty
+                in
+                (* Generate the loop wrappers from the dims *)
+                let dim =
+                    match dims with
+                    (* Only support equality relation here, although we could of course support more.  *)
+                    | Dimension(DimVariable(nr, DimEqualityRelation)) -> VariableReference(generate_variable_reference_to nr)
+                    | Dimension(DimConstant(c)) -> VariableReference(Constant(Int64V(c)))
+                    | _ -> assert false (* TODO --- implement if required. *)
+                in
+                (* Compute the index variable for this loop.  *)
+                let indvar = new_induction_variable () in
+                let result = (fun assignment -> LoopOver(sub_body assignment, indvar, dim)) in
+                result, indvar :: sub_indvars
+        | Struct(sname) ->
+                assert false (* This should not be handled here,
+                but rather split-up prior to this phase.  The
+                individual raw types should be handled.  *)
+        | Pointer(sty) ->
+                let sub_assignment, sub_indvars =
+                    generate_gir_copy_loop typemap sty
+                in
+                sub_assignment, sub_indvars (* Think there is nothing to do? *)
+        | _ -> (* Everything else can just be a raw assign? *)
+                (fun ass -> ass), []
+
+(* Returns lvalue, rvalue, which can then easily be piped
+   into an assignment.  *)
+(* This is an iterative approach *)
+let rec generate_copy_assignment_option typ to_reference from_reference tovars fromvars indvars: (variable_reference option * variable_reference option) =
+    (* So there is a generic alsogirhm for this,
+    except in the case of pointers, where we need
+    the type information.  *)
+    (* In any-case, this type-specific version doesn't
+    expand anything.  *)
+    let to_result, from_result = match typ with
+    | Array(sty, dim) ->
+            (
+            match indvars with
+            | i :: is ->
+                    let fromname, fromrest = match fromvars with
+					| x :: xs -> x, xs
+					| _ -> assert false (*Shouldn't be possible?  Or is this what happens with annon refs? *)
+					in
+					let toname, torest = match tovars with
+					| x :: xs -> x, xs
+					| _ -> assert false (*Shouldn't be possible?  Or is this what happens with annon refs? *)
+					in
+                    (* let () = Printf.printf ("Fromname is %s, toname is %s") (gir_name_list_to_string fromname) (gir_name_list_to_string toname) in *)
+					let this_indref = VariableReference(Variable(i)) in
+					(* Build the next level of assignment. *)
+
+                    (* The subrefs are the end of the expression,
+                       and the refs are the head of the expression.
+                       This is in the opposite direction to what
+                       you would expect, so we have to do a full
+                       rebuild of the reference.  *)
+                    let to_basename = match to_reference with
+                    | Some(t) ->
+                            (
+                            match build_reference_chain_optional (Some(t)) (build_reference_chain_from_list toname) with
+                            | Some(nr) -> nr
+                            | None -> assert false (* as below? *)
+                            )
+                    | None ->
+                            match build_reference_chain_from_list toname with
+                            | Some(nr) -> nr
+                            | None -> assert false (* I think this can't be true in a valid type? *)
+                    in
+                    let new_toref = IndexReference(to_basename, this_indref) in
+                    let from_basename = match from_reference with
+                    | Some(t) ->
+                            (
+                            match build_reference_chain_optional (Some(t)) (build_reference_chain_from_list fromname) with
+                            | Some(nr) -> nr
+                            | None -> assert false
+                            )
+                    | None ->
+                            match build_reference_chain_from_list fromname with
+                            | Some(nr) -> nr
+                            | None -> assert false
+                    in
+                    let new_fromref = IndexReference(from_basename, this_indref) in
+                    (* Generate the copy for the rest of the type.  *)
+                    let lvar_subref, rvar_subref = generate_copy_assignment_option sty (Some(new_toref)) (Some(new_fromref)) torest fromrest indvars in
+                    lvar_subref, rvar_subref
+            | _ -> assert false
+            )
+    | Struct(n) ->
+            (* Think that these should be pre-filtered.
+            I think the code below does actually work, but this
+            is a useful debug trigger IMO.  *)
+            let () = assert false in
+            (* In this function, we transparently pass through
+               structs.  It helps spread the complexity out
+               a bit --- the breaking down of a single copy
+               into multiple copies is handled by
+               get_copy_types_for.  *)
+            let torest = match tovars with
+            | x :: y :: ys -> (x @ y) :: ys
+            | _ -> assert false
+            (* A struct must not be the bottom
+            element in the copy?  i.e. must be expanded into
+            sub elements.  *)
+            in
+            let fromrest = match fromvars with
+            | x :: y :: ys -> (x @ y) :: ys
+            | _ -> assert false
+            in
+            (* The typ is passed unchanged because structs
+               are 'invisible' to this function, in the same
+               way that pointers usually are.  *)
+            generate_copy_assignment_option typ to_reference from_reference torest fromrest indvars
+    | Pointer(sty) -> assert false (* unsupported --- need the deref thing I think? *) (* Or maybe it can be transparently supported? *)
+    | other ->
+            let toref = match tovars with
+            | [xs] -> build_reference_chain_optional to_reference (build_reference_chain_from_list xs)
+            | _ -> assert false
+            in
+            let fromref = match fromvars with
+            | [xs] -> build_reference_chain_optional from_reference (build_reference_chain_from_list xs)
+            | _ -> assert false
+            in
+            toref, fromref
+			(* Is there a valid case where this is not? *)
+    in
+    (* let () = Printf.printf "For type %s\n" (synth_type_to_string typ) in
+    let () = Printf.printf "Assignment result is %s\n" (variable_reference_option_to_string to_result) in *)
+    to_result, from_result
+
+let generate_copy_assignment typ tovars fromvars indvars =
+    (* let () = Printf.printf "For type %s, tovars are %s\n" (synth_type_to_string typ) (gir_name_list_list_to_string tovars) in *)
+    let l, r = generate_copy_assignment_option typ None None tovars fromvars indvars in
+    match l, r with
+    | Some(l), Some(r) -> l, r
+    | _ -> assert false (* No full type assignment should be empty? *)
+
+(* Given a fromvar, a tovar, and two types, generate a 
+   copy statement between them. *)
+(* Note that they must both have the same type to copy
+   blindly between them.  *)
+let rec generate_gir_copy typemap fromvars tovars copytype =
+    (* Get the loops *)
+    let loop, indvars = generate_gir_copy_loop typemap copytype in
+    (* Get the innermost assignment *)
+    let lvalue, rvalue = generate_copy_assignment copytype tovars fromvars indvars in
+	let assignment = Assignment(LVariable(lvalue), Expression(VariableReference(rvalue))) in
+    (* Build the loop with this assignment.  *)
+    loop assignment
+
+(* Generate a list of copies for a non-trivial type.  *)
+let rec generate_gir_copies typemap tovars fromvars copytype =
+    let expanded_types = get_copy_types_for typemap copytype tovars fromvars in
+    List.map expanded_types
+        (fun (typ, basenames_to, basenames_from) ->
+            generate_gir_copy typemap (to_gir_name_list_list basenames_from) (to_gir_name_list_list basenames_to) typ
+        )
 
 let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_internal_before_assign insert_return (options: options) validmap (skeleton: flat_skeleton_binding) =
 	(* First, compute the expression options for each

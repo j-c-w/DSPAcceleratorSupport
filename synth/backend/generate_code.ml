@@ -624,10 +624,40 @@ and cxx_generate_from_variable_reference typemap find_type vref =
 	| Constant(synth_value) ->
 			(* TODO --- properly support more complex synth values, e.g. arrays or structs.  *)
 			(* Has empty pre code *)
-			"", (synth_value_to_string synth_value), Some(synth_value_to_type synth_value)
+			"", (cxx_generate_from_synth_value synth_value), Some(synth_value_to_type synth_value)
 	| Cast(vref, typ) ->
 			let precode, refcode, original_type = cxx_generate_from_variable_reference typemap true vref in
 			precode, "(" ^ (cxx_type_signature_synth_type_to_string typ) ^ ")" ^ refcode, Some(typ)
+
+and cxx_generate_from_synth_value svalue =
+	match svalue with
+	| BoolV(b) -> if b then "1" else "0" (* Use C bools isntead maybe? *)
+	| Int16V(v) -> string_of_int v
+	| Int32V(v) -> string_of_int v
+	| Int64V(v) -> string_of_int v
+	| UInt16V(v) -> string_of_int v
+	| UInt32V(v) -> string_of_int v
+	| UInt64V(v) -> string_of_int v
+	| Float16V(f) -> string_of_float f
+	| Float32V(f) -> string_of_float f
+	| Float64V(f) -> string_of_float f
+	| UnitV -> "? /* (Unsupported Unit Value generation in C) */"
+	| PointerV(v) ->
+			"&(" ^ (cxx_generate_from_synth_value v) ^ ")"
+	| ArrayV(vls) ->
+			"{" ^ (String.concat ~sep:", " (List.map vls cxx_generate_from_synth_value)) ^ "}"
+	| StructV(nam, values) ->
+			"{" ^
+				String.concat ~sep:"\n"
+				(List.map (Hashtbl.keys values) (fun key ->
+					let value = Hashtbl.find_exn values key in
+					key ^ " = " ^ (cxx_generate_from_synth_value value) ^ ";"
+				)) ^
+			"}"
+	(* Not sure how tf to implement this --- suspect it could just
+	be e.g. &(function_name)?  But not sure in C.  *)
+	| FunV(vs) -> (raise (CXXGenerationException("Function pointer generation not yet supported")))
+
 
 and cxx_generate_from_rvalue typemap rvalue =
     match rvalue with
