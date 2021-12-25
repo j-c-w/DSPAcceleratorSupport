@@ -297,7 +297,7 @@ let get_uses_defining_variable typemap name =
 
 let rec compute_use_def_assign_for_node typemap gir =
 	match gir with
-	| Definition(ndefed, escapes, defn_type) ->
+	| Definition(ndefed, escapes, defn_type, initial_value) ->
 			(* if this option.value crashes, a definition that wasn't expected
 			to work didn't get cleaned up.  See generate_gir: get_definition_type_for *)
 	{

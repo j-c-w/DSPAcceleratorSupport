@@ -8,7 +8,7 @@ exception FixTypemapException of string
 
 let rec gir_fix_typemap options (typemap: typemap) gir =
     match gir with
-    | Definition(n, escapes, defn_type) ->
+    | Definition(n, escapes, defn_type, initial_value) ->
             if Hashtbl.mem typemap.variable_map (gir_name_to_string n) then
                 ()
             else

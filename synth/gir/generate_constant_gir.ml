@@ -34,11 +34,6 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 		let rangemap = iospec.rangemap in
         (* TODO --- we should use the value profiles ehre.  *)
 		let returnvalue = generate_inputs_for options rangemap (Hashtbl.create (module String)) returnvar returntype returntype toposorted_classmap  in
-		(* Compute the internal assignment --- ie. stack allocte
-		   the thing.  *)
-		let internal_assign =
-			Assignment(LVariable(Variable(Name("temp_variable"))), Expression(VariableReference(Constant(returnvalue))))
-		in
 		(* Now, generate the copy from the stack-allocated variable
 		   to the heap allocated varible.  *)
 
@@ -47,10 +42,10 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 		let res_fun = FunctionDef(Name(iospec.funname), funargs,
 			Sequence([
 				(* Define *)
-				Definition(Name(returnvar), true, Some(returntype));
-				Definition(Name("temp_variable"), false, Some(returntype));
+				Definition(Name(returnvar), true, Some(returntype), None);
+				Definition(Name("temp_variable"), false, Some(returntype), Some(returnvalue));
 				(* Assign *)
-                internal_assign] @
+                ] @
                 copies @
                 [
 				(* Return *)

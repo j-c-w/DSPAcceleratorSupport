@@ -24,12 +24,16 @@ let gir_name_equal n1 n2 =
 
 let rec gir_to_string gir =
 	match gir with
-    | Definition(nref, escapes, defn_type) ->
+    | Definition(nref, escapes, defn_type, initial_value) ->
 			let deftype =
 				if escapes then "EscapingDefine(UseMalloc)"
 				else "Define"
 			in
-			deftype ^ " " ^ (gir_name_to_string nref)
+            let value = match initial_value with
+            | Some(v) -> " = " ^ (synth_value_to_string v)
+            | None -> ""
+            in
+			deftype ^ " " ^ (gir_name_to_string nref) ^ value
 	| IfCond(cond, iftrue, iffalse) ->
 			"If(" ^ (conditional_to_string cond) ^ ") {\n" ^
 			(gir_to_string iftrue) ^ "\n} else {\n" ^

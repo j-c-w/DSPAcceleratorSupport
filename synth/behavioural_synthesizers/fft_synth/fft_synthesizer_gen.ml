@@ -27,7 +27,7 @@ let fft_generate_gir_from_dimension (x: dimension_type) =
 							EmptyGIR, Variable(Name(name_reference_to_string x))
 					| DimPo2Relation ->
 							let tmpvar = generate_ind_name () in
-							Sequence([Definition(Name(tmpvar), false, Some(Int64));
+							Sequence([Definition(Name(tmpvar), false, Some(Int64), None);
 							Assignment(
 								LVariable(Variable(Name(tmpvar))),
 								Expression(FunctionCall(FunctionRef(Name("Pow2")),
@@ -37,7 +37,7 @@ let fft_generate_gir_from_dimension (x: dimension_type) =
 							Variable(Name(tmpvar))
 					| DimDivByRelation(mby) ->
 							let tmpvar = generate_ind_name () in
-							Sequence([Definition(Name(tmpvar), false, Some(Int64));
+							Sequence([Definition(Name(tmpvar), false, Some(Int64), None);
 							Assignment(
 								LVariable(Variable(Name(tmpvar))),
 								Expression(FunctionCall(FunctionRef(Name("IntDivide")),

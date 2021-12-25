@@ -49,9 +49,10 @@ and unary_comparator =
 	| PowerOfTwo
 
 and gir =
-	(* Keep track of the name to define, and whether
-	it escapes the function e.g. is a return value.  *)
-	| Definition of gir_name * bool * (synth_type option)
+	(* Keep track of the name to define, whether
+	it escapes the function e.g. is a return value,
+	what type it has, and an optional initialization value.  *)
+	| Definition of gir_name * bool * (synth_type option) * (synth_value option)
 	| IfCond of conditional * gir * gir
 	| Sequence of gir list
 	(* This can eitehr assign lists to lists, of variables to

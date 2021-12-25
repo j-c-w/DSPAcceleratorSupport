@@ -275,7 +275,7 @@ let get_define_for options typemap definition_type define_internal_before_assign
                 (* Note that this might not be the same as the definition type --- it might e.g. be
                 an int member of a struct, making htis a struct.  *)
                 let top_def_type = definition_type in
-                Definition(nam, escapes, top_def_type)
+                Definition(nam, escapes, top_def_type, None)
         | Constant(c) ->
                 (* Constants shouldn't need a def type?  And also probably shouldn't be being generated
                 here? *)
@@ -378,7 +378,7 @@ let generate_conversion_function conv = match conv with
 			let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun([Int64], Int64)) in
 			let functiondef = FunctionDef(fname, [argname],
 				Sequence([
-					Definition(returnvar, true, Some(Int64));
+					Definition(returnvar, true, Some(Int64), None);
 					Assignment(
 						LVariable(Variable(returnvar)),
 						Expression(FunctionCall(FunctionRef(Name("IntDivide")),
@@ -407,7 +407,7 @@ let generate_conversion_function conv = match conv with
             let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun([ftype], ttype)) in
             FunctionDef(fname, [argname],
                 Sequence([
-					Definition(returnvar, true, Some(ttype));
+					Definition(returnvar, true, Some(ttype), None);
 					Assignment(
 						LVariable(Variable(returnvar)),
 						Expression(GIRMap(argname, to_from_list_synths))
@@ -846,9 +846,9 @@ let generate_define_statemetns_for options validmap typemap (iospec: iospec) api
     (* Generate a define for each input variable in the API *)
 	List.map typed_sorted_names (fun (x, xtyp) ->
 		if List.mem unpassed_returnvars (gir_name_to_string x) Utils.string_equal then
-			Definition(x, true, xtyp)
+			Definition(x, true, xtyp, None)
 		else
-			Definition(x, false, xtyp)
+			Definition(x, false, xtyp, None)
 	)
 
 let generate_gir_for options apispec iospec (skeleton: skeleton_pairs) =
