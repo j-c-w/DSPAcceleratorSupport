@@ -370,4 +370,5 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
 	$ debug_skeleton_deduplicate)
+
 let () = Term.exit @@ Term.eval (args_t, info)

@@ -12,13 +12,13 @@ open Program;;
 open Generate_constant_gir;;
 
 let () = Printexc.record_backtrace true;;
-let _ = Random.init 0;;
 
 exception ConstantGenException of string
 
 (* This is a program to generate function bodies.  They return
 'real' values, but other than that do nothing.  *)
-let main iospec_file output_file =
+let main iospec_file output_file seed =
+	let _ = Random.init seed in
     (* Yes, this is a terrible hack I am 100% going to regret
     because I have no clear understanding why it needs both.  *)
 	let options = default_options in
@@ -80,10 +80,14 @@ let outfile =
 	let doc = "Output file for the function wrap" in
 	Arg.(required & pos 1 (some string) None & info [] ~docv:"Outfile" ~doc)
 
+let seed =
+	let doc = "Random Seed" in
+	Arg.(value & opt int 0 & info ["random-seed"] ~docv:"RandomSeed")
+
 let info =
 	let doc = "Generate Function Bodies" in
 	Term.info "FuncGen" ~doc
 
-let args_t = Term.(const main $ iospec $ outfile)
+let args_t = Term.(const main $ iospec $ outfile $ seed)
 
 let () = Term.exit @@ Term.eval (args_t, info)
