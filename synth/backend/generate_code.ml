@@ -8,6 +8,7 @@ open Gir;;
 open Program;;
 open Program_utils;;
 open Skeleton_utils;;
+open Compile_settings;;
 
 exception CXXGenerationException of string
 
@@ -293,6 +294,11 @@ let use_dim_ratio_modifier adim =
 	| Dimension(DimVariable(_)) -> true
 	| EmptyDimension -> false (* This can arise wehn doing json generation. *)
 
+let is_heap_allocation_mode (alloc_mode: allocation_mode) =
+	match alloc_mode with
+	| HeapAllocationMode -> true
+	| _ -> false
+
 let assignment_for_type options typemap escapes alignment dim_ratio_modifier context name typ initial_value =
 	let static_prefix = match options.compile_settings.allocation_mode with
 	| StaticAllocationMode -> "static "
@@ -308,7 +314,7 @@ let assignment_for_type options typemap escapes alignment dim_ratio_modifier con
 		match initial_value with
 		| Some(v) ->
 				(* Can't assign values in some cases.  *)
-				let () = assert ((not escapes) && (options.compile_settings.allocation_mode <> HeapAllocationMode)) in
+				let () = assert ((not escapes) && (not (is_heap_allocation_mode options.compile_settings.allocation_mode))) in
 				" = " ^ (cxx_generate_from_synth_value v)
 		| None -> ""
 	in
