@@ -38,6 +38,9 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 		   to the heap allocated varible.  *)
 
         (* Generate the actual copying code.  *)
+        let () = if options.debug_generate_constants then
+            let () = Printf.printf "Generating copies from %s to temp_variable\n" returnvar in
+            () else () in
         let copies = generate_gir_copies typemap ([returnvar]) (["temp_variable"]) returntype in
 		let res_fun = FunctionDef(Name(iospec.funname), funargs,
 			Sequence([

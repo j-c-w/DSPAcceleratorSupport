@@ -17,11 +17,11 @@ exception ConstantGenException of string
 
 (* This is a program to generate function bodies.  They return
 'real' values, but other than that do nothing.  *)
-let main iospec_file output_file seed =
+let main iospec_file output_file seed debug_constant_gen =
 	let _ = Random.init seed in
     (* Yes, this is a terrible hack I am 100% going to regret
     because I have no clear understanding why it needs both.  *)
-	let options = default_options in
+    let options = { default_options with debug_generate_constants = debug_constant_gen; } in
     let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
 	(* Setup the entry for the functio ntuype in the typemap.  *)
@@ -82,12 +82,16 @@ let outfile =
 
 let seed =
 	let doc = "Random Seed" in
-	Arg.(value & opt int 0 & info ["random-seed"] ~docv:"RandomSeed")
+	Arg.(value & opt int 0 & info ["random-seed"] ~docv:"RandomSeed" ~doc)
+
+let debug_gen_constants =
+	let doc = "Debug Generate constants pass " in
+	Arg.(value & flag & info ["debug-generate-constants"] ~docv:"DebugGenConst" ~doc)
 
 let info =
 	let doc = "Generate Function Bodies" in
 	Term.info "FuncGen" ~doc
 
-let args_t = Term.(const main $ iospec $ outfile $ seed)
+let args_t = Term.(const main $ iospec $ outfile $ seed $ debug_gen_constants)
 
 let () = Term.exit @@ Term.eval (args_t, info)

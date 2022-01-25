@@ -196,12 +196,13 @@ let rec build_reference_chain parent child =
 (* Do the same thing as build_refernece_chain, but the child
    and the parent can be optional.  *)
 let build_reference_chain_optional parent child_option =
+	(* let () = Printf.printf "Building with parent %s, child %s" (variable_reference_option_to_string parent) (variable_reference_option_to_string child_option) in *)
 	match child_option with
 	| Some(c) ->
             (
             match parent with
             | Some(p) -> Some(build_reference_chain p c)
-            | None -> None
+            | None -> Some(c)
             )
 	| None -> parent
 

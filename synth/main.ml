@@ -123,6 +123,8 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_post_synthesis = debug_post_synthesis;
         debug_fft_synthesizer = debug_fft_synthesizer;
 
+        debug_generate_constants = false; (* For another tool.  *)
+
 		print_synthesizer_numbers = print_synth_program_nums;
     }
     in

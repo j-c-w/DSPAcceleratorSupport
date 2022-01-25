@@ -19,6 +19,11 @@ let name_reference_option_list_to_string nrefs =
 		| None -> "None"
 		| Some(n) -> name_reference_to_string n))
 
+let name_reference_option_to_string nref =
+	match nref with
+	| None -> "None"
+	| Some(n) -> name_reference_to_string n
+
 let name_reference_concat n1 n2 =
 	match (n1, n2) with
 	| Name(x), Name(y) -> StructName([n1; n2])

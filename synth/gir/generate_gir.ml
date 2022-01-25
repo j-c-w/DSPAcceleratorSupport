@@ -534,6 +534,8 @@ let rec generate_copy_assignment_option typ to_reference from_reference tovars f
     the type information.  *)
     (* In any-case, this type-specific version doesn't
     expand anything.  *)
+	(* let () = Printf.printf "Generating copy for type %s\n" (synth_type_to_string typ) in
+	let () = Printf.printf "Refernces are: to (%s) from (%s)\n" (variable_reference_option_to_string to_reference) (variable_reference_option_to_string from_reference) in *)
     let to_result, from_result = match typ with
     | Array(sty, dim) ->
             (

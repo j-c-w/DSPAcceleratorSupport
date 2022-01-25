@@ -120,6 +120,9 @@ type options = {
 	(* Range check debug *)
 	debug_range_check: bool;
 
+	(* Other tool debug *)
+	debug_generate_constants: bool;
+
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
 }
@@ -207,6 +210,8 @@ let default_options = {
     debug_fft_synthesizer = false;
 
 	debug_range_check = false;
+
+	debug_generate_constants = false;
 
 	(* Generic debug *)
 	print_synthesizer_numbers = false;
