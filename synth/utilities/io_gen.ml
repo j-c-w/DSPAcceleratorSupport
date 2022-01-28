@@ -49,7 +49,7 @@ let main iospec_file num_tests output_folder =
 		generated_funname = iospec.funname;
 		api_funname = "TODO";
 		fundefs = [];
-		inputmap = rangemap; (* TODO --- should really be intersection of range and valid? *)
+		inputmap = iospec.rangemap; (* TODO --- should really be intersection of range and valid? *)
 		original_pairs = None;
 		allocated_variables = [];
 	} in
