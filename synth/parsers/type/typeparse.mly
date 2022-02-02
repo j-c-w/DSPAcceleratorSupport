@@ -12,6 +12,7 @@
 %token FLOAT16
 %token FLOAT32
 %token FLOAT64
+%token STRING
 %token ARRAY
 %token POINTER
 %token UNIT
@@ -60,6 +61,7 @@ tsub:
  | FLOAT16 { Float16 }
  | FLOAT32 { Float32 }
  | FLOAT64 { Float64 }
+ | STRING { String }
  | UNIT { Unit }
  | ARRAY; LPAREN; tsub; RPAREN { Array($3, EmptyDimension) };
  | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, Dimension(DimConstant($5))) };

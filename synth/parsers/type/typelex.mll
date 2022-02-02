@@ -25,6 +25,7 @@ rule read =
 	| "float64" {FLOAT64}
 	| "array" {ARRAY}
 	| "pointer" {POINTER}
+	| "string" {STRING}
 	| "->" {ARROW}
     | ")" { RPAREN }
     | "(" { LPAREN }

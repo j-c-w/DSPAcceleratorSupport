@@ -77,6 +77,7 @@ let variable_in_type var typ =
 	| n1, SInt(n2) -> (name_reference_equal n1 n2)
 	| n1, SBool(n2) -> (name_reference_equal n1 n2)
 	| n1, SFloat(n2) -> (name_reference_equal n1 n2)
+	| n1, SString(n2) -> (name_reference_equal n1 n2)
 
 let rec flatten_stypes sty = 
 	List.concat (List.filter_map sty
@@ -199,6 +200,7 @@ let rec add_name name ty =
     | SType(SInt(nr)) -> SType(SInt(add_name_nr name nr))
 	| SType(SBool(nr)) -> SType(SBool(add_name_nr name nr))
     | SType(SFloat(nr)) -> SType(SFloat(add_name_nr name nr))
+	| SType(SString(nr)) -> SType(SString(add_name_nr name nr))
     | STypes(subtyps) ->
             STypes(List.map subtyps (add_name name))
     | SArray(aname, subty, dimvar) ->
@@ -275,6 +277,7 @@ let rec generate_typesets classmap inptype parentname inpname: skeleton_dimensio
 	| UInt16 -> SType(SInt(name_from_opt inpname))
 	| UInt32 -> SType(SInt(name_from_opt inpname))
 	| UInt64 -> SType(SInt(name_from_opt inpname))
+	| String -> SType(SString(name_from_opt inpname))
 	| Float16 -> SType(SFloat(name_from_opt inpname))
 	| Float32 -> SType(SFloat(name_from_opt inpname))
 	| Float64 -> SType(SFloat(name_from_opt inpname))
@@ -334,6 +337,7 @@ let rec compatible_types from_t to_t: bool =
 	| SInt(nfrom), SInt(nto) -> true
 	| SBool(nfrom), SBool(nto) -> true
 	| SFloat(nfrom), SFloat(nto) -> true
+	| SString(nfrom), SString(nto) -> true
 	(* Sometimes, cross conversoin sbetween floats and its
 	   are useful -- can we use heuristics to decide when this
 	   is likely to be the case? *)
@@ -609,6 +613,22 @@ let rec define_bindings_for direction valid_dimvars vs =
 					valid_dimensions_set = [];
 					probability = 1.0
                 }]
+		| SType(SString(n)) ->
+				(* So this may be backend-dependent.  Since C is currently the
+				   supported backend it is true.
+
+				   This is a consequence of the decision to make strings length-independent
+				   while in C they really aren't.
+
+				   The problem is that a typical C string is going
+				   to be null-termianted, so a string copy should
+				   look different from an array copy (as it may
+				   not come with an assiciated length parameter).
+
+				   Anyway, hopefully this no-defining of SString types
+				   isn't too much of a limitation.  *)
+				raise (SkeletonGenerationException "Can't generate define for string type")
+				(* TODO -- may this should just return []? and not crash? *)
         | STypes(ts) ->
                 (* Think we can get away with nly defing
                 the top level one.  Not 100% sure.  *)

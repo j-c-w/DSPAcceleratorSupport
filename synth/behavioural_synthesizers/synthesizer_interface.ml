@@ -26,6 +26,7 @@ let rec is_configuration_type typ =
     | Float16 -> true
     | Float32 -> true
     | Float64 -> true
+	| String -> false
     | Unit -> false
     | Array(_, _) -> false
     | Pointer(st) ->

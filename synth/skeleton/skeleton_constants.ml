@@ -60,6 +60,7 @@ let get_length_constants styp input_styps: synth_value list option =
 		input array sizes!*)
 	| SBool(nr) -> None
 	| SFloat(nr) -> None
+	| SString(nr) -> None
 
 let generate_plausible_constants_from_range options vrange: synth_value list option =
 	match vrange with

@@ -37,7 +37,7 @@ and load_json_elt (e: Yojson.Basic.t) =
 	| `Null ->
 			raise (JSONException "Loading Null JSON")
 	| `String(s) ->
-			raise (JSONException "Unexpected type: string")
+			StringV(s)
 
 let load_value_map_from file =
 	(* let () = Printf.printf "Loading from file %s\n" (file) in *)
@@ -74,6 +74,7 @@ and check_elt_for_uninitialized_read typemap name typ json =
 	| `Int(i), UInt16 -> ()
 	| `Int(i), UInt32 -> ()
 	| `Int(i), UInt64 -> ()
+	| `String(s), String -> ()
 	| `List(l), Array(t, EmptyDimension) -> raise (JSONCheckException "Unexpected empty dim")
 	| `List(l), Array(t, Dimension(d)) ->
 			(* Check the length first. *)

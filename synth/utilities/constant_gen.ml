@@ -43,27 +43,6 @@ let main iospec_file output_file seed debug_constant_gen =
 		the existance of this thing.  *)
 		original_typemap = Some(typemap);
 	} in
-	let emptymaptbl = Hashtbl.create (module String) in
-    (* Most of these values aren't used since we don't gen
-    the whole program, just the main.  *)
-    let base_program = {
-		funargs = iospec.funargs;
-        livein = iospec.livein;
-        gir = EmptyGIR;
-        liveout = iospec.liveout;
-		typemap = typemap;
-        range_checker = None;
-        post_behavioural = None;
-		returnvar = iospec.returnvar;
-        user_funname = "TODO";
-        generated_funname = iospec.funname;
-        api_funname = "TODO";
-		fundefs = [];
-		inputmap = emptymaptbl;
-        original_pairs = None;
-		allocated_variables = [];
-    } in
-	let returntype, _ = cxx_type_from_returnvar iotypemap iospec.returnvar in
 	(* Generate the JSON wrapper: *)
 	let constant_gir = generate_constant_gir_function options typemap iospec in
 	let main_func = cxx_generate_from_gir options typemap constant_gir in

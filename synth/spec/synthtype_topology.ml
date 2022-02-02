@@ -31,6 +31,7 @@ let rec get_dependencies_for typemap typ =
 	| Float16 -> []
 	| Float32 -> []
 	| Float64 -> []
+	| String -> []
 	| Pointer(tp) -> get_dependencies_for typemap tp
 	| Array(tp, dims) ->
 			(* let () = Printf.printf "Dimvar is %s\n" (dimension_type_to_string dims) in *)

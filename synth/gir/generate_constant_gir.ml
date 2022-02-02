@@ -27,7 +27,11 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 	let _ = Hashtbl.add funtable (iospec.funname) (Fun(input_types, returntype)) in
 
 	match iospec.returnvar with
-	| [] -> FunctionDef(Name(iospec.funname), funargs, EmptyGIR, funtable)
+	| [] ->
+			let () = if options.debug_generate_constants then
+				Printf.printf "No returnvars, generating empty function\n"
+			else () in
+			FunctionDef(Name(iospec.funname), funargs, EmptyGIR, funtable)
 	| [returnvar] ->
 			let () = Printf.printf "Generating constant return value\n" in
 		let toposorted_classmap = generate_toposorted_classmap options typemap typemap in

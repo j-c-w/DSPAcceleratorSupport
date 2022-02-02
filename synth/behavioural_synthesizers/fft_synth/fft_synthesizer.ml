@@ -108,6 +108,8 @@ let fs_float_constants = [
     Float64V(-1.0); Float64V(0.0); Float64V(1.0)
 ]
 
+let fs_string_constants = []
+
 let rec to_string_structure structure =
     match structure with
     | FSConditional(act, condition) ->
@@ -135,8 +137,10 @@ and to_string_var var =
     | FSArrayVariableHole -> "ArrayHole"
     | FSIntVariableHole -> "IntHole"
     | FSFloatVariableHole -> "FloatHole"
+	| FSStringVariableHole -> "StringHole"
     | FSIntConstantHole -> "IntConstHole"
     | FSFloatConstantHole -> "FloatConstHole"
+	| FSStringConstantHole -> "StringConstHole"
 and to_string_op op = match op with
     | FSBitReversal -> "BitReversal"
     | FSNormalize -> "Normalize"
@@ -202,7 +206,7 @@ and fill_array_op_hole filler v =
 and fill_variable filler v = 
     filler v
 
-let hole_options options bool_variables array_variables int_variables float_variables variable_type =
+let hole_options options bool_variables array_variables int_variables float_variables string_variables variable_type =
 	(* let () = Printf.printf "Bool variables are: %s\n" (name_reference_list_to_string bool_variables) in
 	let () = Printf.printf "Array variables are: %s\n" (name_reference_list_to_string array_variables) in
 	let () = Printf.printf "Int variables are: %s\n" (name_reference_list_to_string int_variables) in
@@ -210,10 +214,12 @@ let hole_options options bool_variables array_variables int_variables float_vari
     let result = match variable_type with
     | FSIntConstantHole -> List.map fs_int_constants (fun x -> FSConstant(x))
     | FSFloatConstantHole -> List.map fs_float_constants (fun x -> FSConstant(x))
+	| FSStringConstantHole -> List.map fs_string_constants (fun x -> FSConstant(x))
     | FSArrayVariableHole -> List.map array_variables (fun x -> FSVariable(x))
     | FSIntVariableHole -> List.map int_variables (fun x -> FSVariable(x))
     | FSFloatVariableHole -> List.map float_variables (fun x -> FSVariable(x))
     | FSScalarVariableHole -> List.map (int_variables @ float_variables) (fun x -> FSVariable(x))
+	| FSStringVariableHole -> List.map (string_variables) (fun x -> FSVariable(x))
     | FSVariable(x) -> [variable_type]
     | FSConstant(x) -> [variable_type] in
     let () = if options.debug_fft_synthesizer then
@@ -380,7 +386,7 @@ and eval_variable v (inputs: (string, synth_value) Hashtbl.t): synth_value =
         v
     | _ -> raise (FFTSynth "Can't eval a hole")
 
-let assert_not_empty (bres, ares, ires, fres) =
+let assert_not_empty (bres, ares, ires, fres, strres) =
 	let rec assert_list_not_empty l =
 		let r = List.for_all l (fun l ->
 			match l with
@@ -398,61 +404,64 @@ let assert_not_empty (bres, ares, ires, fres) =
 		assert (assert_list_not_empty bres);
 		assert (assert_list_not_empty ares);
 		assert (assert_list_not_empty ires);
-		assert (assert_list_not_empty fres)
+		assert (assert_list_not_empty fres);
+		assert (assert_list_not_empty strres)
 
 (* Generate the assignment options for each class of variable.  *)
 (* This is really just a shitty heuristic, and it's just crap code
 too.  Want to think of a better way of doing this.  *)
 let rec split_variables classmap typemap variables =
-	let rec add_variable_to_list (b, a, i, f, s) t v =
+	let rec add_variable_to_list (b, a, i, f, ss, s) t v =
 		match t with
-		| Bool -> (v :: b, a, i, f, s)
-		| Int16 -> (b, a, v :: i, f, s)
-		| Int32 -> (b, a, v :: i, f, s)
-		| Int64 -> (b, a, v :: i, f, s)
-		| UInt16 -> (b, a, v :: i, f, s)
-		| UInt32 -> (b, a, v :: i, f, s)
-		| UInt64 -> (b, a, v :: i, f, s)
-		| Float16 -> (b, a, i, v :: f, s)
-		| Float32 -> (b, a, i, v :: f, s)
-		| Float64 -> (b, a, i, v :: f, s)
-		| Struct(nm) -> (b, a, i, f, (v, nm) :: s)
+		| Bool -> (v :: b, a, i, f, ss, s)
+		| Int16 -> (b, a, v :: i, f, ss, s)
+		| Int32 -> (b, a, v :: i, f, ss, s)
+		| Int64 -> (b, a, v :: i, f, ss, s)
+		| UInt16 -> (b, a, v :: i, f, ss, s)
+		| UInt32 -> (b, a, v :: i, f, ss, s)
+		| UInt64 -> (b, a, v :: i, f, ss, s)
+		| String -> (b, a, i, f, v :: ss, s)
+		| Float16 -> (b, a, i, v :: f, ss, s)
+		| Float32 -> (b, a, i, v :: f, ss, s)
+		| Float64 -> (b, a, i, v :: f, ss, s)
+		| Struct(nm) -> (b, a, i, f, ss, (v, nm) :: s)
 		| Array(subty, _) ->
-				(b, v :: a, i, f, s)
+				(b, v :: a, i, f, ss, s)
 		| Pointer(subty) ->
-				add_variable_to_list (b, a, i, f, s) subty v
+				add_variable_to_list (b, a, i, f, ss, s) subty v
 		| Unit -> raise (FFTSynth "Unit not supproted")
 		| Fun(_, _) -> raise (FFTSynth "Higher order functions not supported")
 	in
     (* Get the type of each variable.  *)
     let types = List.map variables (fun v -> Hashtbl.find_exn typemap (name_reference_to_string v)) in
-	let b_vars, arr_vars, i_vars, f_vars, s_vars = List.fold (List.zip_exn types variables) ~init:([], [], [], [], [])
-        ~f:(fun (b, a, i, f, s) -> fun (t, v) ->
-			add_variable_to_list (b, a, i, f, s) t v
+	let b_vars, arr_vars, i_vars, f_vars, str_vars, s_vars = List.fold (List.zip_exn types variables) ~init:([], [], [], [], [], [])
+        ~f:(fun (b, a, i, f, ss, s) -> fun (t, v) ->
+			add_variable_to_list (b, a, i, f, ss, s) t v
         ) in
     let struct_name_types = List.map s_vars (fun (varname, structname) ->
 		get_struct_variables classmap varname structname
     ) in
     (* Probably could be done in a more scalable manner.  Anyway... *)
-	let (bres, ares, ires, fres) = List.fold struct_name_types ~init:(b_vars, arr_vars, i_vars, f_vars) ~f:(fun (b, a, i, f) ->
-            fun (b2, a2, i2, f2) ->
-                (b @ b2, a @ a2, i @ i2, f @ f2)
+	let (bres, ares, ires, fres, strres) = List.fold struct_name_types ~init:(b_vars, arr_vars, i_vars, f_vars, str_vars) ~f:(fun (b, a, i, f, s) ->
+            fun (b2, a2, i2, f2, s2) ->
+                (b @ b2, a @ a2, i @ i2, f @ f2, s @ s2)
     ) in
-	let () = assert_not_empty (bres, ares, ires, fres) in
-	(bres, ares, ires, fres)
+	let () = assert_not_empty (bres, ares, ires, fres, str_vars) in
+	(bres, ares, ires, fres, str_vars)
 
 and get_struct_variables classmap varname structname =
         let struct_metadata = Hashtbl.find_exn classmap structname in
         let structtypemap = get_class_typemap struct_metadata in
         let structmembers = List.map (get_class_members struct_metadata) (fun mem -> Name(mem)) in
-        let (sb, sarr, si, sf) = split_variables classmap structtypemap structmembers in
+        let (sb, sarr, si, sf, sstr) = split_variables classmap structtypemap structmembers in
 
         (* We need to prepend the structname to everything here.  *)
         let prepend_sname = name_reference_concat varname in
         (List.map sb prepend_sname,
 		 List.map sarr prepend_sname,
          List.map si prepend_sname,
-         List.map sf prepend_sname
+         List.map sf prepend_sname,
+		 List.map sstr prepend_sname
         )
 
 let rec get_operations_in prog =
@@ -520,8 +529,8 @@ class fft_synth_manipulator hole_opts =
 
 (* Now, run a generic sketch-based synthesis from these sketches. *)
 let fft_synth options typemap variables (gir_program: program) iopairs: post_behavioural_program option =
-    let bool_variables, array_variables, int_variables, float_variables = split_variables typemap.classmap typemap.variable_map variables in
-    let hole_opts = hole_options options bool_variables array_variables int_variables float_variables in
+    let bool_variables, array_variables, int_variables, float_variables, string_variables = split_variables typemap.classmap typemap.variable_map variables in
+    let hole_opts = hole_options options bool_variables array_variables int_variables float_variables string_variables in
     let fft_manip = ((new fft_synth_manipulator hole_opts) :> (fs_structure Generic_sketch_synth.synth_manipulator)) in
     let prog_opts = Generic_sketch_synth.generate_options options fft_manip fs_sketches in
 	let valid_programs = Generic_sketch_synth.eval options fft_manip prog_opts iopairs in

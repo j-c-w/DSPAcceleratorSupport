@@ -25,8 +25,12 @@ let eval_binary_comp comp (v1: synth_value) (v2: synth_value) =
 			let v1_i = Option.value_exn (bool_from_value v1) in
 			let v2_i = Option.value_exn (bool_from_value v2) in
 			Bool.compare v1_i v2_i
+		else if (is_string_value v1) && (is_string_value v2) then
+			let v1_i = Option.value_exn (string_from_value v1) in
+			let v2_i = Option.value_exn (string_from_value v2) in
+			String.compare v1_i v2_i
 		else
-			raise (EvaluationException "Can't compare nonints/floats/bools")
+			raise (EvaluationException "Can't compare nonints/floats/bools/strings")
 	in
 	BoolV(
 	match comp with

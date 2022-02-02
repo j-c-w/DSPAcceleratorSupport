@@ -30,6 +30,7 @@ type skeleton_type =
 	| SInt of name_reference
 	| SBool of name_reference
 	| SFloat of name_reference
+	| SString of name_reference
 and skeleton_dimension_group_type =
 	(* Dimension types -- we don't give these names directly.  *)
 	| SType of skeleton_type

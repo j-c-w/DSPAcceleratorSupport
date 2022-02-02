@@ -61,6 +61,24 @@ let generate_float_within_range rangemap namestring =
             | RFloat(v) -> v
             | _ -> raise (TypeException "Unexepced non-float result to float query")
 
+let generate_string_within_range rangemap namestring =
+	let rec generate_string_of_length n =
+		match n with
+		| 0 -> []
+		| n ->
+				(* taken from https://mihamina.rktmb.org/2013/02/ocaml-random-string-and-word-generation.html *)
+				let this_char = String.make 1 (Char.of_int_exn (97 + (Random.int 26))) in
+				this_char :: (generate_string_of_length (n - 1))
+	in
+	match Hashtbl.find rangemap namestring with
+	| None ->
+			let length = Random.int (100) in
+			String.concat (generate_string_of_length length)
+	| Some(v) ->
+            (* Not super clear what a trange restriction
+            for strings should look like? len + characters? *)
+			raise (TypeException "Unimplemented")
+
 (* This one assumes that the array has been specified -- the implementation
 for generating a random array is below.  *)
 let generate_array_from_range rangemap namestring =
@@ -89,6 +107,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
     | Float16 -> Float16V(generate_float_within_range rangemap (name_string))
     | Float32 -> Float32V(generate_float_within_range rangemap (name_string))
     | Float64 -> Float64V(generate_float_within_range rangemap (name_string))
+	| String -> StringV(generate_string_within_range rangemap (name_string))
     | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
     | Unit -> UnitV
 	| Pointer(stype) ->
@@ -253,6 +272,7 @@ let rec value_to_string value =
     | Float16V(v) -> (string_of_float v) ^ "0"
     | Float32V(v) -> (string_of_float v) ^ "0"
     | Float64V(v) -> (string_of_float v) ^ "0"
+    | StringV(v) -> "\"" ^ v ^ "\""
     (* Probably not right --- needs to mesh with
     however 'unit' is passed in from the JSON representation.
     Can avoid for now with C++ as main target.  *)

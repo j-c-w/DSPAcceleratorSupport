@@ -76,6 +76,7 @@ let skeleton_type_to_string stype =
 	| SInt(name) -> "SInt(" ^ (name_reference_to_string name) ^ ")"
 	| SBool(name) -> "SBool(" ^ (name_reference_to_string name) ^ ")"
 	| SFloat(name) -> "SFloat(" ^ (name_reference_to_string name) ^ ")"
+	| SString(name) -> "SString(" ^ (name_reference_to_string name) ^ ")"
 
 let assignment_type_to_string stype =
     match stype with
@@ -226,4 +227,5 @@ let name_refs_from_skeleton sk =
 	| SInt(nr) -> nr
 	| SBool(nr) -> nr
 	| SFloat(nr) -> nr
+	| SString(nr) -> nr
 

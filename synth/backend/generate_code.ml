@@ -73,6 +73,7 @@ let rec cxx_type_signature_synth_type_to_string typ =
     | Float16 -> "float16?(unsupported)"
     | Float32 -> "float"
     | Float64 -> "double"
+	| String -> "char *"
     | Array(stype, _) -> (cxx_type_signature_synth_type_to_string stype) ^ " *"
 	| Pointer(stype) -> (cxx_type_signature_synth_type_to_string stype) ^ " *"
     | Unit -> "void"
@@ -93,6 +94,7 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
     | Float16 -> "float16?(unsupported)"
     | Float32 -> "float"
     | Float64 -> "double"
+	| String -> "char *"
     | Array(stype, _) -> "std::vector<" ^ (cxx_vectors_type_signature_synth_type_to_string stype) ^ ">"
 	| Pointer(stype) -> (cxx_vectors_type_signature_synth_type_to_string stype) ^ "*"
     | Unit -> "void"
@@ -112,6 +114,7 @@ let rec cxx_generate_from_synth_value svalue =
 	| Float16V(f) -> string_of_float f
 	| Float32V(f) -> string_of_float f
 	| Float64V(f) -> string_of_float f
+	| StringV(v) -> "\"" ^ v ^ "\""
 	| UnitV -> "? /* (Unsupported Unit Value generation in C) */"
 	| PointerV(v) ->
 			"&(" ^ (cxx_generate_from_synth_value v) ^ ")"

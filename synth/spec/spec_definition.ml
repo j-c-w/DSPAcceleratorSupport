@@ -23,6 +23,7 @@ type synth_type =
 	| Pointer of synth_type
 	| Array of synth_type * dimension_type
 	| Unit
+	| String
 	| Struct of string
 	| Fun of (synth_type list) * synth_type
 and dimension_type =
@@ -52,6 +53,7 @@ type synth_value =
     | Float32V of float
     | Float64V of float
     | UnitV
+	| StringV of string
 	| PointerV of synth_value
     | ArrayV of synth_value list
     | StructV of string * (string, synth_value) Hashtbl.t

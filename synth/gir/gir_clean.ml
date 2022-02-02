@@ -25,6 +25,10 @@ let rec gir_double_define_clean_internal deftbl gir =
 				| Some(otherdef) -> EmptyGIR
 				| None -> gir
 			)
+	| Definition(n, escapes, defn_type, Some(x)) ->
+			(* Dunno why this case was unhandled, may require some
+			thinking?  Or maybe not? *)
+			raise (UncleanException "Unhandled case? Not sure why it's unhandled.  Should be an easy fix :)")
 	| IfCond(cond, iftrue, iffalse) ->
 			(* Need to use copied tables, because definitions
 			in a branch of the if statement won't escape.  *)

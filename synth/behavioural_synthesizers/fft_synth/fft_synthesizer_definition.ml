@@ -18,8 +18,10 @@ and fs_variable =
     | FSArrayVariableHole
     | FSIntVariableHole
     | FSFloatVariableHole
+    | FSStringVariableHole
     | FSIntConstantHole
     | FSFloatConstantHole
+	| FSStringConstantHole
     | FSVariable of name_reference
     | FSConstant of synth_value
 

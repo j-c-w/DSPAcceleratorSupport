@@ -184,6 +184,7 @@ let rec synth_type_to_string t =
     | Float16 -> "float16"
     | Float32 -> "float32"
     | Float64 -> "float64"
+	| String -> "string"
 	| Pointer(tp) -> "pointer(" ^ (synth_type_to_string tp) ^ ")"
     | Array(x, dims) -> "array(" ^ (synth_type_to_string x) ^ ": with dims " ^
         (dimension_type_to_string dims) ^ ")"
@@ -206,6 +207,7 @@ let rec synth_type_equal s1 s2 =
 	| Float16, Float16 -> true
 	| Float32, Float32 -> true
 	| Float64, Float64 -> true
+	| String, String -> true
 	| Pointer(tp1), Pointer(tp2) ->
 			(synth_type_equal tp1 tp2)
 	| Array(x, dms), Array(x2, dms2) ->
@@ -236,6 +238,7 @@ let rec synth_value_to_string value =
     | Float16V(v) -> string_of_float v
     | Float32V(v) -> string_of_float v
     | Float64V(v) -> string_of_float v
+	| StringV(v) -> v
     | UnitV -> "Unit"
 	| PointerV(v) ->
 			"pointer(" ^ (synth_value_to_string v) ^ ")"
@@ -261,6 +264,7 @@ let rec synth_value_to_type v =
 	| Float16V(_) -> Float16
 	| Float32V(_) -> Float32
 	| Float64V(_) -> Float64
+	| StringV(_) -> String
 	| UnitV -> Unit
 	| PointerV(v) ->
 			Pointer(synth_value_to_type v)
@@ -289,6 +293,7 @@ let rec synth_value_equal c1 c2 =
 	| Float16V(v1), Float16V(v2) -> Utils.float_equal v1 v2
 	| Float32V(v1), Float32V(v2) -> Utils.float_equal v1 v2
 	| Float64V(v1), Float64V(v2) -> Utils.float_equal v1 v2
+	| StringV(v1), StringV(v2) -> String.equal v1 v2
 	| UnitV, UnitV -> true
 	| PointerV(vp1), PointerV(vp2) ->
 			synth_value_equal vp1 vp2
@@ -336,6 +341,7 @@ let rec synth_value_has_type v t =
 	| Float16V(_), Float16 -> true
 	| Float32V(_), Float32 -> true
 	| Float64V(_), Float64 -> true
+	| StringV(_), String -> true
 	| BoolV(_), Bool -> true
 	| UnitV, Unit -> true
 	| PointerV(subv), Pointer(v) ->
@@ -443,6 +449,7 @@ let sort_members_by_type typemap members =
 		| Float16 -> 0
 		| Float32 -> 0
 		| Float64 -> 0
+		| String -> 0
 		| Unit -> 0
 		| Pointer(p) -> 1
 		| Array(_, _) -> 2
@@ -622,6 +629,11 @@ let array_from_value v =
     | ArrayV(vs) -> Some(vs)
     | _ -> None
 
+let string_from_value v =
+	match v with
+	| StringV(v) -> Some(v)
+	| _ -> None
+
 let is_float_value v =
 	match v with
 	| Float16V(_) -> true
@@ -647,6 +659,11 @@ let is_bool_value v =
 let is_array_value v =
 	match v with
 	| ArrayV(_) -> true
+	| _ -> false
+
+let is_string_value v =
+	match v with
+	| StringV(_) -> true
 	| _ -> false
 
 (* cast a value v to a type of t if possible *)
