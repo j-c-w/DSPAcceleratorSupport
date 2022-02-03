@@ -68,3 +68,11 @@ void facc_free(void* pointer) {
 
 	free(pointer);
 }
+
+void facc_strcopy(char *str_in, char *str_out) {
+	while (*str_in != '\0') {
+		*str_out = *str_in;
+		str_in ++;
+		str_out ++;
+	}
+}

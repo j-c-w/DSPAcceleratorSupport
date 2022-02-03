@@ -24,7 +24,6 @@ let main iospec_file num_tests output_folder =
 	} in
 	let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
-	let emptymaptbl = Hashtbl.create (module String) in
 
 	(* Construct the program from the input IO map.  We assume
 	   that there is no ambiguity in the iospec.   That is, we

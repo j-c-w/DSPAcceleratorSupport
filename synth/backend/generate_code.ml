@@ -224,6 +224,18 @@ let rec cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap cont
 	| Pointer(stype) ->
 			let prefix, subsize = cxx_escaping_definition_synth_type_to_string_prefix_postfix typemap context stype dimratio_modifier in
 			prefix ^ "*", subsize
+	| String ->
+			let tyname = cxx_type_signature_synth_type_to_string String in
+			(* OK -- So FACC makes the decision to treat
+			strings as dimensionless (since
+			they are going to be null-terminated
+			and so won't have lengths represented in the available
+			variables.  However, this means
+			that if they have to be allocated, we don't really
+			know how much space to allocate.  synthesizer.h
+			provides a tunable def that specifies
+			the amount of space to allocate such strings.  *)
+			tyname, dimratio_modifier ("sizeof(MAX_STRING_SIZE)")
     | othertyp ->
             let tyname = cxx_type_signature_synth_type_to_string othertyp in
             tyname, dimratio_modifier ("sizeof(" ^ tyname ^ ")")
@@ -234,6 +246,7 @@ let is_malloc_type typemap typ =
 	match typ with
 	| Array(stype, _) -> true
 	| Pointer(_) -> true
+	| String -> true
 	| other -> false
 
 let get_dimension_modifer dim_orig dim_infered modifier =
@@ -463,6 +476,11 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 						let sub_def = cxx_definition_synth_type_to_string options typemap None escapes sty base_type_stype context sub_def_name None in
 
 						generate_assign_loop_for dim sub_def sub_def_name
+				| String ->
+						let sub_def_name = name ^ "_sub_element" in
+						let sub_def = cxx_definition_synth_type_to_string options typemap None escapes sty base_type_stype context sub_def_name None in
+
+						generate_assign_loop_for dim sub_def sub_def_name
 				| Struct(structname) ->
 						(* Really, this doesn't have to happen like this --- we need a heuristic that tells
 						us whether the struct has to be initialized ---- expect that this might be relevant. *)
@@ -476,6 +494,10 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 						alloc
 				)
 				(* endif *)
+		| String ->
+				let () = if options.debug_generate_malloc then
+					Printf.printf "Generating malloc call for string. \n" else () in
+				alloc
 		| Struct(s) ->
 				let () = if options.debug_generate_malloc then
 					Printf.printf "generating malloc call for strct with name %s\n" s
@@ -557,8 +579,31 @@ let rec cxx_generate_from_gir options (typemap: typemap) gir =
     | Assignment(fromv, tov) ->
 			let pre_from_code, fromv_name = cxx_generate_from_lvalue typemap fromv in
 			let pre_to_code, tov_name = cxx_generate_from_rvalue typemap tov in
-			(trim pre_from_code) ^ (trim pre_to_code) ^
-			fromv_name ^ " = " ^ tov_name ^ ";"
+
+			(* This is probably buggy for strings nested
+				in structs.  *)
+			(* TOFIX. *)
+			let fromv_type = Hashtbl.find_exn typemap.variable_map fromv_name in
+			(* let () = Printf.printf "Looking at variable with name %s\n" (tov_name) in
+			let () = Printf.printf "Typemap has keys %s\n" (String.concat (Hashtbl.keys typemap.variable_map)) in *)
+			let tov_type = Hashtbl.find_exn typemap.variable_map tov_name in
+
+			let assignment =
+				match fromv_type, tov_type with
+				| String, String ->
+						(* So, in C, strings can't just
+						use the = operator to properly copy.
+						Instead, we've got an instrinsic
+						strcopy function we can generate.  *)
+						"facc_strcopy(" ^ fromv_name ^ ", " ^ tov_name ^ ");"
+				| _, _ ->
+						(* If the types aren't strings, we
+						can just use the '=' operator as normal.
+						Other non-trivial copies are represented
+						internally within the compiler. *)
+						fromv_name ^ " = " ^ tov_name ^ ";"
+			in
+			(trim pre_from_code) ^ (trim pre_to_code) ^ assignment
     | LoopOver(gir, indvariable, loopmax) ->
             let indvar_name = (cxx_gir_name_to_string indvariable) in
             let pre_loopmax_code, loopmax_name = (cxx_generate_from_expression typemap loopmax) in

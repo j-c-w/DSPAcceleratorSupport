@@ -41,6 +41,16 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 		(* Now, generate the copy from the stack-allocated variable
 		   to the heap allocated varible.  *)
 
+		(* Add temp_variable to the typemap.  *)
+		let _ = match Hashtbl.add typemap.variable_map "temp_variable" returntype with
+		| `Ok -> ()
+		(* Need to either pick a different name for the
+		args if that is the source of teh collision,
+		or need to figure out where else this is being
+		added to the typempa and only do this part once.  *)
+		| `Duplicate -> raise (GenerateConstantGIRException "Error: Using temp variable 'temp_variable' which is already defined in function")
+		in
+
         (* Generate the actual copying code.  *)
         let () = if options.debug_generate_constants then
             let () = Printf.printf "Generating copies from %s to temp_variable\n" returnvar in
