@@ -10,7 +10,7 @@ mkShell {
 		ocamlPackages.ppx_expect ocamlPackages.parmap
 		ocamlPackages.alcotest ocamlPackages.core
 		# C++ deps for the synnthesizer
-		gcc11 nlohmann_json clang
+		gcc10 nlohmann_json clang
 		# Other indirect deps for the synthesizer.
 		parallel
 		# Deps for tests
