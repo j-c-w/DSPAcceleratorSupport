@@ -75,4 +75,6 @@ void facc_strcopy(char *str_in, char *str_out) {
 		str_in ++;
 		str_out ++;
 	}
+	// Copy the null terminating character too.
+	*str_out = *str_in;
 }
