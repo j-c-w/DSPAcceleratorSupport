@@ -904,6 +904,11 @@ let rec generate_assign_to typemap assname fieldname typ json_ref =
 			String.concat ~sep:"\n" (members_assigns @ [
 				class_assign
 			])
+	| String ->
+			(* Strings need a special type handler because nlohmann json deals
+			oddly with them.  *)
+			let type_sig = cxx_type_signature_synth_type_to_string String in
+			type_sig ^ " " ^ assname ^ " = strdup(" ^ json_ref ^ ".get<std::string>().c_str());"
 	| _ ->
 			let type_sig = cxx_type_signature_synth_type_to_string typ in
 			type_sig ^ " " ^ assname ^ " = " ^ json_ref ^ ";"
