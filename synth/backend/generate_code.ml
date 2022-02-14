@@ -577,26 +577,23 @@ let rec cxx_generate_from_gir options (typemap: typemap) gir =
     | Sequence(girlist) ->
             String.concat ~sep:";\n\t" (List.map girlist (cxx_generate_from_gir options typemap))
     | Assignment(fromv, tov) ->
-			let pre_from_code, fromv_name = cxx_generate_from_lvalue typemap fromv in
+			let pre_from_code, fromv_name, fromv_type = cxx_generate_from_lvalue typemap fromv in
 			let pre_to_code, tov_name = cxx_generate_from_rvalue typemap tov in
 
-			(* This is probably buggy for strings nested
-				in structs.  *)
-			(* TOFIX. *)
-			let fromv_type = Hashtbl.find_exn typemap.variable_map fromv_name in
 			(* let () = Printf.printf "Looking at variable with name %s\n" (tov_name) in
 			let () = Printf.printf "Typemap has keys %s\n" (String.concat (Hashtbl.keys typemap.variable_map)) in *)
-			let tov_type = Hashtbl.find_exn typemap.variable_map tov_name in
-
 			let assignment =
-				match fromv_type, tov_type with
-				| String, String ->
+				match fromv_type with
+				(* TODO --- should this also do a stringcopy if it's casting? *)
+				(* I don't really know --- think that's not
+				generated right now. *)
+				| Some(String) ->
 						(* So, in C, strings can't just
 						use the = operator to properly copy.
 						Instead, we've got an instrinsic
 						strcopy function we can generate.  *)
 						"facc_strcopy(" ^ fromv_name ^ ", " ^ tov_name ^ ");"
-				| _, _ ->
+				| _ ->
 						(* If the types aren't strings, we
 						can just use the '=' operator as normal.
 						Other non-trivial copies are represented
@@ -676,8 +673,8 @@ let rec cxx_generate_from_gir options (typemap: typemap) gir =
 and cxx_generate_from_lvalue typemap lvalue =
     match lvalue with
     | LVariable(nref) ->
-			let pre, ref, _ = (cxx_generate_from_variable_reference typemap false nref) in
-			pre, ref
+			let pre, ref, typ = (cxx_generate_from_variable_reference typemap false nref) in
+			pre, ref, typ
 
 (* So this find_type parameter is a bit of a hack.
 
