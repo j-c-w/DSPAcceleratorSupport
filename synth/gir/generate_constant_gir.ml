@@ -33,7 +33,7 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 			else () in
 			FunctionDef(Name(iospec.funname), funargs, EmptyGIR, funtable)
 	| [returnvar] ->
-			let () = Printf.printf "Generating constant return value\n" in
+			let () = if options.debug_generate_constants then Printf.printf "Generating constant return value\n" else () in
 		let toposorted_classmap = generate_toposorted_classmap options typemap typemap in
 		let rangemap = iospec.rangemap in
         (* TODO --- we should use the value profiles ehre.  *)
@@ -50,16 +50,24 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 		added to the typempa and only do this part once.  *)
 		| `Duplicate -> raise (GenerateConstantGIRException "Error: Using temp variable 'temp_variable' which is already defined in function")
 		in
-
+		(* Sometimes returnvar is already defed as part of
+		   args.  *)
+		let define_return_var = not (Utils.strings_any_equal [returnvar] iospec.funargs) in
+		let returnvar_define = 
+			if define_return_var then
+			[ Definition(Name(returnvar), true, Some(returntype), None); ]
+			else []
+		in
         (* Generate the actual copying code.  *)
         let () = if options.debug_generate_constants then
             let () = Printf.printf "Generating copies from %s to temp_variable\n" returnvar in
             () else () in
         let copies = generate_gir_copies typemap ([returnvar]) (["temp_variable"]) returntype in
 		let res_fun = FunctionDef(Name(iospec.funname), funargs,
-			Sequence([
+			Sequence(
+				returnvar_define @
+				[
 				(* Define *)
-				Definition(Name(returnvar), true, Some(returntype), None);
 				Definition(Name("temp_variable"), false, Some(returntype), Some(returnvalue));
 				(* Assign *)
                 ] @

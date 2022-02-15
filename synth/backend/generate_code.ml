@@ -102,7 +102,7 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
     | Struct(sname) -> sname
     | Fun(from, tof) -> raise (CXXGenerationException "Lambdas unsupported in C++")
 
-let rec cxx_generate_from_synth_value svalue =
+let rec cxx_generate_from_synth_value typemap svalue =
 	match svalue with
 	| BoolV(b) -> if b then "1" else "0" (* Use C bools isntead maybe? *)
 	| Int16V(v) -> string_of_int v
@@ -117,15 +117,16 @@ let rec cxx_generate_from_synth_value svalue =
 	| StringV(v) -> "\"" ^ v ^ "\""
 	| UnitV -> "? /* (Unsupported Unit Value generation in C) */"
 	| PointerV(v) ->
-			"&(" ^ (cxx_generate_from_synth_value v) ^ ")"
+			"&(" ^ (cxx_generate_from_synth_value typemap v) ^ ")"
 	| ArrayV(vls) ->
-			"{" ^ (String.concat ~sep:", " (List.map vls cxx_generate_from_synth_value)) ^ "}"
+			"{" ^ (String.concat ~sep:", " (List.map vls (cxx_generate_from_synth_value typemap))) ^ "}"
 	| StructV(nam, values) ->
+			let keys = get_class_members (Hashtbl.find_exn typemap.classmap nam) in
 			"{" ^
-				String.concat ~sep:"\n"
-				(List.map (Hashtbl.keys values) (fun key ->
+				String.concat ~sep:", \n"
+				(List.map (keys) (fun key ->
 					let value = Hashtbl.find_exn values key in
-					key ^ " = " ^ (cxx_generate_from_synth_value value) ^ ";"
+					"." ^ key ^ " = " ^ (cxx_generate_from_synth_value typemap value)
 				)) ^
 			"}"
 	(* Not sure how tf to implement this --- suspect it could just
@@ -331,7 +332,7 @@ let assignment_for_type options typemap escapes alignment dim_ratio_modifier con
 		| Some(v) ->
 				(* Can't assign values in some cases.  *)
 				let () = assert ((not escapes) && (not (is_heap_allocation_mode options.compile_settings.allocation_mode))) in
-				" = " ^ (cxx_generate_from_synth_value v)
+				" = " ^ (cxx_generate_from_synth_value typemap v)
 		| None -> ""
 	in
 	let assignment =
@@ -511,7 +512,7 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
 				(* Get the type of each member, and if we have to alloc, then do that.  *)
 				let members = sort_members_by_type { typemap with variable_map = class_typemap } members in
 				let struct_assignments = List.map members (fun member ->
-					let () = Printf.printf "Doing sub-struct assignment for member %s\n" (member) in
+					let () = if options.debug_generate_malloc then Printf.printf "Doing sub-struct assignment for member %s\n" (member) else () in
 					let member_type = Hashtbl.find_exn class_typemap member in
 					if is_malloc_type typemap member_type then
 						(* Do the sub-malloc: *)
@@ -739,7 +740,7 @@ and cxx_generate_from_variable_reference typemap find_type vref =
 	| Constant(synth_value) ->
 			(* TODO --- properly support more complex synth values, e.g. arrays or structs.  *)
 			(* Has empty pre code *)
-			"", (cxx_generate_from_synth_value synth_value), Some(synth_value_to_type synth_value)
+			"", (cxx_generate_from_synth_value typemap synth_value), Some(synth_value_to_type synth_value)
 	| Cast(vref, typ) ->
 			let precode, refcode, original_type = cxx_generate_from_variable_reference typemap true vref in
 			precode, "(" ^ (cxx_type_signature_synth_type_to_string typ) ^ ")" ^ refcode, Some(typ)

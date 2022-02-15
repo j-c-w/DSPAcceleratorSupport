@@ -32,7 +32,7 @@ let main iospec_file output_file seed debug_constant_gen =
 	| y :: ys -> assert false
 	in
 	let _ = Hashtbl.add iotypemap iospec.funname (Fun(fromtypes, totype)) in
-	let () = Printf.printf "Added function type for %s (type %s)\n" (iospec.funname) (synth_type_to_string (Fun(fromtypes, totype))) in
+	(* let () = Printf.printf "Added function type for %s (type %s)\n" (iospec.funname) (synth_type_to_string (Fun(fromtypes, totype))) in *)
 
 	(* Build the actual typemap.  *)
 	let rec typemap = {
