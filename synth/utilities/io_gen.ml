@@ -20,7 +20,7 @@ let main iospec_file num_tests output_folder =
 		   required.  It can obscure error messages (e.g. if there are ambiguities
 		   in the iospec used.) *)
 		use_parmap = false;
-		debug_generate_io_tests = true;
+		debug_generate_io_tests = false;
 	} in
 	let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
