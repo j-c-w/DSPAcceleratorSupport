@@ -7,7 +7,7 @@ let white = [' ']+
 (* Well, kind of.  We don't support any 'understanding'
    of templates, so we just treat those as long class
    names.  *)
-let ident = ['a'-'z''A'-'Z''_'][':''<''>''a'-'z''A'-'Z''_''0'-'9']*
+let ident = ['a'-'z''A'-'Z''_'][' '':''<''>''a'-'z''A'-'Z''_''0'-'9']*
 let integer = ['0'-'9']+
 
 rule read =
