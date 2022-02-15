@@ -429,9 +429,9 @@ let rec cxx_definition_synth_type_to_string options typemap alignment escapes ty
        we need to generate an assignment loop for:  other arrays, pointers, structs (sometimes, opts probably
 	   good).  *)
 	let generate_assign_loop_for dim sub_def sub_def_name =
-		let () = Printf.printf "Context is %s\n" context in
+		(* let () = Printf.printf "Context is %s\n" context in *)
 		let dim_length = cxx_dimtype_to_name typemap context dim in
-		let () = Printf.printf "Dim length is %s\n" dim_length in
+		(* let () = Printf.printf "Dim length is %s\n" dim_length in *)
 
 		let index_variable = generate_ivar_tmp () in
 		String.concat [
