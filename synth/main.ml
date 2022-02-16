@@ -42,7 +42,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		array_length_threshold no_parmap
         debug_gir_generate_define_statements debug_infer_structs
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
-		debug_skeleton_deduplicate =
+		debug_skeleton_deduplicate max_string_size =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -71,6 +71,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 
         number_of_tests = number_of_tests;
 		all_tests = all_tests;
+		max_string_size = max_string_size;
 
 		skip_build = skip_build;
 		stop_before_build = stop_before_build;
@@ -202,6 +203,9 @@ let only_test =
 let all_tests =
 	let doc = "Run all tests, don't stop after failure" in
 	Arg.(value & flag & info ["run-all-tests"] ~docv:"TestAll" ~doc)
+let max_string_size =
+	let doc = "Max size of strings to generate as part of IO test" in
+	Arg.(value & opt int 100 & info ["max-string-size"] ~docv:"MaxStringSize" ~doc)
 
 (* Generic debug flags *)
 let print_synth_option_numbers =
@@ -371,6 +375,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
-	$ debug_skeleton_deduplicate)
+	$ debug_skeleton_deduplicate $ max_string_size)
 
 let () = Term.exit @@ Term.eval (args_t, info)

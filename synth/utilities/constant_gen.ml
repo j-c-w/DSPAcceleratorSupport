@@ -17,11 +17,11 @@ exception ConstantGenException of string
 
 (* This is a program to generate function bodies.  They return
 'real' values, but other than that do nothing.  *)
-let main iospec_file output_file seed debug_constant_gen =
+let main iospec_file output_file seed debug_constant_gen max_string_size =
 	let _ = Random.init seed in
     (* Yes, this is a terrible hack I am 100% going to regret
     because I have no clear understanding why it needs both.  *)
-    let options = { default_options with debug_generate_constants = debug_constant_gen; } in
+    let options = { default_options with debug_generate_constants = debug_constant_gen; max_string_size = max_string_size } in
     let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
 	(* Setup the entry for the functio ntuype in the typemap.  *)
@@ -62,6 +62,9 @@ let outfile =
 let seed =
 	let doc = "Random Seed" in
 	Arg.(value & opt int 0 & info ["random-seed"] ~docv:"RandomSeed" ~doc)
+let max_string_size =
+	let doc = "Max size of strings to generate as part of IO test" in
+	Arg.(value & opt int 100 & info ["max-string-size"] ~docv:"MaxStringSize" ~doc)
 
 let debug_gen_constants =
 	let doc = "Debug Generate constants pass " in
@@ -71,6 +74,6 @@ let info =
 	let doc = "Generate Function Bodies" in
 	Term.info "FuncGen" ~doc
 
-let args_t = Term.(const main $ iospec $ outfile $ seed $ debug_gen_constants)
+let args_t = Term.(const main $ iospec $ outfile $ seed $ debug_gen_constants $ max_string_size)
 
 let () = Term.exit @@ Term.eval (args_t, info)

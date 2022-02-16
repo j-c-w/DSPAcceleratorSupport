@@ -12,7 +12,7 @@ open Program;;
 let () = Printexc.record_backtrace true;;
 let _ = Random.init 0;;
 
-let main iospec_file num_tests output_folder =
+let main iospec_file num_tests output_folder max_string_size =
 	let options = { default_options with
 		number_of_tests = num_tests;
 		execution_folder = output_folder;
@@ -21,6 +21,7 @@ let main iospec_file num_tests output_folder =
 		   in the iospec used.) *)
 		use_parmap = false;
 		debug_generate_io_tests = false;
+        max_string_size = max_string_size;
 	} in
 	let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
@@ -61,6 +62,9 @@ let iospec =
 let number =
 	let doc = "Number of Examples" in
 	Arg.(required & pos 1 (some int) None & info [] ~docv:"Number" ~doc)
+let max_string_size =
+	let doc = "Max size of strings to generate as part of IO test" in
+	Arg.(value & opt int 100 & info ["max-string-size"] ~docv:"MaxStringSize" ~doc)
 
 let destfolder =
 	let doc = "Distination folder" in
@@ -70,5 +74,5 @@ let info =
 	let doc = "Generate IO Examples" in
 	Term.info "IOGen" ~doc
 
-let args_t = Term.(const main $ iospec $ number $ destfolder)
+let args_t = Term.(const main $ iospec $ number $ destfolder $ max_string_size)
 let () = Term.exit @@ Term.eval (args_t, info)

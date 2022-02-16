@@ -61,7 +61,7 @@ let generate_float_within_range rangemap namestring =
             | RFloat(v) -> v
             | _ -> raise (TypeException "Unexepced non-float result to float query")
 
-let generate_string_within_range rangemap namestring =
+let generate_string_within_range options rangemap namestring =
 	let rec generate_string_of_length n =
 		match n with
 		| 0 -> []
@@ -72,7 +72,7 @@ let generate_string_within_range rangemap namestring =
 	in
 	match Hashtbl.find rangemap namestring with
 	| None ->
-			let length = Random.int (100) in
+			let length = Random.int (options.max_string_size) in
 			String.concat (generate_string_of_length length)
 	| Some(v) ->
             (* Not super clear what a trange restriction
@@ -107,7 +107,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
     | Float16 -> Float16V(generate_float_within_range rangemap (name_string))
     | Float32 -> Float32V(generate_float_within_range rangemap (name_string))
     | Float64 -> Float64V(generate_float_within_range rangemap (name_string))
-	| String -> StringV(generate_string_within_range rangemap (name_string))
+	| String -> StringV(generate_string_within_range options rangemap (name_string))
     | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
     | Unit -> UnitV
 	| Pointer(stype) ->
