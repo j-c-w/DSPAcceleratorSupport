@@ -1053,7 +1053,7 @@ and generate_output_assign options typemap program (infered_typ, typ) out out_pr
 			let restyp = Hashtbl.find_exn sub_typemap ass in
 			(restyp, restyp)
 		) in
-		let asscode = generate_output_assigns options typemap program sub_types sub_assigns (out ^ operator) json_tmp in
+		let asscode = generate_output_assigns options typemap program sub_types sub_assigns (out_prefix ^ out ^ operator) json_tmp in
 		String.concat ~sep:"\n" [defn; asscode], json_tmp
 	| _ ->
 		(* We can literally just put the variable name.  *)
