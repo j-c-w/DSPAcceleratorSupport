@@ -167,22 +167,22 @@ let rec cxx_name_reference_to_string typemap n =
 			in
 			(name_reference_to_string x) ^ xjoiner ^ (cxx_name_reference_to_string new_typemap (StructName(xs)))
 
-let cxx_dimension_value_to_string typemap dvalue =
+let cxx_dimension_value_to_string typemap context dvalue =
 	match dvalue with
-	| DimConstant(i) -> (string_of_int i)
+	| DimConstant(i) -> (string_of_int i) (* No context to consts *)
 	| DimVariable(n, DimEqualityRelation) ->
-			cxx_name_reference_to_string typemap n
+			context ^ (cxx_name_reference_to_string typemap n)
 	| DimVariable(n, DimPo2Relation) ->
-			"(1 << (" ^ (cxx_name_reference_to_string typemap n) ^ "))"
+			"(1 << (" ^ context ^ (cxx_name_reference_to_string typemap n) ^ "))"
 	| DimVariable(n, DimDivByRelation(x)) ->
-			"(" ^ (cxx_name_reference_to_string typemap n) ^ " / " ^ (string_of_int x) ^ ")"
+			"(" ^ context ^ (cxx_name_reference_to_string typemap n) ^ " / " ^ (string_of_int x) ^ ")"
 
 (* match a dimtype to the /highest level name only/ *)
 (* e.g. H(..., v) -> v *)
 let cxx_dimtype_to_name typemap context dimtype =
     match dimtype with
     | Dimension(x) ->
-            context ^ (cxx_dimension_value_to_string typemap x)
+            (cxx_dimension_value_to_string typemap context x)
             (* Think this can be achieved in the gen_json call.
                Just return a TODO note, since that's what
                has to happen.  If it's (incorrectly)
@@ -192,7 +192,7 @@ let cxx_dimtype_to_name typemap context dimtype =
 
 let rec cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier =
     match dimtype with
-            | Dimension(x) -> "[" ^ (dim_ratio_modifier (cxx_dimension_value_to_string typemap x)) ^ "]"
+            | Dimension(x) -> "[" ^ (dim_ratio_modifier (cxx_dimension_value_to_string typemap "" x)) ^ "]"
 			| EmptyDimension -> "TOFILL"
 
 let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier =
