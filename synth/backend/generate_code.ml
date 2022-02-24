@@ -846,7 +846,7 @@ let rec generate_empty_assign_to assname typ =
 			let type_sig = cxx_type_signature_synth_type_to_string typ in
             type_sig ^ " " ^ assname ^ ";"
 
-let rec generate_assign_to typemap assname fieldname typ json_ref =
+let rec generate_assign_to typemap assname fieldname typ join_op json_ref =
 	let json_ref =
 		match fieldname with
 		(* Some refs, e.g. after arrays are actually impllicit.  *)
@@ -859,7 +859,7 @@ let rec generate_assign_to typemap assname fieldname typ json_ref =
 			let vecname = assname ^ "_vec" in
 			let resdef = "std::vector<" ^ artypstr ^ "> " ^ vecname ^ ";" in
 			let loop_header = "for (auto& elem : " ^ json_ref ^ ") {" in
-			let recursed_code = generate_assign_to typemap (assname ^ "_inner") None artyp "elem" in
+			let recursed_code = generate_assign_to typemap (assname ^ "_inner") None artyp "." "elem" in
             let in_loop_assign =
                 vecname ^ ".push_back(" ^ assname ^ "_inner);" in
 			let end_loop = "}" in
@@ -872,7 +872,7 @@ let rec generate_assign_to typemap assname fieldname typ json_ref =
 	| Pointer(stype) ->
 			let pointer_typ_str = cxx_type_signature_synth_type_to_string stype in
 			let sub_variable = assname ^ "_pointer" in
-			let recursed_code = generate_assign_to typemap sub_variable None stype json_ref in
+			let recursed_code = generate_assign_to typemap sub_variable None stype "->" json_ref in
 			(* Pointers obviously aren't stored as such in JSON files.   But
 			 they can be stack allocated here. *)
 			recursed_code ^ "\n" ^
@@ -888,7 +888,7 @@ let rec generate_assign_to typemap assname fieldname typ json_ref =
 				mem, (Hashtbl.find_exn struct_typemap mem)) in
 			(* Recurse to get the values *)
 			let members_assigns =
-				List.map memtypes (fun (mem, memtyp) -> generate_assign_to typemap (assname ^ mem) (Some(mem)) memtyp json_ref) in
+				List.map memtypes (fun (mem, memtyp) -> generate_assign_to typemap (assname ^ join_op ^ mem) (Some(mem)) memtyp "." json_ref) in
 			let memass_names = List.map members (fun m -> (assname ^ m)) in
 			(* Now, build the struct *)
 			let class_assign = if is_class structmeta then
@@ -935,7 +935,7 @@ let rec generate_input_assigns options (typemap: typemap) inps livein json_ref =
 		(* Note that because this uses a C++ vector to build
 		directly from the file, we don't need to use any length
 		parameter adjustments (since those are implicit).  *)
-		generate_assign_to iotypemap inp (Some(inp)) typ json_ref
+		generate_assign_to iotypemap inp (Some(inp)) typ "." json_ref
 	) in
 	(* There are some variables that are 'dead' in, i.e. the
 	need to be allocated (e.g. output arrays), but they don't
@@ -1012,7 +1012,7 @@ and generate_output_assign options typemap program (infered_typ, typ) out out_pr
 		let assloop_header = "for (unsigned int " ^ ivar ^ " = 0; " ^ ivar ^ " < " ^ (dim_ratio_modifier length) ^ "; " ^ ivar ^ "++) {" in
 		let newout = generate_out_tmp() in
 		let newout_assign = artypname ^ " " ^ newout ^ " = " ^ (out_prefix ^ out) ^ "[" ^ ivar ^ "];" in
-		let assbody, assresvar = generate_output_assign options typemap program (artyp, artyp) newout out_prefix "." in
+		let assbody, assresvar = generate_output_assign options typemap program (artyp, artyp) newout "" "." in
 		(* Add to the array. *)
 		let inloopassign = outtmp ^ ".push_back(" ^ assresvar ^ ");" in
 		let loop_end = "}" in
