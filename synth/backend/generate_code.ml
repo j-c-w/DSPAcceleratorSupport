@@ -27,6 +27,9 @@ let output_variable_count = ref 0
 let generate_out_tmp () =
     let () = output_variable_count := !output_variable_count + 1 in
     "output_temp_" ^ (string_of_int !output_variable_count)
+let generate_input_tmp () =
+	let () = output_variable_count := !output_variable_count + 1 in
+	"input_temp_" ^ (string_of_int !output_variable_count)
 let generate_ivar_tmp () =
     let () = output_variable_count := !output_variable_count + 1 in
     "i" ^ (string_of_int !output_variable_count)
@@ -862,12 +865,13 @@ let rec generate_assign_to typemap assname fieldname typ join_op json_ref =
 	match typ with
 	| Array(artyp, _) ->
             let artypstr = cxx_type_signature_synth_type_to_string artyp in
-			let vecname = assname ^ "_vec" in
+			let temp_assname = generate_input_tmp() in
+			let vecname = temp_assname ^ "_vec" in
 			let resdef = "std::vector<" ^ artypstr ^ "> " ^ vecname ^ ";" in
 			let loop_header = "for (auto& elem : " ^ json_ref ^ ") {" in
-			let recursed_code = generate_assign_to typemap (assname ^ "_inner") None artyp "." "elem" in
+			let recursed_code = generate_assign_to typemap (temp_assname ^ "_inner") None artyp "." "elem" in
             let in_loop_assign =
-                vecname ^ ".push_back(" ^ assname ^ "_inner);" in
+                vecname ^ ".push_back(" ^ temp_assname ^ "_inner);" in
 			let end_loop = "}" in
 			(* Assign back to a pointer, since that's what we are treating arrays
 			as --- may have to put some thought into indexed classes too.  Not
@@ -894,8 +898,14 @@ let rec generate_assign_to typemap assname fieldname typ join_op json_ref =
 				mem, (Hashtbl.find_exn struct_typemap mem)) in
 			(* Recurse to get the values *)
 			let members_assigns =
-				List.map memtypes (fun (mem, memtyp) -> generate_assign_to typemap (assname ^ join_op ^ mem) (Some(mem)) memtyp "." json_ref) in
-			let memass_names = List.map members (fun m -> (assname ^ m)) in
+				(* The __ could obviously create aliasing
+				   issues --- perhaps can just require that
+				   the iospe doesn't contain aliases like this
+
+				   The alternative would be to escape all the
+				   occurances of __ with something else.  *)
+				List.map memtypes (fun (mem, memtyp) -> generate_assign_to typemap (assname ^ "__" ^ mem) (Some(mem)) memtyp "." json_ref) in
+			let memass_names = List.map members (fun m -> (assname ^ "__" ^ m)) in
 			(* Now, build the struct *)
 			let class_assign = if is_class structmeta then
 				(* is a class *)
