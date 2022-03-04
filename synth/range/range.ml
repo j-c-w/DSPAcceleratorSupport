@@ -301,9 +301,11 @@ let rec range_value_to_synth_value rvalue =
 
 let rec synth_type_to_range_type stype =
 	match stype with
+	| Int8 -> RangeIntegerType
 	| Int16 -> RangeIntegerType
 	| Int32 -> RangeIntegerType
 	| Int64 -> RangeIntegerType
+	| UInt8 -> RangeIntegerType
 	| UInt16 -> RangeIntegerType
 	| UInt32 -> RangeIntegerType
 	| UInt64 -> RangeIntegerType
@@ -320,9 +322,11 @@ let rec synth_type_to_range_type stype =
    we return just an option here.  *)
 let rec item_from_synth_value svalue =
 	let rvalue = match svalue with
+		| Int8V(v) -> Some(RangeInteger(v))
 		| Int16V(v) -> Some(RangeInteger(v))
 		| Int32V(v) -> Some(RangeInteger(v))
 		| Int64V(v) -> Some(RangeInteger(v))
+		| UInt8V(v) -> Some(RangeInteger(v))
 		| UInt16V(v) -> Some(RangeInteger(v))
 		| UInt32V(v) -> Some(RangeInteger(v))
 		| UInt64V(v) -> Some(RangeInteger(v))

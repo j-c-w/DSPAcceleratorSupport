@@ -3,9 +3,11 @@
 %}
 
 %token BOOL
+%token INT8
 %token INT16
 %token INT32
 %token INT64
+%token UINT8
 %token UINT16
 %token UINT32
 %token UINT64
@@ -52,9 +54,11 @@ tident:
 
 tsub:
  | BOOL { Bool }
+ | INT8 { Int8 }
  | INT16 { Int16 }
  | INT32 { Int32 }
  | INT64 { Int64 }
+ | UINT8 { UInt8}
  | UINT16 { UInt16 }
  | UINT32 { UInt32 }
  | UINT64 { UInt64 }

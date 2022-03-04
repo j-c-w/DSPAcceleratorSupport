@@ -98,9 +98,11 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
     match t with
     (* TODO -- Support negative values.  *)
 	| Bool -> BoolV(generate_bool_within_range rangemap (name_string))
+	| Int8 -> Int8V(generate_int_within_range rangemap (name_string))
     | Int16 -> Int16V(generate_int_within_range rangemap (name_string))
     | Int32 -> Int32V(generate_int_within_range rangemap (name_string))
     | Int64 -> Int64V(generate_int_within_range rangemap (name_string))
+	| UInt8 -> UInt8V(generate_uint_within_range rangemap (name_string))
 	| UInt16 -> UInt16V(generate_uint_within_range rangemap (name_string))
 	| UInt32 -> UInt32V(generate_uint_within_range rangemap (name_string))
 	| UInt64 -> UInt64V(generate_uint_within_range rangemap (name_string))
@@ -154,9 +156,11 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
 								let wrapper = get_value values_so_far dimvar_name in
 								let arrlen = match wrapper with
+								| Int8V(v) -> v
 								| Int16V(v) -> v
 								| Int32V(v) -> v
 								| Int64V(v) -> v
+								| UInt8V(v) -> v
 								| UInt16V(v) -> v
 								| UInt32V(v) -> v
 								| UInt64V(v) -> v
@@ -261,9 +265,11 @@ let rec generate_io_values options value_profiles num_tests rangemap livein stru
 let rec value_to_string value =
     let str_value = match value with
 	| BoolV(v) -> string_of_bool v
+	| Int8V(v) -> string_of_int v
     | Int16V(v) -> string_of_int v
     | Int32V(v) -> string_of_int v
     | Int64V(v) -> string_of_int v
+	| UInt8V(v) -> string_of_int v
 	| UInt16V(v) -> string_of_int v
 	| UInt32V(v) -> string_of_int v
 	| UInt64V(v) -> string_of_int v

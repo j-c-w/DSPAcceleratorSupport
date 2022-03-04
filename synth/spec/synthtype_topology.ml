@@ -22,9 +22,11 @@ let dep_list_to_string dlist =
 let rec get_dependencies_for typemap typ =
 	match typ with
 	| Bool -> []
+    | Int8 -> []
 	| Int16 -> []
 	| Int32 -> []
 	| Int64 -> []
+    | UInt8 -> []
 	| UInt16 -> []
 	| UInt32 -> []
 	| UInt64 -> []

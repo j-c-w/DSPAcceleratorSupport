@@ -414,9 +414,11 @@ let rec split_variables classmap typemap variables =
 	let rec add_variable_to_list (b, a, i, f, ss, s) t v =
 		match t with
 		| Bool -> (v :: b, a, i, f, ss, s)
+		| Int8 -> (b, a, v :: i, f, ss, s)
 		| Int16 -> (b, a, v :: i, f, ss, s)
 		| Int32 -> (b, a, v :: i, f, ss, s)
 		| Int64 -> (b, a, v :: i, f, ss, s)
+		| UInt8 -> (b, a, v :: i, f, ss, s)
 		| UInt16 -> (b, a, v :: i, f, ss, s)
 		| UInt32 -> (b, a, v :: i, f, ss, s)
 		| UInt64 -> (b, a, v :: i, f, ss, s)

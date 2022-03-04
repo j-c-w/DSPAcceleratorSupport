@@ -17,8 +17,8 @@ type name_reference =
 (* This is the way that the type stream is passed in.  *)
 type synth_type =
 	| Bool
-	| Int16 | Int32 | Int64
-	| UInt16 | UInt32 | UInt64
+	| Int8 | Int16 | Int32 | Int64
+	| UInt8 | UInt16 | UInt32 | UInt64
 	| Float16 | Float32 | Float64
 	| Pointer of synth_type
 	| Array of synth_type * dimension_type
@@ -43,9 +43,11 @@ and dimension_relation =
 
 type synth_value =
 	| BoolV of bool
+	| Int8V of int
     | Int16V of int
     | Int32V of int
     | Int64V of int
+	| UInt8V of int
 	| UInt16V of int
 	| UInt32V of int
 	| UInt64V of int

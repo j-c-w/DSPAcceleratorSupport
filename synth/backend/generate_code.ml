@@ -64,9 +64,11 @@ void StopAcceleratorTimer() {
 let rec cxx_type_signature_synth_type_to_string typ =
     match typ with
 	| Bool -> "bool"
+	| Int8 -> "char"
     | Int16 -> "short"
     | Int32 -> "int"
     | Int64 -> "long int"
+	| UInt8 -> "unsigned char"
 	| UInt16 -> "unsigned short"
 	| UInt32 -> "unsigned int"
 	| UInt64 -> "unsigned long int"
@@ -85,9 +87,11 @@ let rec cxx_type_signature_synth_type_to_string typ =
 let rec cxx_vectors_type_signature_synth_type_to_string typ =
     match typ with
 	| Bool -> "bool"
+	| Int8 -> "char"
     | Int16 -> "short"
     | Int32 -> "int"
     | Int64 -> "long int"
+	| UInt8 -> "unsigned char"
 	| UInt16 -> "unsigned short"
 	| UInt32 -> "unsigned int"
 	| UInt64 -> "unsigned long int"
@@ -105,9 +109,11 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
 let rec cxx_generate_from_synth_value typemap svalue =
 	match svalue with
 	| BoolV(b) -> if b then "1" else "0" (* Use C bools isntead maybe? *)
+	| Int8V(v) -> string_of_int v
 	| Int16V(v) -> string_of_int v
 	| Int32V(v) -> string_of_int v
 	| Int64V(v) -> string_of_int v
+	| UInt8V(v) -> string_of_int v
 	| UInt16V(v) -> string_of_int v
 	| UInt32V(v) -> string_of_int v
 	| UInt64V(v) -> string_of_int v

@@ -13,9 +13,11 @@ exception PostSynthesizerException of string
 let rec is_configuration_type typ =
     match typ with
     | Bool -> true
+	| Int8 -> true
     | Int16 -> true
     | Int32 -> true
     | Int64 -> true
+	| UInt8 -> true
     | UInt16 -> true
     | UInt32 -> true
     | UInt64 -> true

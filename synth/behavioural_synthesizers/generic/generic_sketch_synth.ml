@@ -55,9 +55,11 @@ and compare_elts options fcomp v1 v2 =
 	FFTSynth has some crappiness around dealing with
 	precise widths.  *)
 	| BoolV(b1), BoolV(b2) -> (Bool.compare b1 b2) = 0
+	| Int8V(e1), Int8V(e2) -> e1 = e2
     | Int16V(e1), Int16V(e2) -> e1 = e2
     | Int32V(e1), Int32V(e2) -> e1 = e2
     | Int64V(e1), Int64V(e2) -> e1 = e2
+	| UInt8V(e1), UInt8V(e2) -> e1 = e2
 	| UInt16V(e1), UInt16V(e2) -> e1 = e2
 	| UInt32V(e1), UInt32V(e2) -> e1 = e2
 	| UInt64V(e1), UInt64V(e2) -> e1 = e2

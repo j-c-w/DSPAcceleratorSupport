@@ -175,9 +175,11 @@ let constant_dimension_size d =
 let rec synth_type_to_string t =
     match t with
 	| Bool -> "bool"
+	| Int8 -> "int8"
     | Int16 -> "int16"
     | Int32 -> "int32"
     | Int64 -> "int64"
+	| UInt8 -> "uint8"
 	| UInt16 -> "uint16"
 	| UInt32 -> "uint32"
 	| UInt64 -> "uint64"
@@ -198,9 +200,11 @@ and synth_type_list_to_string stlist =
 let rec synth_type_equal s1 s2 =
 	match s1, s2 with
 	| Bool, Bool -> true
+	| Int8, Int8 -> true
 	| Int16, Int16 -> true
 	| Int32, Int32 -> true
 	| Int64, Int64 -> true
+	| UInt8, UInt8 -> true
 	| UInt16, UInt16 -> true
 	| UInt32, UInt32 -> true
 	| UInt64, UInt64 -> true
@@ -229,9 +233,11 @@ let rec synth_type_equal s1 s2 =
 let rec synth_value_to_string value =
     match value with
 	| BoolV(v) -> string_of_bool v
+	| Int8V(v) -> string_of_int v
     | Int16V(v) -> string_of_int v
     | Int32V(v) -> string_of_int v
     | Int64V(v) -> string_of_int v
+	| UInt8V(v) -> string_of_int v
 	| UInt16V(v) -> string_of_int v
 	| UInt32V(v) -> string_of_int v
 	| UInt64V(v) -> string_of_int v
@@ -255,9 +261,11 @@ let synth_value_list_to_string values =
 let rec synth_value_to_type v =
 	match v with
 	| BoolV(_) -> Bool
+	| Int8V(_) -> Int8
 	| Int16V(_) -> Int16
 	| Int32V(_) -> Int32
 	| Int64V(_) -> Int64
+	| UInt8V(_) -> UInt8
 	| UInt16V(_) -> UInt16
 	| UInt32V(_) -> UInt32
 	| UInt64V(_) -> UInt64
@@ -284,9 +292,11 @@ let rec synth_value_equal c1 c2 =
 	| BoolV(v1), BoolV(v2) -> (Bool.compare v1 v2) = 0
 	(* Note that we could consider comparing
 	different widths of synth type here.  *)
+	| Int8V(v1), Int8V(v2) -> v1 = v2
 	| Int16V(v1), Int16V(v2) -> v1 = v2
 	| Int32V(v1), Int32V(v2) -> v1 = v2
 	| Int64V(v1), Int64V(v2) -> v1 = v2
+	| UInt8V(v1), UInt8V(v2) -> v1 = v2
 	| UInt16V(v1), UInt16V(v2) -> v1 = v2
 	| UInt32V(v1), UInt32V(v2) -> v1 = v2
 	| UInt64V(v1), UInt64V(v2) -> v1 = v2
@@ -332,9 +342,11 @@ and synth_table_equal tbl1 tbl2 =
 
 let rec synth_value_has_type v t =
 	match v, t with
+	| Int8V(_), Int8 -> true
 	| Int16V(_), Int16 -> true
 	| Int32V(_), Int32 -> true
 	| Int64V(_), Int64 -> true
+	| UInt8V(_), UInt8 -> true
 	| UInt16V(_), UInt16 -> true
 	| UInt32V(_), UInt32 -> true
 	| UInt64V(_), UInt64 -> true
@@ -379,9 +391,11 @@ let synth_value_from_int t i =
 		assert (i >= 0)
 	in
 	match t with
+	| Int8 -> Int8V(i)
 	| Int16 -> Int16V(i)
 	| Int32 -> Int32V(i)
 	| Int64 -> Int64V(i)
+	| UInt8 -> check_non_neg i; UInt8V(i)
 	| UInt16 -> check_non_neg i; UInt16V(i)
 	| UInt32 -> check_non_neg i; UInt32V(i)
 	| UInt64 -> check_non_neg i; UInt64V(i)
@@ -440,9 +454,11 @@ let sort_members_by_type typemap members =
 	let member_priority_pairs = List.map members (fun mem ->
 		(mem, match Hashtbl.find_exn typemap.variable_map mem with
 		| Bool -> 0
+		| Int8 -> 0
 		| Int16 -> 0
 		| Int32 -> 0
 		| Int64 -> 0
+		| UInt8 -> 0
 		| UInt16 -> 0
 		| UInt32 -> 0
 		| UInt64 -> 0
@@ -560,9 +576,11 @@ let is_bool_type typ =
 
 let is_integer_type typ =
 	match typ with
+	| Int8 -> true
 	| Int16 -> true
 	| Int32 -> true
 	| Int64 -> true
+	| UInt8 -> true
 	| UInt16 -> true
 	| UInt32 -> true
 	| UInt64 -> true
@@ -603,9 +621,11 @@ let float_from_value v =
 
 let int_from_value v =
 	match v with
+	| Int8V(v) -> Some(v)
 	| Int16V(v) -> Some(v)
 	| Int32V(v) -> Some(v)
 	| Int64V(v) -> Some(v)
+	| UInt8V(v) -> Some(v)
 	| UInt16V(v) -> Some(v)
 	| UInt32V(v) -> Some(v)
 	| UInt64V(v) -> Some(v)
@@ -643,9 +663,11 @@ let is_float_value v =
 
 let is_int_value v =
 	match v with
+	| Int8V(_) -> true
 	| Int16V(_) -> true
 	| Int32V(_) -> true
 	| Int64V(_) -> true
+	| UInt8V(_) -> true
 	| UInt16V(_) -> true
 	| UInt32V(_) -> true
 	| UInt64V(_) -> true
