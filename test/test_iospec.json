@@ -1,8 +1,17 @@
-{ "livein":["cpx", "len"],
-	"liveout": ["cpx"],
+{ "livein":["na"],
+	"funargs": ["na"],
+	"liveout": ["na"],
 	"execcmd": "../test/interface",
-	"funname": "fft_accel",
-	"typemap": { "len": "int16",
-		"cpx": "array(Complex)"},
+	"funname": "func",
+	"typemap": { "na": "name"},
+	"classmap": {
+		"name": {
+			"type": "struct",
+			"symbols": ["first"],
+			"typemap": {
+				"first": "array(int8#2)"
+			}
+		}
+	},
 	"required_includes": ["../../test/cmplx.hpp"]
 }
