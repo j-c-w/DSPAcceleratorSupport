@@ -923,6 +923,10 @@ let rec generate_assign_to typemap assname fieldname typ join_op json_ref =
 			oddly with them.  *)
 			let type_sig = cxx_type_signature_synth_type_to_string String in
 			type_sig ^ " " ^ assname ^ " = strdup(" ^ json_ref ^ ".get<std::string>().c_str());"
+	| Int8 ->
+			(* Raw chars have the same problem as strings.  *)
+			let type_sig = cxx_type_signature_synth_type_to_string Int8 in
+            type_sig ^ " " ^ assname ^ " = " ^ json_ref ^ ".get<char>();"
 	| _ ->
 			let type_sig = cxx_type_signature_synth_type_to_string typ in
 			type_sig ^ " " ^ assname ^ " = " ^ json_ref ^ ";"
