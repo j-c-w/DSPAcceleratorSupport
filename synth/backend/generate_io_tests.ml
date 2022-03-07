@@ -25,7 +25,7 @@ let generate_int_within_range rangemap namestring =
     match Hashtbl.find rangemap namestring with
     | None -> (* It's normal to have no rangemap matches if there
                 were no rangevars specified.  *)
-            Random.int (1000)
+            Random.int (127)
     | Some(range) ->
 			(* let () = Printf.printf "Looking at name %s\n" namestring in
 			let () = Printf.printf "Has rangemap %s\n" (range_set_to_string range) in
