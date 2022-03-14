@@ -855,7 +855,7 @@ let rec generate_empty_assign_to assname typ =
 			let type_sig = cxx_type_signature_synth_type_to_string typ in
             type_sig ^ " " ^ assname ^ ";"
 
-let rec generate_assign_to typemap assname fieldname typ join_op json_ref =
+let rec generate_assign_to typemap assname fieldname typ join_op json_ref declare_type =
 	let json_ref =
 		match fieldname with
 		(* Some refs, e.g. after arrays are actually impllicit.  *)
@@ -869,24 +869,26 @@ let rec generate_assign_to typemap assname fieldname typ join_op json_ref =
 			let vecname = temp_assname ^ "_vec" in
 			let resdef = "std::vector<" ^ artypstr ^ "> " ^ vecname ^ ";" in
 			let loop_header = "for (auto& elem : " ^ json_ref ^ ") {" in
-			let recursed_code = generate_assign_to typemap (temp_assname ^ "_inner") None artyp "." "elem" in
+			let recursed_code = generate_assign_to typemap (temp_assname ^ "_inner") None artyp "." "elem" true in
             let in_loop_assign =
                 vecname ^ ".push_back(" ^ temp_assname ^ "_inner);" in
 			let end_loop = "}" in
 			(* Assign back to a pointer, since that's what we are treating arrays
 			as --- may have to put some thought into indexed classes too.  Not
 			100% how to go about that right now.  *)
-			let post_loop = artypstr ^ " *" ^ assname ^ " = &" ^ vecname ^ "[0];" in
+			let post_loop_assign = assname ^ " = &" ^ vecname ^ "[0];" in
+			let post_loop = if declare_type then artypstr ^ " *" ^ post_loop_assign else post_loop_assign in
 			resdef ^ "\n" ^ loop_header ^ "\n" ^ recursed_code ^ "\n" ^ in_loop_assign ^ "\n" ^ end_loop ^
 			"\n" ^ post_loop
 	| Pointer(stype) ->
 			let pointer_typ_str = cxx_type_signature_synth_type_to_string stype in
 			let sub_variable = assname ^ "_pointer" in
-			let recursed_code = generate_assign_to typemap sub_variable None stype "->" json_ref in
+			let recursed_code = generate_assign_to typemap sub_variable None stype "->" json_ref true in
+			let assignment = pointer_typ_str ^ "* " ^ assname ^ " = &" ^ sub_variable ^ ";" in
+			let declare_and_assign = if declare_type then pointer_typ_str ^ " *" ^ assignment else assignment in
 			(* Pointers obviously aren't stored as such in JSON files.   But
-			 they can be stack allocated here. *)
-			recursed_code ^ "\n" ^
-			pointer_typ_str ^ "* " ^ assname ^ " = &" ^ sub_variable ^ ";"
+			 they can be stack allocated here. *) recursed_code ^ "\n" ^
+			declare_and_assign
 	| Struct(sname) ->
 			(* Get the members we need to fill, and
 			   then get the values.  *)
@@ -904,38 +906,49 @@ let rec generate_assign_to typemap assname fieldname typ join_op json_ref =
 
 				   The alternative would be to escape all the
 				   occurances of __ with something else.  *)
-				List.map memtypes (fun (mem, memtyp) -> generate_assign_to typemap (assname ^ "__" ^ mem) (Some(mem)) memtyp "." json_ref) in
+				List.map memtypes (fun (mem, memtyp) -> generate_assign_to typemap (assname ^ "__" ^ mem) (Some(mem)) memtyp "." json_ref true) in
 			let memass_names = List.map members (fun m -> (assname ^ "__" ^ m)) in
 			(* Now, build the struct *)
 			let class_assign = if is_class structmeta then
 				(* is a class *)
 				(* We assume that the class has a 'simple' constructor *)
-				sname ^ " " ^ assname ^ "(" ^ (String.concat ~sep:", " memass_names) ^ ");"
+				assname ^ "(" ^ (String.concat ~sep:", " memass_names) ^ ");"
 			else 
 				(* is a struct *)
-				sname ^ " " ^ assname ^ " = { " ^ (String.concat ~sep:", " memass_names) ^ "};"
+				assname ^ " = { " ^ (String.concat ~sep:", " memass_names) ^ "};"
 			in
+			let class_define_and_assign =
+				if declare_type then sname ^ " " ^ class_assign else class_assign in
 			String.concat ~sep:"\n" (members_assigns @ [
-				class_assign
+				class_define_and_assign
 			])
 	| String ->
 			(* Strings need a special type handler because nlohmann json deals
 			oddly with them.  *)
 			let type_sig = cxx_type_signature_synth_type_to_string String in
-			type_sig ^ " " ^ assname ^ " = strdup(" ^ json_ref ^ ".get<std::string>().c_str());"
+			let assignment = assname ^ " = strdup(" ^ json_ref ^ ".get<std::string>().c_str());" in
+			let declare_and_assign = if declare_type then type_sig ^ " " ^ assignment else assignment in
+			declare_and_assign
 	| Int8 ->
 			(* Raw chars have the same problem as strings.  *)
 			let type_sig = cxx_type_signature_synth_type_to_string Int8 in
-            type_sig ^ " " ^ assname ^ " = " ^ json_ref ^ ".get<char>();"
+			let assignment = assname ^ " = " ^ json_ref ^ ".get<char>();" in
+			let declare_and_assign = if declare_type then type_sig ^ " " ^ assignment else assignment in
+			declare_and_assign
 	| _ ->
 			let type_sig = cxx_type_signature_synth_type_to_string typ in
-			type_sig ^ " " ^ assname ^ " = " ^ json_ref ^ ";"
+			let assignment = assname ^ " = " ^ json_ref ^ ";" in
+			let declare_and_assign = if declare_type then type_sig ^ " " ^ assignment else assignment in
+			declare_and_assign
 
 (* Given the Input typespec, generate some code that reads
 those IO values from a JSON file and puts them into values.
 Returns boht the code, and a list of function args to apply.
 *)
-let rec generate_input_assigns options (typemap: typemap) inps livein json_ref =
+let rec generate_input_assigns options (typemap: typemap) inps livein liveout json_ref =
+	(* Note that inps != livein @ liveout, because there may be duplicates,
+	and global variables that are livein/liveout may not be in the function
+	arguments.  *)
 	(* If there are infered types, use the original typemap.  *)
 	let iotypemap = match typemap.original_typemap with
 			| Some(t) -> t
@@ -952,15 +965,19 @@ let rec generate_input_assigns options (typemap: typemap) inps livein json_ref =
 			just load the value -- if it is an array, then
 			do the complicated ararys stuff and recurse. *)
 		let typ = Hashtbl.find_exn iotypemap.variable_map inp in
+		(* only declare the variable if it's in the input list to
+		the function--- otherwise, assume it's a global variable, that
+		shouldn't be declared.  *)
+		let should_declare = Utils.strings_any_equal [inp] inps in
 		(* Note that because this uses a C++ vector to build
 		directly from the file, we don't need to use any length
 		parameter adjustments (since those are implicit).  *)
-		generate_assign_to iotypemap inp (Some(inp)) typ "." json_ref
+		generate_assign_to iotypemap inp (Some(inp)) typ "." json_ref should_declare
 	) in
 	(* There are some variables that are 'dead' in, i.e. the
 	need to be allocated (e.g. output arrays), but they don't
 	need to be filled.  Call those 'deadin' values. *)
-	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) inps livein in
+	let deadin = set_difference (fun x -> fun y -> (String.compare x y) = 0) (livein @ liveout) livein in
 	(* No matter the assignment mode, read defs can't be static,
 	or rather, I'm not going to implement that.
 	THis is just testing code, so doesn't have anything
@@ -1172,7 +1189,7 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 	in
 	let load_file =      "    std::ifstream ifs(inpname); " in
 	let load_json =      "    json " ^ json_var_name ^ " = json::parse(ifs);" in
-	let parse_args, argnames = generate_input_assigns options program.typemap program.funargs program.livein json_var_name in
+	let parse_args, argnames = generate_input_assigns options program.typemap program.funargs program.livein program.liveout json_var_name in
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
