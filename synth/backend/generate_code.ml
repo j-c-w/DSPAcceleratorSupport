@@ -884,7 +884,7 @@ let rec generate_assign_to typemap assname fieldname typ join_op json_ref declar
 			let pointer_typ_str = cxx_type_signature_synth_type_to_string stype in
 			let sub_variable = assname ^ "_pointer" in
 			let recursed_code = generate_assign_to typemap sub_variable None stype "->" json_ref true in
-			let assignment = pointer_typ_str ^ "* " ^ assname ^ " = &" ^ sub_variable ^ ";" in
+			let assignment = assname ^ " = &" ^ sub_variable ^ ";" in
 			let declare_and_assign = if declare_type then pointer_typ_str ^ " *" ^ assignment else assignment in
 			(* Pointers obviously aren't stored as such in JSON files.   But
 			 they can be stack allocated here. *) recursed_code ^ "\n" ^
