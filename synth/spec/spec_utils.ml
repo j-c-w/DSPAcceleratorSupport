@@ -92,6 +92,12 @@ let name_reference_any_equal ns1 ns2 =
         )
     )
 
+let name_reference_list_equal n1 n2 =
+	let zipped = List.zip n1 n2 in
+	match zipped with
+	| Ok(l) -> List.for_all l (fun (x, y) -> name_reference_equal x y)
+	| Unequal_lengths -> false
+
 let rec name_reference_top_level_name n =
 	match n with
 	| AnonymousName -> raise (SpecException "No name for empty name ref")
@@ -108,8 +114,15 @@ let dim_relation_to_string dimrel =
     | DimPo2Relation -> " (^2) "
 	| DimDivByRelation(x) -> " (/" ^ (string_of_int x) ^ ")"
 
+let dimension_operation_to_string op =
+	match op with
+	| DimMultiply -> " * "
+
 let dimension_value_to_string (dim: dimension_value) =
 	match dim with
+	| DimMultipleVariables(xs, op) ->
+			let opstring = dimension_operation_to_string op in
+			String.concat ~sep:opstring (List.map xs name_reference_to_string)
 	| DimConstant(i) -> (string_of_int i)
 	| DimVariable(n, rel) -> (name_reference_to_string n) ^ (dim_relation_to_string rel)
 
@@ -122,9 +135,18 @@ let dim_relation_equal r1 r2 = match r1, r2 with
 	| DimDivByRelation(x), DimDivByRelation(y) ->
 			x = y
 	| _, _ -> false
+
+let dimension_operation_equal d1 d2 =
+    match d1, d2 with
+    | DimMultiply, DimMultiply -> true
 	
 let dimension_value_equal d1 d2 =
 	match d1, d2 with
+    | DimMultipleVariables(x1s, op1), DimMultipleVariables(x2s, op2) ->
+            (dimension_operation_equal op1 op2) &&
+            (* TODO --- handle cases where op menans order
+            can be flipped (e.g. with * ) *)
+            (name_reference_list_equal x1s x2s)
 	| DimConstant(c1), DimConstant(c2) -> c1 = c2
 	| DimVariable(v1, r1), DimVariable(v2, r2) -> (name_reference_equal v1 v2) && (dim_relation_equal r1 r2)
 	| _, _ -> false
@@ -160,6 +182,7 @@ let is_constant_dimension d =
 	match d with
 	| DimConstant(c) -> true
 	| DimVariable(v, _) -> false
+    | DimMultipleVariables(_, _) -> false
 	
 let is_constant_dimension_variable d =
 	match d with
@@ -171,6 +194,7 @@ let constant_dimension_size d =
 	match d with
 	| DimConstant(c) -> Some(c)
 	| DimVariable(_, _) -> None
+    | DimMultipleVariables(_, _) -> None
 
 let rec synth_type_to_string t =
     match t with
@@ -477,12 +501,6 @@ let sort_members_by_type typemap members =
 	let sorted = List.sort member_priority_pairs compare_func in
 	List.map sorted (fun (a, _) -> a)
 
-
-let name_reference_list_equal n1 n2 =
-	let zipped = List.zip n1 n2 in
-	match zipped with
-	| Ok(l) -> List.for_all l (fun (x, y) -> name_reference_equal x y)
-	| Unequal_lengths -> false
 
 let name_reference_list_list_equal n1 n2 = 
 	let zipped = List.zip n1 n2 in

@@ -20,6 +20,18 @@ let fft_generate_gir_from_dimension (x: dimension_type) =
     | Dimension(x) ->
 			(
 			match x with
+			| DimMultipleVariables(vs, op) ->
+					let fname = match op with
+					DimMultiply -> "PRODUCT"
+					in
+                    (* Define a temp var with the result of the dim muple variable.  *)
+                    let tempvariable = generate_ind_name () in
+					Sequence([Definition(Name(tempvariable), false, Some(Int64), None);
+                    Assignment(
+                        LVariable(Variable(Name(tempvariable))),
+                        Expression(FunctionCall(FunctionRef(Name(fname)),
+                            VariableList(List.map vs (fun v -> Variable(Name(name_reference_to_string v))))
+					)))]), Variable(Name(tempvariable))
 			| DimVariable(x, dimension_relation) ->
 					(
 					match dimension_relation with

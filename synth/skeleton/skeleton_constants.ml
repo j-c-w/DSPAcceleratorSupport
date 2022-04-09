@@ -46,6 +46,7 @@ let rec dimconsts_from_types typ =
 			| EmptyDimension -> []
 			| Dimension(dim) ->
 					match dim with
+						| DimMultipleVariables(_, _) -> []
 						| DimVariable(_, _) -> []
 						| DimConstant(c) -> [Int64V(c)]
 			in

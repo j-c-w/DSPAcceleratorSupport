@@ -41,6 +41,7 @@ let rec get_dependencies_for typemap typ =
 			| Dimension(x) -> (match x with
                 (* We only consider non-interlooping structs here, although we could support
                 more complex things with a more complex algorihtm.  *)
+				| DimMultipleVariables(vs, op) -> List.map vs name_reference_top_level_name
 				| DimVariable(v, relation) -> [name_reference_top_level_name v]
 				| DimConstant(_) -> []
 			)

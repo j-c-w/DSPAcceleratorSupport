@@ -189,6 +189,13 @@ let rec get_uses_defining_type typ =
 						that means you need to do a f*ck of a lot of work fixing the typemaps so that
 						they are actually sane and are recursive rather than the weird implicit
 						'.' that they use now.  Enjoy!")
+						| DimMultipleVariables(vs, op) ->
+								List.map vs (fun v ->
+									match v with
+									| AnonymousName -> raise (TopologicalSortException "No anon names in the typemap")
+									| Name(n) -> UDName(Name(n))
+									| StructName(ns) -> raise (TopologicalSortException "Hit a problematic bug --- see notes in source.") (* see identical case above *)
+								)
 						| DimConstant(_) -> []
 					)
             | EmptyDimension -> raise (TopologicalSortException "Don't think this is possible?") in

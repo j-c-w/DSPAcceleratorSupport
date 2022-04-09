@@ -116,37 +116,45 @@ let rec prepend_all_name_refs prep all =
 let dimvar_match x y =
 	(* x is the accelerator var, y is the input var *)
     let result = match x, y with
+	| DimMultipleVariables(v1s, DimMultiply), DimMultipleVariables(v2s, DimMultiply) ->
+			(
+			match List.zip v1s v2s with
+			(* Create an equality relation expectation for each variable --- TODO --- find a way to support
+			the reflexivity of '*' *)
+			| Ok(l) -> List.map l (fun (v1, v2) -> (DimvarOneDimension(VarMatch(v1, v2, DimEqualityRelation))))
+			| Unequal_lengths -> []
+			)
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimEqualityRelation) ->
-            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
+            [DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation))]
     | DimVariable(vname1, DimPo2Relation), DimVariable(vname2, DimPo2Relation) ->
-            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
+            [DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation))]
     | DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimPo2Relation) ->
-            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation)))
+            [DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation))]
 	| DimVariable(vname1, DimDivByRelation(x)), DimVariable(vname2, DimDivByRelation(y)) ->
 			if x = y then
-				Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
+				[DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation))]
 			else
 				(* TODO --- infer another multiplication factor? *)
-				None
+				[]
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimDivByRelation(x)) ->
-			Some(DimvarOneDimension(VarMatch(vname1, vname2, DimDivByRelation(x))))
+			[DimvarOneDimension(VarMatch(vname1, vname2, DimDivByRelation(x)))]
             (* TODO -- do we need an inverse po2/mulby relation? *)
     | DimVariable(vname1, _), DimVariable(vname2, _) ->
             (* TODO --- does it do us any good to do a
             conversion here?  not sure.  *)
-            None
+			[]
 	| DimConstant(c1), DimConstant(c2) ->
 		if c1 = c2 then
 			(* TODO --- somehting? *)
-			None
+			[]
 		else
-			None
+			[]
 	| DimVariable(v1, r1), DimConstant(c2) ->
-			Some(DimvarOneDimension(ConstantMatch(c2)))
+			[DimvarOneDimension(ConstantMatch(c2))]
 	| DimConstant(c1), DimVariable(v2, r1) ->
 			(* TODO -- should work with the range
 			checker to support this case? *)
-			Some(DimvarOneDimension(ConstantMatch(c1)))
+			[DimvarOneDimension(ConstantMatch(c1))]
     in
     result
 
@@ -165,8 +173,8 @@ let rec dimvar_contains direction x y =
 			in
 			let assvar = dimvar_match x' y' in
 			match assvar with
-			| None -> dimvar_contains direction x ys
-			| Some(v) -> v :: (dimvar_contains direction x ys)
+			| [] -> dimvar_contains direction x ys
+			| vs -> vs @ (dimvar_contains direction x ys)
 
 let rec dim_has_overlap direction x y =
 	List.concat (List.map x (fun xel -> dimvar_contains direction xel y ))
@@ -262,6 +270,9 @@ let rec generate_typesets classmap inptype parentname inpname: skeleton_dimensio
                             (* Relation stays the same, but we prepend the context that this particular
                                instance exists within.  *)
                             Dimension(DimVariable(name_reference_concat parent nr, rel))
+					| Dimension(DimMultipleVariables(vs, op)) ->
+							Dimension(DimMultipleVariables(
+								List.map vs (name_reference_concat parent), op))
             in
 			(* This gives the array the name, so 'x' belongs to '[]'.  *)
 			SArray(name_from_opt inpname, subtyps, full_lenvar)

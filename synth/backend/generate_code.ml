@@ -179,6 +179,12 @@ let rec cxx_name_reference_to_string typemap n =
 let cxx_dimension_value_to_string typemap context dvalue =
 	match dvalue with
 	| DimConstant(i) -> (string_of_int i) (* No context to consts *)
+	| DimMultipleVariables(vs, op) ->
+            (
+            match op with
+            | DimMultiply ->
+                    "(" ^ (String.concat (List.map vs (cxx_name_reference_to_string typemap)) ~sep:" * ") ^ ")"
+            )
 	| DimVariable(n, DimEqualityRelation) ->
 			context ^ (cxx_name_reference_to_string typemap n)
 	| DimVariable(n, DimPo2Relation) ->
@@ -271,6 +277,9 @@ let get_dimension_modifer dim_orig dim_infered modifier =
 					(fun v ->  "(" ^ v ^ " / " ^ (string_of_int x) ^ ")" ^ modifier)
 			| Dimension(DimConstant(_)) -> (fun v -> v ^ modifier)
 			| EmptyDimension -> (fun v -> v ^ modifier)
+			| Dimension(DimMultipleVariables(vs, op)) ->
+					(* Don't think this is valid? *)
+					assert false
 			)
 	| other ->
 			(* Otehrwise, these are going to have to be
@@ -318,6 +327,7 @@ let use_dim_ratio_modifier adim =
 	match adim with
 	| Dimension(DimConstant(_)) -> false
 	| Dimension(DimVariable(_)) -> true
+    | Dimension(DimMultipleVariables(_)) -> true
 	| EmptyDimension -> false (* This can arise wehn doing json generation. *)
 
 let is_heap_allocation_mode (alloc_mode: allocation_mode) =

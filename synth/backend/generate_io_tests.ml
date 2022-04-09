@@ -150,25 +150,38 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 				in
 				(* If this throws, there's an issue with the topo sorting below --- we
 				   expect that the dimvars will have been assigned.  *)
+
+				(* helper function to get the integer value from this *)
+				let get_integer_value_so_far values_so_far dimvar_name = 
+						let wrapper = get_value values_so_far dimvar_name in
+						let arrlen = match wrapper with
+						| Int8V(v) -> v
+						| Int16V(v) -> v
+						| Int32V(v) -> v
+						| Int64V(v) -> v
+						| UInt8V(v) -> v
+						| UInt16V(v) -> v
+						| UInt32V(v) -> v
+						| UInt64V(v) -> v
+						| _ ->
+								(* probably we could handle this --- just need to have a think
+								about what it means. *)
+								raise (TypeException "Unexpected list dimension type (non-int) ")
+						in
+						arrlen
+				in
 				let base_arrlen =
 						match infered_dimvar_size with
+						| DimMultipleVariables(dimvars, op) ->
+								let values = List.map dimvars (get_integer_value_so_far values_so_far) in
+								(
+								match op with
+								| DimMultiply ->
+										List.fold ~init:1 ~f:(fun i1 -> (fun i2 -> i1 * i2)) values
+								)
 						| DimVariable(dimvar_name, relation) ->
 								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
-								let wrapper = get_value values_so_far dimvar_name in
-								let arrlen = match wrapper with
-								| Int8V(v) -> v
-								| Int16V(v) -> v
-								| Int32V(v) -> v
-								| Int64V(v) -> v
-								| UInt8V(v) -> v
-								| UInt16V(v) -> v
-								| UInt32V(v) -> v
-								| UInt64V(v) -> v
-								| _ ->
-										(* probably we could handle this --- just need to have a think
-										about what it means. *)
-										raise (TypeException "Unexpected list dimension type (non-int) ")
-								in
+								let arrlen = get_integer_value_so_far values_so_far dimvar_name in
 								let () = if options.debug_generate_io_tests then
 									Printf.printf "Getting dimension %s, with original array length %d\n" (name_reference_to_string dimvar_name) (arrlen)
 								else () in

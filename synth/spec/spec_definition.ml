@@ -35,11 +35,15 @@ and dimension_type =
 	| Dimension of dimension_value
 and dimension_value =
 	| DimVariable of name_reference * dimension_relation
+	| DimMultipleVariables of name_reference list * dimension_operation
 	| DimConstant of int
 and dimension_relation =
 	| DimEqualityRelation
 	| DimPo2Relation
 	| DimDivByRelation of int
+(* Used for the DimMultipleVariables part *)
+and dimension_operation =
+    | DimMultiply
 
 type synth_value =
 	| BoolV of bool

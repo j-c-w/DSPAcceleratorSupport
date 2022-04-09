@@ -34,6 +34,7 @@ rule read =
 	| "#" { HASH }
 	| "." { DOT }
 	| "," { COMMA }
+	| "*" { STAR }
 	| integer as i { INTEGER (int_of_string i) }
 	| ident as id { IDENT id }
 	| eof {EOF}

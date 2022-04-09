@@ -321,40 +321,12 @@ let get_unwarpped_dim_dependency (dimension_value): gir_name list =
         | Name(n) -> [Name(n)]
         | _ -> raise (GenerateGIRException "Can't convert anything that isn't a name!")
         )
+	| DimMultipleVariables(vs, op) ->
+			List.map vs (fun v -> match v with
+				| Name(n) -> Name(n)
+				| _ -> raise (GenerateGIRException "Can't convert anything that isn't a name")
+			)
 	| DimConstant(c) -> []
-
-let rec get_bindings_by_name tvars dims =
-	(* let () = Printf.printf "Getting bindings for %s under dims %s\n" (name_reference_list_to_string tvars) (dimvar_mapping_list_to_string dims) in *)
-	let result = match tvars, dims with
-    | _, [] -> []
-    | t :: tvars, d :: dims ->
-            (* We pick the 't' variable, because that should be live
-               coming into the function so should just be a bit less
-               complicated.  I think I used the 'f' variable before,
-               and that worked fine too.  May need to re-evaluate as
-               things change. *)
-            let sdim_domain_var = match d with
-            (*  Needs to only havea s inle entry -- keeping it like this
-            because I think we may want more complex types in the
-            future here.  *)
-            | DimvarOneDimension(VarMatch(f, t, mode)) -> Dimension(DimVariable(f, mode))
-			| DimvarOneDimension(ConstantMatch(f)) -> Dimension(DimConstant(f))
-            in
-            let subdims = get_bindings_by_name tvars dims in
-            (* Need to put the tvar name on the front of all
-               those. *)
-            let prepended_subsims = List.map subdims (fun (sname, sdim) ->
-                match sname with
-                | StructName(ns) -> (StructName(t :: ns), sdim)
-                | Name(_) -> (StructName([t; sname]), sdim)
-                | AnonymousName -> (t, sdim)
-            ) in
-            (t, sdim_domain_var) :: prepended_subsims
-    | [], _ :: _ -> raise (GenerateGIRException "Can't have fewer dims than var splits\n") in
-	(* let () = Printf.printf "Result is %s\n" (String.concat ~sep:", " (List.map result (fun (f, t) ->
-		(name_reference_to_string f) ^ " -> " ^ (dimension_type_to_string t)
-	))) in *)
-	result
 
 let generate_conversion_function conv = match conv with
     | IdentityConversion ->
@@ -444,6 +416,24 @@ let get_definition_type_for options escapes validmap typemap v =
                         let stype_new = size_concreteization sb in
                         let dimmax = match dim with
                         | Dimension(DimConstant(c)) -> Some(DimConstant(c))
+						| Dimension(DimMultipleVariables(vs, op)) ->
+								let ranges = List.map vs (fun v -> Hashtbl.find validmap (name_reference_to_string v)) in
+								let rmaxes = List.map ranges (fun r -> match r with
+								| None -> None (* Not everythign has to have a specified range.  *)
+								| Some(range) ->
+										match range_max range with
+										| RangeInteger(i) -> Some(i)
+										| _ -> assert false (* Can't handle non integer array length *)
+								) in
+								let int_result = (
+								match op with
+								| DimMultiply ->
+									List.fold ~init:(Some(1)) ~f:(fun v1 -> (fun v2 -> (match v1, v2 with
+									| Some(i1), Some(i2) -> Some(i1 * i2)
+									| _, _ -> None
+									))) rmaxes
+								) in
+								Option.map int_result (fun r -> DimConstant(r))
                         | Dimension(DimVariable(dimv, relation)) ->
                                 let range = Hashtbl.find validmap (name_reference_to_string dimv) in
 								let raw_max = (
@@ -506,6 +496,11 @@ let rec generate_gir_copy_loop typemap copytype =
                     match dims with
                     (* Only support equality relation here, although we could of course support more.  *)
                     | Dimension(DimVariable(nr, DimEqualityRelation)) -> VariableReference(generate_variable_reference_to nr)
+                    | Dimension(DimMultipleVariables(nrs, op)) ->
+                            let fname = match op with
+                            | DimMultiply -> "PRODUCT"
+                            in
+                            FunctionCall(FunctionRef(Name(fname)), VariableList(List.map nrs (fun n -> generate_variable_reference_to n)))
                     | Dimension(DimConstant(c)) -> VariableReference(Constant(Int64V(c)))
                     | _ -> assert false (* TODO --- implement if required. *)
                 in
