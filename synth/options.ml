@@ -23,6 +23,16 @@ let get_compiler_flags target =
 		"libs/clib/fft_synth_lib.co libs/clib/synthesizer.co -Ilibs -fsanitize=address"
 	]
 
+type heuristics =
+	| FFT
+	| GEMM
+
+let get_heuristics name =
+	match name with
+	| "FFT" -> FFT
+	| "GEMM" -> GEMM
+	| _ -> raise (OptionsException ("Unexpected heurstics setting " ^ name))
+
 type behavioural_synthesizer =
 	| FFTSynth
 	| NoSynthesizer
@@ -50,6 +60,7 @@ type options = {
 	pre_accel_dump_function: string;
     execution_timeout: int;
 	generate_timing_code: bool;
+    heuristics_mode: heuristics;
 
 	(* Generation Parameters.  *)
 	param_constant_generation_threshold: int;
@@ -144,6 +155,7 @@ let default_options = {
 	pre_accel_dump_function = "pre_accel_dump_function";
     execution_timeout = 5;
     generate_timing_code = false;
+    heuristics_mode = FFT;
 
     param_constant_generation_threshold = 4;
 	range_size_difference_factor = Finite(3);

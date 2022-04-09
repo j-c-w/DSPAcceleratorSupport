@@ -42,7 +42,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		array_length_threshold no_parmap
         debug_gir_generate_define_statements debug_infer_structs
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
-		debug_skeleton_deduplicate max_string_size =
+		debug_skeleton_deduplicate max_string_size heuristics_mode =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -63,6 +63,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		pre_accel_dump_function = pre_accel_dump_function;
 		execution_timeout = execution_timeout;
         generate_timing_code = generate_timing_code;
+        heuristics_mode = get_heuristics heuristics_mode;
 
 		param_constant_generation_threshold = param_constant_generation_threshold;
         range_size_difference_factor = range_factor_from_option range_size_diff_factor;
@@ -168,6 +169,9 @@ let compiler_flags =
 let post_synthesis_tool =
 	let doc = "Which synthesizer to use for post-synthesis (options are FFT or None now" in
     Arg.(value & opt string "FFT" & info ["post-synthesizer"] ~docv:"PostSynthesizer" ~doc)
+let heuristics_mode = 
+	let doc = "Which algorithm are we compiling for?  (Use different heuristics)" in
+	Arg.(value & opt string "FFT" & info ["heuristics"] ~docv:"HeuristicsMode" ~doc)
 let pre_accel_dump_function =
 	let doc = "What to call the internal function for pre accelerator dumping (may have to be specified to avoid name clashes)" in
 	Arg.(value & opt string "pre_accel_dump_function" & info ["pre-accel-dump-funcation-name"] ~docv:"PreAccelDumpName" ~doc)
@@ -375,6 +379,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
-	$ debug_skeleton_deduplicate $ max_string_size)
+	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode)
 
 let () = Term.exit @@ Term.eval (args_t, info)
