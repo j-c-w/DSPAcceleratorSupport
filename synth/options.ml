@@ -93,6 +93,7 @@ type options = {
 
 	(* Pass debug *)
 	debug_load: bool;
+	debug_parse_type: bool;
 	debug_assign_dimensions: bool;
 	debug_infer_structs: bool;
 	debug_expand_typemaps: bool;
@@ -187,6 +188,7 @@ let default_options = {
 
 	(* Pass debug *)
 	debug_load = false;
+	debug_parse_type = false;
 	debug_generate_skeletons = false;
 	debug_assign_dimensions = false;
 	debug_infer_structs = false;

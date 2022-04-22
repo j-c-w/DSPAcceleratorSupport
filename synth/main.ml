@@ -42,7 +42,8 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		array_length_threshold no_parmap
         debug_gir_generate_define_statements debug_infer_structs
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
-		debug_skeleton_deduplicate max_string_size heuristics_mode =
+		debug_skeleton_deduplicate max_string_size heuristics_mode
+		debug_parse_type =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -91,6 +92,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         dump_behavioural_synth = dump_behavioural_synth;
 
 		debug_load = debug_load;
+		debug_parse_type = debug_parse_type;
 		debug_generate_skeletons = debug_generate_skeletons;
         debug_assign_dimensions = debug_assign_dimensions;
 		debug_infer_structs = debug_infer_structs;
@@ -330,6 +332,9 @@ let debug_expand_typemaps =
 let debug_load =
 	let doc = "Debug the loading pass" in
 	Arg.(value & flag & info ["debug-load"] ~docv:"DebugLoad" ~doc)
+let debug_parse_type =
+	let doc = "Debug type parsing" in
+	Arg.(value & flag & info ["debug-parse-type"] ~docv:"DebugParseType" ~doc)
 let debug_generate_program =
 	let doc = "Debug the generate program pass" in
 	Arg.(value & flag & info ["debug-generate-program"] ~docv:"DebugGenProgram" ~doc)
@@ -379,6 +384,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
-	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode)
+	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type)
 
 let () = Term.exit @@ Term.eval (args_t, info)

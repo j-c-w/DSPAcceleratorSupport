@@ -23,7 +23,7 @@ let load_typemap options json_definition typenames =
 		if is_null_json (Yojson.Basic.Util.member name json_mapping) then
 			raise (LoadTypemapException ("Not found type for variable " ^ name ^ "\n"))
 		else
-			(name, json_mapping |> member name |> to_string |> parse_type)
+			(name, json_mapping |> member name |> to_string |> (parse_type options))
 	) in
 	(* Put the parsed types in a hash table. *)
 	ignore(List.map typemap_pairs (fun (name, typ) -> Hashtbl.add typemap name typ));

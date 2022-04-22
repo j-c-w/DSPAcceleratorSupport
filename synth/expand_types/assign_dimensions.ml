@@ -91,7 +91,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
                 newarrtyp
     | othertype ->
 			let () = if opts.debug_assign_dimensions then
-				Printf.printf "%s" "Was not an array... \n"
+				Printf.printf "Was not an array (type %s)... \n" (synth_type_to_string othertype)
 			else () in
 			[othertype]
 	in

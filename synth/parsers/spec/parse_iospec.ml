@@ -18,14 +18,14 @@ let isnull x =
 	| `Null -> true
 	| _ -> false
 
-let extract_typemap typemap vars =
+let extract_typemap options typemap vars =
 	let tbl: (string, synth_type) Hashtbl.t = (Hashtbl.create (module String)) in
 	(* Exctract the type names and their values from the JSON. *)
 	let typepairs = List.map vars (fun var ->
 		if isnull (Yojson.Basic.Util.member var typemap) then
 			raise (IOSpecError ("Not found type for variable " ^ var ^ "\n"))
 		else
-            (var, parse_type(typemap |> member var |> to_string))
+            (var, (parse_type options (typemap |> member var |> to_string)))
 	) in
 	(* Add these types to the hash map.  *)
 	ignore(List.map typepairs (fun (var, t)  -> Hashtbl.add tbl var t));
@@ -51,7 +51,7 @@ let load_iospec options filename =
     | other -> other |> to_list
     ) to_string in
 	let execcmd = json |> member "execcmd" |> to_string in
-	let typemap = extract_typemap (json |> member "typemap") (livein @ liveout @ retvars) in
+	let typemap = extract_typemap options (json |> member "typemap") (livein @ liveout @ retvars) in
     let funname = json |> member "funname" |> to_string in
 	let funargs = List.map (json |> member "funargs" |> to_list) (fun j -> j |> to_string) in
 	let compiler_flags = match json |> member "compiler_flags" with
