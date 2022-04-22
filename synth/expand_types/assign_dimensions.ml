@@ -226,6 +226,7 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 						| Dimension(DimVariable(v, DimPo2Relation)) ->
 								(* Note that rangemaps use a stupid non-nested structure where '.' is in the the actual used name.  *)
 								let vrange = Hashtbl.find rangemap (name_reference_to_string v) in
+								(
 								match vrange with
 								| Some(r) ->
 										(* These must be ints.  *)
@@ -253,6 +254,12 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 									in this case, an input range
 									that suggests it is possible. *)
 								| None -> false
+								)
+                            (* Highly doubtful that one would multiply variables that represent log of
+                            length.  Plausible if these were added
+                            together though.  *)
+							| Dimension(DimMultipleVariables(names, DimMultiply)) ->
+                                    false
 					)
 			| _ -> true (* everything else passes.  *)
 			) in
