@@ -31,6 +31,10 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
     (* Only apply to dimensioned types, e.g. arrays.  *)
 	let result = match name with
     | Array(artyp, existing_dims) ->
+			let () = if opts.debug_assign_dimensions then
+				Printf.printf "Variable was an array --- recursing into sub-type...\n"
+			else ()
+			in
             (* Recurse and compute any existing dims for any multi
                dimensional arrays.  *)
             let newsubtyps = find_possible_dimensions opts typemap all_vars_at_level artyp in
@@ -150,9 +154,19 @@ let create_all_typemaps tps =
 		) in
 		newtbl
 	) in
+	let () = if (List.length newtbls) = 0 then
+		raise (AssignDimensionsException "When trying to expand typemaps, found no valid typemaps")
+	else () in
 	newtbls
 
 let create_all_classmaps tps =
+	match tps with
+	(* The classmap can be empty if there are no partiuclar types.
+	   In this case, we should just return another empty
+	   classmap as this will get cartesian product'ed with
+	   the typemaps *)
+	| [] -> [Hashtbl.create (module String)]
+	| _ ->
 	let updated_maps = List.map tps (fun (cname, metadata, subtymaps) ->
 		List.map subtymaps (fun subtymap ->
 			let resdata = match metadata with
@@ -255,11 +269,10 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 									that suggests it is possible. *)
 								| None -> false
 								)
-                            (* Highly doubtful that one would multiply variables that represent log of
-                            length.  Plausible if these were added
-                            together though.  *)
+							(* What heuristics should we apply? *)
 							| Dimension(DimMultipleVariables(names, DimMultiply)) ->
-                                    false
+									(* Pablo? *)
+									true
 					)
 			| _ -> true (* everything else passes.  *)
 			) in
