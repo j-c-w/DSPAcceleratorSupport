@@ -368,7 +368,16 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
             in
             let result = match dimvar_map with
             | DimvarOneDimension(VarMatch(matches)) ->
-                    List.for_all matches (fun (tov, fromv, mode) ->
+					(* Even though this is a &&, for this we
+					use || because otherwise nothing will every pass! *)
+					(* e.g. if you say a = x and b = y, then you
+					are just looking for one of those assignments
+					to be matched here.  I think this is right,
+					but could be the source of some hard-to-debug
+					bugs.   Unaddressed here, because I'm not
+					acutally 100% what it should do if this is wrong --
+					using && gives us no matches :) *)
+                    List.exists matches (fun (tov, fromv, mode) ->
                         match mode with
                         | DimEqualityRelation ->
                             (* In theory, the order of this doesn't matter,

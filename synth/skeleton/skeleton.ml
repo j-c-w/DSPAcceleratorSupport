@@ -115,6 +115,7 @@ let rec prepend_all_name_refs prep all =
    assign one variable at a time.  *)
 (* The returned list is a list of conditions on the binding.  *)
 let dimvar_match x y =
+	(* let () = Printf.printf "Matching %s and %s\n" (dimension_value_to_string x) (dimension_value_to_string y) in *)
 	(* x is the accelerator var, y is the input var *)
     let result = match x, y with
 	| DimMultipleVariables(v1s, DimMultiply), DimMultipleVariables(v2s, DimMultiply) ->

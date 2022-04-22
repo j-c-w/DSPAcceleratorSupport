@@ -151,7 +151,7 @@ let generate_const_reference_to const =
 that can be used to generate wrappers when
 given a simple assignment sequence Assignment.  *)
 (* It also keeps track of the index variables *)
-let rec generate_loop_wrappers_from_dimensions constraints =
+let rec generate_loop_wrappers_from_dimensions typelookup constraints =
 	(* Get the dimension out of the constraints *)
 	let dim = match constraints with
 	| DimensionConstraints(_, dim) -> dim
@@ -181,6 +181,7 @@ let rec generate_loop_wrappers_from_dimensions constraints =
 			let girnames = List.map vs (fun name_ref ->
 				Name(name_reference_to_string name_ref)) in
 			let maxvar = new_variable () in
+			let _ = Hashtbl.add typelookup (gir_name_to_string maxvar) (Int64) in
 			let indvar = new_induction_variable () in
 
 			(* The multiplication function used here takes
@@ -199,6 +200,7 @@ let rec generate_loop_wrappers_from_dimensions constraints =
 					| v :: vs ->
 							(* Generate the sub multiplications *)
 							let new_maxvar = new_variable() in
+							let _ = Hashtbl.add typelookup (gir_name_to_string new_maxvar) (Int64) in
 							let sub_precode = generate_precode (Variable(new_maxvar)) vs in
 
 							(* Add def for new_maxvar *)
@@ -217,7 +219,9 @@ let rec generate_loop_wrappers_from_dimensions constraints =
 				generate_precode (Variable(maxvar)) girnames
 			) in
 			let result = (fun assign ->
-				Sequence(precode @ [
+				Sequence(
+					[Definition(maxvar, false, Some(Int64), None)] @
+					precode @ [
 					LoopOver(assign, indvar, VariableReference(Variable(maxvar)))
 				])
 			) in
@@ -726,7 +730,7 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
             ()
 		else () in
 		let loop_wrappers = List.map single_variable_binding.dimensions
-			generate_loop_wrappers_from_dimensions in
+			(generate_loop_wrappers_from_dimensions typemap.variable_map) in
 		let conversion_function, conversion_function_name = generate_conversion_function single_variable_binding.conversion_function in
         let fvars_indexes = single_variable_binding.fromvars_index_nesting in
         let tovar_indexes = single_variable_binding.tovar_index_nesting in
