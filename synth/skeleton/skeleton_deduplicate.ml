@@ -25,7 +25,7 @@ let flat_skeleton_binding_to_hash_string options tmap binding =
 				() else () in
 				let totyp = synth_type_to_string (type_of_name_reference_list tmap (binds.tovar_index_nesting)) in
 				let fromtyps = String.concat ~sep:", " (List.map binds.fromvars_index_nesting (fun v -> (synth_type_to_string (type_of_assignment tmap v)))) in
-				"To:" ^ (name_reference_list_to_string binds.tovar_index_nesting) ^ ", Typ: " ^ totyp ^ ", From:" ^ (assignment_type_list_to_string binds.fromvars_index_nesting) ^ ", FromTyp:" ^ fromtyps ^ ", Dimensions:" ^ (dimvar_mapping_list_to_string binds.valid_dimensions) ^ ", ConvFunc:" ^ (conversion_function_to_string binds.conversion_function)
+				"To:" ^ (name_reference_list_to_string binds.tovar_index_nesting) ^ ", Typ: " ^ totyp ^ ", From:" ^ (assignment_type_list_to_string binds.fromvars_index_nesting) ^ ", FromTyp:" ^ fromtyps ^ ", Dimensions:" ^ (dimension_constraint_list_to_string binds.dimensions) ^ ", ConvFunc:" ^ (conversion_function_to_string binds.conversion_function)
 		)
 	)
 

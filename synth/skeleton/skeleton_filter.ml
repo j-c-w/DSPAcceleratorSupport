@@ -9,7 +9,7 @@ open Builtin_conversion_functions;;
 
 exception SkeletonFilter of string
 
-let filter_dimvar_set dms = 
+let filter_constraints_set cons = 
     (* We don't need to have the same dimension with
     the same source var for multiple targets.  *)
 	(* Same thing with the to varaibles :) *)
@@ -24,20 +24,22 @@ let filter_dimvar_set dms =
 			| None -> true
 	in
     (* let () = Printf.printf "Length of input dms is %d\n" (List.length dms) in *)
-    let filtered = List.filter dms (fun dm ->
+    let filtered = List.filter cons (fun con ->
+        let dm = match con with | DimensionConstraints(dm, _) -> dm in
         match dm with
-        | DimvarOneDimension(VarMatch(f, t, mode)) -> (
+        | DimvarOneDimension(VarMatch(matches)) ->
+                List.for_all matches (fun (f, t, mode) -> (
             let result = (tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t)) in
             (* let () = Printf.printf "Inspecting variable %s, with results %b\n" (dimvar_mapping_to_string dm) (result) in *)
             result
-		)
+                ))
         (* TODO -- do we also need to do some filtering here? *)
 		| DimvarOneDimension(ConstantMatch(f)) ->
                 (* let () = Printf.printf "Looking at a constant, %s\n" (dimvar_mapping_to_string dm) in *)
                 true
     )
     in
-    let unique_dimvar_set = Utils.remove_duplicates dimvar_equal filtered in
+    let unique_dimvar_set = Utils.remove_duplicates dimension_constraint_equal filtered in
     unique_dimvar_set
 
 (* No variables assigned from more than once.  *)
@@ -168,17 +170,22 @@ let length_variable_compatability (skel: flat_skeleton_binding) =
 	List.for_all skel.flat_bindings (fun bind ->
 		let built_up_arnms =
 			build_whole_arnm bind.tovar_index_nesting in
-		List.for_all (truncate_zip built_up_arnms bind.valid_dimensions) (fun (arnm, dimvar) ->
+		List.for_all (truncate_zip built_up_arnms bind.dimensions) (fun (arnm, dim_constraint) ->
 			let arnm_so_far_str = (name_reference_to_string arnm) in
 			(* let () = Printf.printf "Arnm is %s\n" arnm_so_far_str in *)
 			let v_used = Hashtbl.find lenvars_for arnm_so_far_str in
-			(* let () = Printf.printf "VUsed is %s\n" (dimvar_mapping_to_string dimvar) in *)
-			let _ = Hashtbl.set lenvars_for arnm_so_far_str dimvar in
-			match v_used with
-			| None ->
+			(* let () = Printf.printf "VUsed is %s\n" (dimension_constraint_to_string dim_constraint) in *)
+			let _ = Hashtbl.set lenvars_for arnm_so_far_str dim_constraint in
+			match dim_constraint, v_used with
+			| _, None ->
 					true
-			| Some(other) ->
-					dimvar_equal dimvar other
+			| DimensionConstraints(dimvar, _), Some(DimensionConstraints(other, _)) ->
+                    (* We check equality of the constraints here --
+                    do the constraints uniquely identify the
+                    assignment?  Currently they should --- but may
+                    not always be true? *)
+                    (* Could compare the dimension_value instead? *)
+                    dimvar_equal dimvar other
 		)
 	)
 
@@ -207,7 +214,7 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
 			| AssignVariable(v) ->
 					List.map v (fun v -> Some(v))
 			in
-		List.for_all (truncate_zip (extend_zip fb.tovar_index_nesting fvar_contents) fb.valid_dimensions) (fun ((t, f), dimvar) ->
+		List.for_all (truncate_zip (extend_zip fb.tovar_index_nesting fvar_contents) fb.dimensions) (fun ((t, f), dimcons) ->
 			let () = tname_so_far := t :: !tname_so_far in
 			let has_tbinds = Hashtbl.find tbl (name_reference_list_to_string !tname_so_far) in
 			let has_fbinds = match f with
@@ -215,14 +222,14 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
 					let () = fname_so_far := v :: !fname_so_far in
 					let result = Hashtbl.find tbl (name_reference_list_to_string !fname_so_far) in
 					(* Set the used dimensions for the fvar.  *)
-					let _ = Hashtbl.set tbl (name_reference_list_to_string !fname_so_far) dimvar in
+					let _ = Hashtbl.set tbl (name_reference_list_to_string !fname_so_far) dimcons in
 					result
 			(* If we are assigning a constant, then we don't have to bother. *)
 			| None -> None
 			in
 			let () = if options.debug_skeleton_multiple_lengths_filter then
 				let () = Printf.printf "Considering fromvar %s and tovar %s\n" (name_reference_list_to_string !fname_so_far) (name_reference_list_to_string !tname_so_far) in
-				let () = Printf.printf "Under dim %s\n" (dimvar_mapping_to_string dimvar) in
+				let () = Printf.printf "Under dim %s\n" (dimension_constraint_to_string dimcons) in
 				()
 			else ()
 			in
@@ -235,18 +242,20 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
 						here, e.g. one that is closer to "could equal",
 						but this seems more sensible *)
 						let () = if options.debug_skeleton_multiple_lengths_filter then
-							let () = Printf.printf "Comparing (tbinds) %s and %s\n" (dimvar_mapping_to_string dimvar) (dimvar_mapping_to_string other) in
+							let () = Printf.printf "Comparing (tbinds) %s and %s\n" (dimension_constraint_to_string dimcons) (dimension_constraint_to_string other) in
 							() else ()
 						in
-						dimvar_equal_commutative equivalence_classes dimvar other
+						let dimvar = match dimcons with | DimensionConstraints(cons, _) -> cons in
+						let other_dimvar = match other with | DimensionConstraints(cons, _) -> cons in
+						dimvar_equal_commutative equivalence_classes dimvar other_dimvar
 			in
 			let fbinds_valid =
 				match has_fbinds with
 				| None ->
 						true
-				| Some(other: dimvar_mapping) ->
+				| Some(other: dim_constraints) ->
 						let () = if options.debug_skeleton_multiple_lengths_filter then
-							let () = Printf.printf "Comparing %s and %s\n" (dimvar_mapping_to_string dimvar) (dimvar_mapping_to_string other) in
+							let () = Printf.printf "Comparing %s and %s\n" (dimension_constraint_to_string dimcons) (dimension_constraint_to_string other) in
 							() else ()
 						in
                         (* Really not 100% sure why we need
@@ -255,10 +264,12 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
                         in different directions depending on
                         whether this is pre or post, so this triggers
                         false-negatives here.  Ditto above.  *)
-						dimvar_equal_commutative equivalence_classes dimvar other
+						let dimvar = match dimcons with | DimensionConstraints(cons, _) -> cons in
+						let other_dimvar = match dimcons with | DimensionConstraints(cons, _) -> cons in
+						dimvar_equal_commutative equivalence_classes dimvar other_dimvar
 			in
 			(* Now, set the used dimensions for the tvar *)
-			let _ = Hashtbl.set tbl (name_reference_list_to_string !tname_so_far) dimvar in
+			let _ = Hashtbl.set tbl (name_reference_list_to_string !tname_so_far) dimcons in
 			tbinds_valid && fbinds_valid
 		)
 		)
@@ -302,7 +313,7 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
 	List.for_all dimensions (fun dim ->
 		let () =
 			if options.debug_skeleton_multiple_lengths_filter then
-			Printf.printf "Starting analysis of new dimension %s\n" (dimvar_mapping_to_string dim)
+			Printf.printf "Starting analysis of new dimension %s\n" (dimension_constraint_to_string dim)
 			else ()
 		in
 		(* Check that a suitable defining binding exists for each dimension.  *)
@@ -346,41 +357,50 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
                     (if (List.length fromvars_equivalents) = 0 then "None" else (String.concat ~sep:", " fromvars_equivalents))
                     (name_reference_list_to_string tovars)
                     (conversion_function_to_string conversion_function)
-                    (dimvar_mapping_to_string dim)
+                    (dimension_constraint_to_string dim)
                     in ()
                 else ()
             in
-            let result = match dim with
-            | DimvarOneDimension(VarMatch(tov, fromv, DimEqualityRelation)) ->
-					(* In theory, the order of this doesn't matter,
-					although the order should be normalized. *)
-                    if dim_assign_equal tovars tov then
-						(* conversion function must preserve the dimension relation.  *)
-                        (* let () = Printf.printf "Tovars equal\n" in*)
-						(dim_assign_any_equal equiv_fromvars fromv) &&
-						(is_identity_conversion conversion_function)
-                    else
-                        (* This dimension has no overlap with
-                        the assignment we are considering. *)
-						false
-			| DimvarOneDimension(VarMatch(tov, fromv, DimPo2Relation)) ->
-					if dim_assign_equal tovars tov then
-						(* as above.  *)
-						(dim_assign_equal fromvars fromv) &&
-						(is_po2_conversion conversion_function)
-					else
-						(* no overlap.  *)
-						false
-			| DimvarOneDimension(VarMatch(tov, fromv, DimDivByRelation(x))) ->
-					if dim_assign_equal tovars tov then
-						(* as above *)
-						(dim_assign_equal fromvars fromv) &&
-						(match conversion_function with
-						| DivideByConversion(mby) -> x = mby
-						| _ -> false)
-					else
-						(* no overlap.  *)
-						false
+            (* Get the constra\ints out *)
+            let dimvar_map = match dim with
+            | DimensionConstraints(dimmap, value) ->
+                    dimmap
+            in
+            let result = match dimvar_map with
+            | DimvarOneDimension(VarMatch(matches)) ->
+                    List.for_all matches (fun (tov, fromv, mode) ->
+                        match mode with
+                        | DimEqualityRelation ->
+                            (* In theory, the order of this doesn't matter,
+                            although the order should be normalized. *)
+                            if dim_assign_equal tovars tov then
+                                (* conversion function must preserve the dimension relation.  *)
+                                (* let () = Printf.printf "Tovars equal\n" in*)
+                                (dim_assign_any_equal equiv_fromvars fromv) &&
+                                (is_identity_conversion conversion_function)
+                            else
+                                (* This dimension has no overlap with
+                                the assignment we are considering. *)
+                                false
+                        | DimPo2Relation ->
+                            if dim_assign_equal tovars tov then
+                                (* as above.  *)
+                                (dim_assign_equal fromvars fromv) &&
+                                (is_po2_conversion conversion_function)
+                            else
+                                (* no overlap.  *)
+                                false
+                        | DimDivByRelation(x) ->
+                            if dim_assign_equal tovars tov then
+                                (* as above *)
+                                (dim_assign_equal fromvars fromv) &&
+                                (match conversion_function with
+                                | DivideByConversion(mby) -> x = mby
+                                | _ -> false)
+                            else
+                                (* no overlap.  *)
+                                false
+                    )
             | DimvarOneDimension(ConstantMatch(_)) ->
 					true
             in
@@ -394,11 +414,18 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
 	)
 
 let get_dimension_assignments skel =
-	Utils.remove_duplicates (dimvar_equal_commutative (Hashtbl.create (module String))) (List.concat (List.map skel.flat_bindings (fun bind ->
-                bind.valid_dimensions
-            )
-        )
-    )
+	Utils.remove_duplicates
+	(* Arg 1 to remove_dups *)
+		(fun cons1 -> fun cons2 ->
+			match cons1, cons2 with
+				| DimensionConstraints(c1, _), DimensionConstraints(c2, _)->
+						dimvar_equal_commutative (Hashtbl.create (module String)) c1 c2)
+		(* Arg 2 to remove _dups *)
+		(List.concat
+			(List.map skel.flat_bindings
+				(fun bind -> bind.dimensions)
+			)
+		)
 	
 let length_assignment_check options api_spec skeleton =
 	(* Check that dimvars have the same assignments as

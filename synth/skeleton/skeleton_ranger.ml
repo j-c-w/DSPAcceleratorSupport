@@ -189,7 +189,7 @@ let check_binds options from_rangemap to_rangemap (bind: flat_single_variable_bi
                     Some({
                         fromvars_index_nesting = bind.fromvars_index_nesting;
                         tovar_index_nesting = bind.tovar_index_nesting;
-                        valid_dimensions = bind.valid_dimensions;
+                        dimensions = bind.dimensions;
                         conversion_function = conv_f
                     })
                 else

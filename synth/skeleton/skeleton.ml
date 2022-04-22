@@ -113,6 +113,7 @@ let rec prepend_all_name_refs prep all =
 (* In theory, we'd like to support assignments between
    lists of different lengths.  Currently, we just
    assign one variable at a time.  *)
+(* The returned list is a list of conditions on the binding.  *)
 let dimvar_match x y =
 	(* x is the accelerator var, y is the input var *)
     let result = match x, y with
@@ -121,40 +122,44 @@ let dimvar_match x y =
 			match List.zip v1s v2s with
 			(* Create an equality relation expectation for each variable --- TODO --- find a way to support
 			the reflexivity of '*' *)
-			| Ok(l) -> List.map l (fun (v1, v2) -> (DimvarOneDimension(VarMatch(v1, v2, DimEqualityRelation))))
-			| Unequal_lengths -> []
+            | Ok(l) -> Some(DimvarOneDimension(VarMatch(List.map l (fun (v1, v2) -> (v1, v2, DimEqualityRelation)))))
+			| Unequal_lengths -> None
 			)
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimEqualityRelation) ->
-            [DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation))]
+            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimEqualityRelation)])))
     | DimVariable(vname1, DimPo2Relation), DimVariable(vname2, DimPo2Relation) ->
-            [DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation))]
+            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimEqualityRelation)])))
     | DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimPo2Relation) ->
-            [DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation))]
+            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimPo2Relation)])))
 	| DimVariable(vname1, DimDivByRelation(x)), DimVariable(vname2, DimDivByRelation(y)) ->
 			if x = y then
-				[DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation))]
+                Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimEqualityRelation)])))
 			else
 				(* TODO --- infer another multiplication factor? *)
-				[]
+				None
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimDivByRelation(x)) ->
-			[DimvarOneDimension(VarMatch(vname1, vname2, DimDivByRelation(x)))]
+            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimDivByRelation(x))])))
             (* TODO -- do we need an inverse po2/mulby relation? *)
     | DimVariable(vname1, _), DimVariable(vname2, _) ->
             (* TODO --- does it do us any good to do a
             conversion here?  not sure.  *)
-			[]
+			None
 	| DimConstant(c1), DimConstant(c2) ->
 		if c1 = c2 then
 			(* TODO --- somehting? *)
-			[]
+			None
 		else
-			[]
+			None
 	| DimVariable(v1, r1), DimConstant(c2) ->
-			[DimvarOneDimension(ConstantMatch(c2))]
+			Some(DimvarOneDimension(ConstantMatch(c2)))
 	| DimConstant(c1), DimVariable(v2, r1) ->
 			(* TODO -- should work with the range
 			checker to support this case? *)
-			[DimvarOneDimension(ConstantMatch(c1))]
+			Some(DimvarOneDimension(ConstantMatch(c1)))
+	(* As far as I know, this owuld make no sense? *)
+	(* Or maybe we should support a constant match as above? *)
+	| DimMultipleVariables(_, _), _ -> None
+	| _, DimMultipleVariables(_, _) -> None
     in
     result
 
@@ -173,8 +178,10 @@ let rec dimvar_contains direction x y =
 			in
 			let assvar = dimvar_match x' y' in
 			match assvar with
-			| [] -> dimvar_contains direction x ys
-			| vs -> vs @ (dimvar_contains direction x ys)
+			| None -> dimvar_contains direction x ys
+            (* Keep track of the original assignment in addition
+             * to the generated constraints.  *)
+			| Some(vs) -> (DimensionConstraints(vs, x')) :: (dimvar_contains direction x ys)
 
 let rec dim_has_overlap direction x y =
 	List.concat (List.map x (fun xel -> dimvar_contains direction xel y ))
@@ -479,7 +486,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 								{
                                     fromvars_index_nesting = prepend_all arrnam bind.fromvars_index_nesting;
                                     tovar_index_nesting = sarray_nam :: bind.tovar_index_nesting;
-									valid_dimensions_set = dim_mapping :: bind.valid_dimensions_set;
+                                    dimensions_set = dim_mapping :: bind.dimensions_set;
 									(* Note that since the probabilities are the same for every sub-element,
 									   this is OK.  Not that I'd like it to stay like this forever.  *)
 									probability = prob
@@ -534,7 +541,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 			{
                 fromvars_index_nesting = [binding];
                 tovar_index_nesting = [name_refs_from_skeleton stype_out];
-                valid_dimensions_set = [];
+                dimensions_set = [];
 				probability = prob;
             })] in
 			let () = verify_single_binding_option_groups results in
@@ -602,28 +609,28 @@ let rec define_bindings_for direction valid_dimvars vs =
 					deal with array childer. *)
 					tovar_index_nesting = [name_reference_base_name arnam; AnonymousName];
 					fromvars_index_nesting = [];
-					valid_dimensions_set = [dimvar_bindings];
+					dimensions_set = [dimvar_bindings];
 					probability = 1.0
                 }]
 		| SType(SInt(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];
 					fromvars_index_nesting = [AssignConstant(Int64V(0))];
-					valid_dimensions_set = [];
+					dimensions_set = [];
 					probability = 1.0
                 }]
 		| SType(SBool(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];
 					fromvars_index_nesting = [AssignConstant(BoolV(false))];
-					valid_dimensions_set = [];
+					dimensions_set = [];
 					probability = 1.0
 				}]
 		| SType(SFloat(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];
 					fromvars_index_nesting = [AssignConstant(Float32V(0.0))];
-					valid_dimensions_set = [];
+					dimensions_set = [];
 					probability = 1.0
                 }]
 		| SType(SString(n)) ->
@@ -747,7 +754,7 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
     let _ =
         List.map result (fun b ->
             List.map b (fun c ->
-                match c.valid_dimensions_set with
+                match c.dimensions_set with
                 | [] -> ()
                 | x :: xs -> (assert (List.length x > 0))
             )

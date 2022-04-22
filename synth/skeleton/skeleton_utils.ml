@@ -7,8 +7,11 @@ open Builtin_conversion_functions;;
 
 let one_dim_var_mapping_to_string map =
 	match map with
-	| VarMatch(fromv, tov, mode) -> (name_reference_to_string fromv) ^
+	| VarMatch(matches) ->
+            String.concat ~sep:"&&" (List.map matches (fun (fromv, tov, mode) ->
+            (name_reference_to_string fromv) ^
     " = " ^ (name_reference_to_string tov) ^ (dim_relation_to_string mode)
+            ))
 	| ConstantMatch(from_const) ->
 			(string_of_int from_const)
 
@@ -18,16 +21,40 @@ let rec dimvar_mapping_to_string mapping = match mapping with
 let dimvar_mapping_list_to_string mapping =
     String.concat ~sep:"\n" (List.map mapping dimvar_mapping_to_string)
 
+let dimension_constraint_to_string cons =
+	match cons with
+	| DimensionConstraints(dim_map, dimension_value) ->
+            "Dimension: " ^ 
+            (dimension_value_to_string dimension_value) ^
+            " with constraints " ^
+            (dimvar_mapping_to_string dim_map)
+
+let dimension_constraint_list_to_string conslist =
+    String.concat ~sep:", " (List.map conslist dimension_constraint_to_string)
+
 let one_dimension_mapping_equal m1 m2 =
     match m1, m2 with
-    | VarMatch(fromv1, tov1, mode1), VarMatch(fromv2, tov2, mode2) ->
-            (name_reference_equal fromv1 fromv2) &&
-            (name_reference_equal tov1 tov2) &&
-            (dim_relation_equal mode1 mode2)
+    | VarMatch(matches1), VarMatch(matches2) ->
+            (
+            match (List.zip matches1 matches2) with
+            (* All sub-constraints must be equal for these to be equivalent --- we could (and probably should) consider
+             * that && is reflexive. *)
+            | Ok(l) -> List.for_all l (fun ((fromv1, tov1, mode1), (fromv2, tov2, mode2)) ->
+                (name_reference_equal fromv1 fromv2) &&
+                (name_reference_equal tov1 tov2) &&
+                (dim_relation_equal mode1 mode2)
+            )
+            | Unequal_lengths -> false
+            )
 	| ConstantMatch(fconst1), ConstantMatch(fconst2) ->
 			(fconst1 = fconst2)
     | _, _ -> false
 
+(* I think this means relexive?  *)
+(* Anyway, I think the point is that x = y and y = x are the same --- it's to compare
+ * across both pre- and post- bindings, which assign
+ * in different orders.
+ * It DOES NOT CONSIDER the relfexivity of the && operator.  *)
 let one_dimension_mapping_equal_commutative equivalence_map m1 m2 =
     let get_equivalent_variables map v =
         let equivalents = Hashtbl.find map (name_reference_to_string v) in
@@ -36,16 +63,26 @@ let one_dimension_mapping_equal_commutative equivalence_map m1 m2 =
         | None -> [(name_reference_to_string v)]
     in
 	match m1, m2 with
-	| VarMatch(fromv1, tov1, DimEqualityRelation), VarMatch(fromv2, tov2, DimEqualityRelation) ->
-            let from1alternatives = get_equivalent_variables equivalence_map fromv1 in
-            let from2alternatives = get_equivalent_variables equivalence_map fromv2 in
-            let to1alternatives = get_equivalent_variables equivalence_map tov1 in
-            let to2alternatives = get_equivalent_variables equivalence_map tov2 in
-			((Utils.strings_any_equal from1alternatives from2alternatives) &&
-			 (Utils.strings_any_equal to1alternatives to2alternatives)) ||
-			((Utils.strings_any_equal from1alternatives to2alternatives) &&
-			 (Utils.strings_any_equal from2alternatives to1alternatives))
-            (* TODO --- something for pow2? *)
+    | VarMatch(ms1), VarMatch(ms2) ->
+            (
+            match (List.zip ms1 ms2) with
+            (* TODO -- we should really support a = b && c = d and c = d && a = b being equal *)
+            | Ok(l) -> List.for_all l (fun ((fromv1, tov1, rel1), (fromv2, tov2, rel2)) -> 
+                    match rel1, rel2 with
+                    | DimEqualityRelation, DimEqualityRelation ->
+                            let from1alternatives = get_equivalent_variables equivalence_map fromv1 in
+                            let from2alternatives = get_equivalent_variables equivalence_map fromv2 in
+                            let to1alternatives = get_equivalent_variables equivalence_map tov1 in
+                            let to2alternatives = get_equivalent_variables equivalence_map tov2 in
+                            ((Utils.strings_any_equal from1alternatives from2alternatives) &&
+             (Utils.strings_any_equal to1alternatives to2alternatives)) ||
+            ((Utils.strings_any_equal from1alternatives to2alternatives) &&
+             (Utils.strings_any_equal from2alternatives to1alternatives))
+                    (* TODO --- something for pow2? *)
+                    | _, _ -> one_dimension_mapping_equal m1 m2
+                    )
+            | Unequal_lengths -> false
+            )
 	| other1, other2 ->
 			(* No difference for constant matching *)
 			one_dimension_mapping_equal other1 other2
@@ -70,6 +107,25 @@ let dimvar_list_list_equal m1 m2 =
     match zipped with
     | Ok(l) -> List.for_all l (fun (x, y) -> dimvar_list_equal x y)
     | Unequal_lengths -> false
+
+(* Assume that equality in the constraints => equality
+    in the dimension.  *)
+let dimension_constraint_equal m1 m2 =
+    match m1, m2 with
+    | DimensionConstraints(m1con, _), DimensionConstraints(m2con, _) -> dimvar_equal m1con m2con
+
+(* See notes on the other dimension_constraint_**_equal *)
+let dimension_constraint_list_list_equal m1 m2 =
+    let get_constraints x =
+        let get_constraints' y =
+            match y with
+            | DimensionConstraints(c, _) -> c
+        in
+        List.map x get_constraints'
+    in
+    let m1_constraints = List.map m1 get_constraints in
+    let m2_constraints = List.map m2 get_constraints in
+    dimvar_list_list_equal m1_constraints m2_constraints
 
 let skeleton_type_to_string stype =
 	match stype with
@@ -116,7 +172,7 @@ let flat_single_variable_binding_to_string (binding: flat_single_variable_bindin
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
 		   (List.map binding.fromvars_index_nesting (assignment_type_to_string))) ^ "]" ^
        "\nUnder dimensions [" ^ (String.concat ~sep:", "
-            (List.map binding.valid_dimensions dimvar_mapping_to_string)) ^ "]" ^
+            (List.map binding.dimensions dimension_constraint_to_string)) ^ "]" ^
        "\nWith conversion function " ^ (conversion_function_to_string binding.conversion_function)
 
 
@@ -145,8 +201,8 @@ let single_variable_binding_to_string (binding: single_variable_binding_option_g
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
 		   (List.map binding.fromvars_index_nesting (assignment_type_to_string))) ^ "]" ^
        "\nUnder dimensions [" ^ (String.concat ~sep:", "
-            (List.map binding.valid_dimensions_set (fun dimset ->
-                String.concat ~sep:" or " (List.map dimset dimvar_mapping_to_string)))) ^ "]"
+            (List.map binding.dimensions_set (fun dimset ->
+                String.concat ~sep:" or " (List.map dimset dimension_constraint_to_string)))) ^ "]"
 
 let single_variable_binding_list_to_string binds =
 	"SKELETON:\n" ^ String.concat ~sep:"\n" (
@@ -220,7 +276,7 @@ let assignment_type_list_equal l1 l2 =
 let single_variable_binding_equal (s1: single_variable_binding_option_group) (s2: single_variable_binding_option_group) =
     (assignment_type_list_equal s1.fromvars_index_nesting s2.fromvars_index_nesting) &&
     (name_reference_list_equal s1.tovar_index_nesting s2.tovar_index_nesting) &&
-    (dimvar_list_list_equal s1.valid_dimensions_set s2.valid_dimensions_set)
+    (dimension_constraint_list_list_equal s1.dimensions_set s2.dimensions_set)
 
 let name_refs_from_skeleton sk =
 	match sk with

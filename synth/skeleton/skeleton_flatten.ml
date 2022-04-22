@@ -9,16 +9,16 @@ open Utils;;
 open Builtin_conversion_functions;;
 
 let flatten_binding (svar_binding: single_variable_binding_option_group) =
-    (* let () = Printf.printf "Length of bindings is %d\n" (List.length svar_binding.valid_dimensions_set) in *)
-	if List.length svar_binding.valid_dimensions_set > 0 then
-		let reduced_dimvar_set = List.map svar_binding.valid_dimensions_set filter_dimvar_set in
-		let combinations = cross_product reduced_dimvar_set in
+    (* let () = Printf.printf "Length of bindings is %d\n" (List.length svar_binding.dimensions_set) in *)
+	if List.length svar_binding.dimensions_set > 0 then
+		let reduced_constraint_set = List.map svar_binding.dimensions_set filter_constraints_set in
+		let combinations = cross_product reduced_constraint_set in
 		List.map combinations (fun dim ->
 		(* let () = Printf.printf "Building for dimensions %s" (dimvar_mapping_list_to_string dim) in*)
 		{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
 			tovar_index_nesting = svar_binding.tovar_index_nesting;
-			valid_dimensions = dim;
+			dimensions = dim;
 			conversion_function = IdentityConversion
 		}
 		)
@@ -28,7 +28,7 @@ let flatten_binding (svar_binding: single_variable_binding_option_group) =
 		[{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
 			tovar_index_nesting = svar_binding.tovar_index_nesting;
-			valid_dimensions = [];
+			dimensions = [];
 			conversion_function = IdentityConversion
 		}]
 

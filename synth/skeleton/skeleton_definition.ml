@@ -8,11 +8,15 @@ open Range_definition;;
    eventually include more complicated mappings
    than the direct mappings entailed by this.  *)
 type one_dim_var_mapping =
-	| VarMatch of name_reference * name_reference * dimension_relation
+	| VarMatch of (name_reference * name_reference * dimension_relation) list
 	| ConstantMatch of int
 
 type dimvar_mapping =
     | DimvarOneDimension of one_dim_var_mapping
+
+(* Stores both a set of constraints and the assignment required.  *)
+type dim_constraints =
+	| DimensionConstraints of dimvar_mapping * dimension_value
 
 (* This is an abstracted type that is used
    for matching different likely compatible types
@@ -59,7 +63,8 @@ type single_variable_binding_option_group = {
 	(* Which dimensions is this assignment valid over? *)
 	(* Again, we have one element for each list, but
 	provide a list of possible options here.  *)
-	valid_dimensions_set: dimvar_mapping list list;
+	(* Each sub-list is a set of constraints.  *)
+	dimensions_set: dim_constraints list list;
 	probability: float;
 }
 
@@ -71,7 +76,9 @@ type skeleton_type_binding = {
 type flat_single_variable_binding = {
     fromvars_index_nesting: assignment_type list;
     tovar_index_nesting: name_reference list;
-    valid_dimensions: dimvar_mapping list;
+	(* and corresponding constraints.  *)
+	(* each index nexting gets a dimension *)
+	dimensions: dim_constraints list;
     conversion_function: conversion_functions
 }
 

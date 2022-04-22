@@ -151,36 +151,84 @@ let generate_const_reference_to const =
 that can be used to generate wrappers when
 given a simple assignment sequence Assignment.  *)
 (* It also keeps track of the index variables *)
-let rec generate_loop_wrappers_from_dimensions dim =
+let rec generate_loop_wrappers_from_dimensions constraints =
+	(* Get the dimension out of the constraints *)
+	let dim = match constraints with
+	| DimensionConstraints(_, dim) -> dim
+	in
 	match dim with
-	| DimvarOneDimension(dimvar) -> (
+	| DimVariable(name, mode) -> (
 			(* Generate a loop for each of the dimvars.  *)
 			(* Also try just a straight up assignment.  *)
-            match dimvar with
-			| VarMatch(tov, fromv, mode) ->
-				let indvar = new_induction_variable () in
-                let in_loop_assign =(fun assign ->
-					match mode with
-					| DimEqualityRelation ->
-						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
-					| DimPo2Relation ->
-						(* So I was generating the conversion in the
-						loop, but it turns out by using the tov,
-						you don't have to do the conversion :) *)
-						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
-                            (* LoopOver(assign, indvar, FunctionCall(FunctionRef(Name("Pow2")), VariableList([generate_variable_reference_to tov]))) *)
-					| DimDivByRelation(x) ->
-						LoopOver(assign, indvar, VariableReference(generate_variable_reference_to tov))
-                    ) in
-                (in_loop_assign, [indvar])
-			| ConstantMatch(from) ->
-				let indvar = new_induction_variable () in
-				let in_loop_assign = (fun assign ->
-					LoopOver(assign, indvar, VariableReference(generate_const_reference_to (Int64V(from))))
-				)
+			let indvar = new_induction_variable () in
+			let girname = VariableReference(Variable(Name(name_reference_to_string name))) in
+			let in_loop_assign =(fun assign ->
+				match mode with
+				| DimEqualityRelation ->
+					LoopOver(assign, indvar, girname)
+				| DimPo2Relation ->
+					(* So I was generating the conversion in the
+					loop, but it turns out by using the tov,
+					you don't have to do the conversion :) *)
+					LoopOver(assign, indvar, girname)
+						(* LoopOver(assign, indvar, FunctionCall(FunctionRef(Name("Pow2")), VariableList([generate_variable_reference_to tov]))) *)
+				| DimDivByRelation(x) ->
+					LoopOver(assign, indvar, girname)
+				) in
+			(in_loop_assign, [indvar])
+	)
+	| DimMultipleVariables(vs, mode) ->
+			let girnames = List.map vs (fun name_ref ->
+				Name(name_reference_to_string name_ref)) in
+			let maxvar = new_variable () in
+			let indvar = new_induction_variable () in
+
+			(* The multiplication function used here takes
+			   two args, so use this recursion to generate
+			   a sequence of assigns to get the assignment to
+			   maxvar with the real max.  *)
+			let precode = (
+			match mode with
+			(* Note I'm pretty sure that new modes can reuse
+			the code below almost entirely.  *)
+			| DimMultiply ->
+				let rec generate_precode maxvar vs =
+					match vs with
+					| [] -> assert false (*think this sin't possible? *)
+					| [v] -> [Assignment(LVariable(maxvar), Expression(VariableReference(Variable(v))))]
+					| v :: vs ->
+							(* Generate the sub multiplications *)
+							let new_maxvar = new_variable() in
+							let sub_precode = generate_precode (Variable(new_maxvar)) vs in
+
+							(* Add def for new_maxvar *)
+							[Definition(new_maxvar, false, Some(Int64), None)] @
+							sub_precode @ [
+								(* Do multiply with V and then assign
+								   to the maxvar passed in.  *)
+								Assignment(LVariable(maxvar),
+									Expression(FunctionCall(
+										FunctionRef(Name("MULTIPLY")),
+										VariableList([Variable(new_maxvar); Variable(v)])
+									))
+								)
+							]
 				in
+				generate_precode (Variable(maxvar)) girnames
+			) in
+			let result = (fun assign ->
+				Sequence(precode @ [
+					LoopOver(assign, indvar, VariableReference(Variable(maxvar)))
+				])
+			) in
+			(result, [indvar])
+	| DimConstant(from) ->
+			let indvar = new_induction_variable () in
+			let in_loop_assign = (fun assign ->
+				LoopOver(assign, indvar, VariableReference(generate_const_reference_to (Int64V(from))))
+				)
+			in
 				(in_loop_assign, [indvar])
-    )
 
 let rec maybe_create_reference_from post_indexes indvarnames =
 	(* let post_indexes_str =
@@ -677,7 +725,7 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
 			let () = Printf.printf "(END BINDING)\n" in
             ()
 		else () in
-		let loop_wrappers = List.map single_variable_binding.valid_dimensions
+		let loop_wrappers = List.map single_variable_binding.dimensions
 			generate_loop_wrappers_from_dimensions in
 		let conversion_function, conversion_function_name = generate_conversion_function single_variable_binding.conversion_function in
         let fvars_indexes = single_variable_binding.fromvars_index_nesting in
@@ -701,7 +749,7 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
         let () =
             if options.debug_generate_gir then
                 let () = Printf.printf "------\n\nFor variable %s\n" (flat_single_variable_binding_to_string single_variable_binding) in
-				let () = Printf.printf "Valid dimensions were %s\n" (dimvar_mapping_list_to_string single_variable_binding.valid_dimensions) in
+				let () = Printf.printf "Valid dimensions were %s\n" (dimension_constraint_list_to_string single_variable_binding.dimensions) in
                 let () = Printf.printf "Loop wrappers found are %d\n" (List.length loop_wrappers) in
 				let () = Printf.printf "Loop assignment functions are %d\n" (List.length assign_funcs) in
 				Printf.printf "Define used is %s\n" (gir_to_string define)
