@@ -14,6 +14,8 @@
 #define Pow2(x) (1 << x)
 #define IntDivide(x,y) (x / y)
 
+#define Multiply(x, y) (x * y)
+
 // Strings are internally dimensionless, but if they need
 // to be alloated in C we need to decide on the amount
 // of space they require.  One expects this to be platform

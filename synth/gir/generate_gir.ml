@@ -208,7 +208,7 @@ let rec generate_loop_wrappers_from_dimensions constraints =
 								   to the maxvar passed in.  *)
 								Assignment(LVariable(maxvar),
 									Expression(FunctionCall(
-										FunctionRef(Name("MULTIPLY")),
+										FunctionRef(Name("Multiply")),
 										VariableList([Variable(new_maxvar); Variable(v)])
 									))
 								)
