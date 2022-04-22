@@ -1,0 +1,15 @@
+{
+	"livein": ["in", "i", "j"],
+	"liveout": ["out"],
+	"funargs": ["in", "out", "i", "j"],
+	"execcmd": "../benchmarks/TestingGEMM/exec",
+	"funname": "gemm",
+	"typemap": {
+		"in": "array(float32#i*j)",
+		"out": "array(float32#i*j)",
+		"i": "int32",
+		"j": "int32"
+	},
+	"required_includes": ["../../benchmarks/TestingGEMM/interface.hpp"],
+	"classmap": {}
+}
