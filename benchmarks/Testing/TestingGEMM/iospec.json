@@ -1,14 +1,15 @@
 {
-	"livein": ["in", "i", "j"],
-	"liveout": ["out"],
-	"funargs": ["in", "out", "i", "j"],
+	"livein": ["A_api", "B_api", "m_api", "n_api"],
+	"liveout": ["C_api"],
+	"funargs": ["A_api", "B_api", "C_api", "m_api", "n_api"],
 	"execcmd": "../benchmarks/TestingGEMM/exec",
 	"funname": "gemm",
 	"typemap": {
-		"in": "array(float32#i*j)",
-		"out": "array(float32#i*j)",
-		"i": "int32",
-		"j": "int32"
+		"A_api": "array(float32#m_api*n_api)",
+		"B_api": "array(float32#m_api*n_api)",
+		"C_api": "array(float32#m_api*n_api)",
+		"m_api": "int32",
+		"n_api": "int32"
 	},
 	"required_includes": ["../../benchmarks/TestingGEMM/interface.hpp"],
 	"classmap": {}
