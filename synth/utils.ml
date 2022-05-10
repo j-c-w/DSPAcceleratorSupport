@@ -84,10 +84,18 @@ let rec map_while ls f =
 let string_equal x y =
 	(String.compare x y) = 0
 
-let float_equal f1 f2 =
+let float_equal (f1: float) (f2: float) =
 	  (* Aim for error no bigger than a 10th of f2, should
 		100% make this configurable.  *)
-	  let thresh = (Float.abs (f2)) /. 10.0 in
+	  let thresh =
+		  if ((Float.compare f2 0.000001) < 0)
+			  && ((Float.compare f2 ~-.0.0000001) > 0) then
+			  (* If f2 is very very close to 0, give us a bit of wiggle
+			  room *)
+			  0.0000001
+		  else
+			  (Float.abs (f2)) /. 10.0
+	in
 	  ((Float.compare f1 (f2 +. thresh)) = -1) &&
 	  ((Float.compare f1 (f2 -. thresh) = 1))
 

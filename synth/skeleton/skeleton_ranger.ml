@@ -42,6 +42,21 @@ let transform_range convf range =
                     ) in
                     range_value_to_item res
             )
+	| RangeFloat(f) ->
+			(
+				match convf with
+				| IdentityConversion -> RangeFloat(f)
+				| PowerOfTwoConversion -> RangeFloat(2.0**f)
+				| DivideByConversion(n) -> RangeFloat(f /. (float_of_int n))
+				| Map(_, _, vlist) ->
+						let (_, res) = List.find_exn vlist ~f:(fun (from, t) ->
+							if range_value_eq (range_value_to_item from) (RangeFloat(f)) then
+								true
+							else
+								false
+						) in
+						range_value_to_item res
+			)
     | _ -> assert false (* IMO conversions are only generated
     for ints right now.  *)
     (* Tha'ts not strictly true I think --- might also

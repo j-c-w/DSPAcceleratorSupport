@@ -237,7 +237,11 @@ let rec range_value_eq v1 v2 =
 	match v1, v2 with
 	| RangeBool(i), RangeBool(j) -> (Bool.compare i j) = 0
 	| RangeInteger(i), RangeInteger(j) -> i = j
-	| RangeFloat(i), RangeFloat(j) -> Utils.float_equal i j
+	| RangeFloat(i), RangeFloat(j) ->
+			(* let () = Printf.printf "Comparing floats %s and %s\n" (string_of_float i) (string_of_float j) in *)
+			let result = Utils.float_equal i j in
+			(* let () = Printf.printf "Result is %b\n" result in *)
+			result
 	| RangeArray(t, suba), RangeArray(t1, suba2) ->
 			(
 			match List.zip suba suba2 with
@@ -395,6 +399,9 @@ let rec range_item_to_string i =
     | RangeBool(b) -> (string_of_bool b)
     | RangeArray(t, vs) ->
             "[" ^ (String.concat ~sep:", " (List.map vs range_item_to_string)) ^ "]"
+
+let range_value_to_string v =
+	range_item_to_string (range_value_to_item v)
 
 let range_range_to_string rrange =
 	match rrange with
