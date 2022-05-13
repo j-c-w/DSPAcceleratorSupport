@@ -786,24 +786,39 @@ and cxx_generate_from_expression typemap expr =
 			(* We need a default value for this thing, so just pick
 			the first one from the map.  *)
 			let first_source, default_value = List.hd_exn value_pairs_list in
-			let deftyp = cxx_type_signature_synth_type_to_string (Hashtbl.find_exn typemap.variable_map (gir_name_to_string vfrom)) in
+			let vtype = Hashtbl.find_exn typemap.variable_map (gir_name_to_string vfrom) in
+			let deftyp = cxx_type_signature_synth_type_to_string vtype in
 			(* TODO --- Should we crash when a value outside the rnage
 			is presented?  Clearly that doesn't make sense from an impl
 			perspective (or does it?) but it certianly makes sense from
 			a debugging perspective.  *)
 			(* Pre-assign code *)
-			deftyp ^ " " ^ temp_name ^ " = " ^ (synth_value_to_string default_value) ^ "; \n" ^
-			"switch (" ^ vfrom_reference  ^ ") {\n" ^
-			(
-				String.concat (
-					List.map value_pairs_list (fun (vfrom, vto) ->
-						"case " ^ (synth_value_to_string vfrom) ^ ": \n" ^
-						temp_name ^ " = " ^ (synth_value_to_string vto) ^ "; break;\n"
+			match vtype with
+			| (Float16 | Float32 | Float64) ->
+				(* for FP types, we can't use a switch in c *)
+					(* We should really do better than initializing to a Nan, but really, to generate a map, a range
+					has to have been promised. *)
+			   deftyp ^ " " ^ temp_name ^ " = nanf(\"0\");\n" ^ (
+				   String.concat (
+					   List.map value_pairs_list (fun (vfrom, vto) ->
+						   "if (FLOAT_EQUAL(" ^ (synth_value_to_string vfrom) ^ ", " ^ vfrom_reference ^ ")) {" ^ temp_name ^ " = " ^ (synth_value_to_string vto) ^ "; }"
+					   )
+				   )
+			   ),
+			   temp_name
+			| _ -> (* all other types can use switch-case. *)
+				deftyp ^ " " ^ temp_name ^ " = " ^ (synth_value_to_string default_value) ^ "; \n" ^
+				"switch (" ^ vfrom_reference  ^ ") {\n" ^
+				(
+					String.concat (
+						List.map value_pairs_list (fun (vfrom, vto) ->
+							"case " ^ (synth_value_to_string vfrom) ^ ": \n" ^
+							temp_name ^ " = " ^ (synth_value_to_string vto) ^ "; break;\n"
+						)
 					)
-				)
-			) ^ "\n}\n",
-			(* Assign code is just a ref to the temp_name *)
-			temp_name
+				) ^ "\n}\n",
+				(* Assign code is just a ref to the temp_name *)
+				temp_name
 and cxx_generate_from_function_ref fref =
     match fref with
     | FunctionRef(nref) -> (cxx_gir_name_to_string nref)
@@ -1118,6 +1133,7 @@ let otherimports = String.concat ~sep:"\n" [
     "#include<fstream>"; "#include<iomanip>";
 	"#include<clib/synthesizer.h>";
     "#include<time.h>";
+	"#include<math.h>";
 	"#include<iostream>";
     "char *output_file; ";
 	"char *pre_accel_dump_file; // optional dump file. ";
