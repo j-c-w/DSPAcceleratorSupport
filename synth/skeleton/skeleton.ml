@@ -474,9 +474,13 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                         let () = assert ((List.length dim_mapping) > 0) in
 						let flattened_undimensioned_probability_typeset =
 							List.map flattened_undimensioned_typeset (fun l -> Probability(l, prob)) in
+						let () = if options.debug_generate_skeletons then
+							Printf.printf "Generated %d probability_types %!\n" (List.length flattened_undimensioned_probability_typeset) else () in
 						(* Get the possible bindings.  *)
 						let poss_bindings: single_variable_binding_option_group list list =
 							possible_bindings options direction constant_options_map flattened_undimensioned_probability_typeset flattened_arr_stypes in
+						let () = if options.debug_generate_skeletons then
+							Printf.printf "Generated %d possible bindings %!\n" (List.length poss_bindings) else () in
 						let () = verify_single_binding_option_groups poss_bindings in
 						(* Now add the required dimension mappings.  *)
 						(* For each variable assignment *)
@@ -504,7 +508,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                     let () = Printf.printf "Found %d options\n" (List.length flattened_arr_stypes) in
 					let () = Printf.printf "Found the following assignments %s\n" (double_binding_options_list_to_string concated_recurse_assignments) in
 					let () = Printf.printf "Had the following types available to find these assignments %s\n" (skeleton_dimension_probabilistic_group_type_list_to_string typesets_in) in
-					Printf.printf "Filtered these down to %s\n" (skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b, p) -> b)))
+					Printf.printf "Filtered these down to %s\n%!" (skeleton_dimension_group_type_list_to_string (List.map valid_undimensioned_typesets_in (fun (a, b, p) -> b)))
 				else
 					() in
 				let () = verify_single_binding_option_groups concated_recurse_assignments in
@@ -557,7 +561,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 let rec find_possible_skeletons options (possible_bindings_for_var: single_variable_binding_option_group list list): skeleton_type_binding list =
     (* TODO --- Fix this function so it isn't empty *)
 	let () = if options.debug_generate_skeletons then
-		Printf.printf "Number of Varibales left to bind: %d\n" (List.length possible_bindings_for_var)
+		Printf.printf "Number of Varibales left to bind: %d\n%!" (List.length possible_bindings_for_var)
 		else () in
 	match (possible_bindings_for_var) with
 	| [] -> [{bindings = []}] (* No bindings needed *)
@@ -569,7 +573,7 @@ let rec find_possible_skeletons options (possible_bindings_for_var: single_varia
 			let () = if options.debug_generate_skeletons then
 				let () = Printf.printf "Number of options for this variable is %d\n" (List.length binding) in
 				let () = if List.length binding > 0 then
-					Printf.printf "Working on binding from vars %s\n" (name_reference_list_to_string (List.hd_exn binding).tovar_index_nesting)
+					Printf.printf "Working on binding from vars %s\n%!" (name_reference_list_to_string (List.hd_exn binding).tovar_index_nesting)
 				else () in
 				()
 			else () in
@@ -661,7 +665,9 @@ let rec define_bindings_for direction valid_dimvars vs =
 
 let possible_skeletons options possible_bindings_for_var =
 	(* Get the skeletons for assigining to variables.  *)
-	find_possible_skeletons options possible_bindings_for_var
+	let res = find_possible_skeletons options possible_bindings_for_var in
+	let () = Printf.printf "Finsihed execuging find possible skeletons\n%!" in
+	res
 
 let rec get_dimvars_used typeset =
     (* let () = Printf.printf "input typeset is %s\n" (skeleton_dimension_probabilistic_group_type_list_to_string typeset) in *)
@@ -732,7 +738,7 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
 	let possible_bindings_list = possible_bindings options direction constant_options_map flattened_typesets_in flattened_typesets_out in
     let () =
         if options.debug_skeleton_multiple_lengths_filter then
-            Printf.printf ""
+            Printf.printf "generated possible bindings\n%!"
         else ()
     in
 	let likely_bindings: single_variable_binding_option_group list list =
@@ -767,13 +773,25 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
    the outputs. *)
 let binding_skeleton options direction typemap constant_options_map typesets_in typesets_out typesets_define =
 	let possible_bindings_list = assign_and_define_bindings options direction constant_options_map typesets_in typesets_out typesets_define in
+	let () = if options.debug_generate_skeletons then
+		Printf.printf "Done generating possible bindings\n%!"
+	else ()
+	in
 	(* Verify that there is exactly one variable per list, and that
 	   there is not more than one list per variable.  *)
 	(* Then, filter out various bindings that might not make any sense.  *)
 	let sensible_bindings = List.filter possible_bindings_list binding_check in
+	let () = if options.debug_generate_skeletons then
+		Printf.printf "Done filtering possible bindings\n%!"
+	else ()
+	in
 	(* Finally, create some skeletons from those bindings.  *)
     (* Need to have one set of bindings for each output variable.  *)
 	let possible_skeletons_list: skeleton_type_binding list = possible_skeletons options sensible_bindings in
+	let () = if options.debug_generate_skeletons then
+		Printf.printf "Done generating possible skeletons (%d of them)\n%!" (List.length possible_skeletons_list)
+	else ()
+	in
 	let sensible_skeletons = List.filter possible_skeletons_list skeleton_check in
 	(* Debug info: *)
 	if options.debug_generate_skeletons then
