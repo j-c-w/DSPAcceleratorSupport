@@ -10,9 +10,9 @@ open Gir;;
 open Program;;
 
 let () = Printexc.record_backtrace true;;
-let _ = Random.init 0;;
 
-let main iospec_file num_tests output_folder max_string_size =
+let main iospec_file num_tests output_folder max_string_size seed =
+	let _ = Random.init seed in
 	let options = { default_options with
 		number_of_tests = num_tests;
 		execution_folder = output_folder;
@@ -65,6 +65,9 @@ let number =
 let max_string_size =
 	let doc = "Max size of strings to generate as part of IO test" in
 	Arg.(value & opt int 100 & info ["max-string-size"] ~docv:"MaxStringSize" ~doc)
+let seed =
+	let doc = "Random Seed" in
+	Arg.(value & opt int 0 & info ["random-seed"] ~docv:"RandomSeed" ~doc)
 
 let destfolder =
 	let doc = "Distination folder" in
