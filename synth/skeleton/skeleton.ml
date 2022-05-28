@@ -84,8 +84,9 @@ let rec flatten_stypes sty =
 	(fun ty -> match ty with
 	| Probability(SType(x), prob) -> Some([(x, prob)])
 	| Probability(STypes(x), prob) ->
-			let sub_flattened = flatten_stypes (List.map x (fun l -> Probability(l, prob))) in
-			Some(sub_flattened)
+            assert false (* Unimplemented? *)
+			(* let sub_flattened = flatten_stypes (List.map x (fun l -> Probability(l, prob))) in
+			Some(sub_flattened) *)
 	| Probability(SArray(_, _, _), prob) -> None))
 
 let rec prepend_all prep all =
@@ -309,15 +310,34 @@ let rec generate_typesets classmap inptype parentname inpname: skeleton_dimensio
 let skeleton_type_lookup typemap names =
     List.map names (fun name -> generate_typesets typemap.classmap (Hashtbl.find_exn typemap.variable_map name) (None) (Some(name)))
 
-let build_dimension_groups likely unlikely =
-	(* So this function should be more powerful.  The type supports any float of precedence,
-	   which is meant to be some kind of fuzzy thing that allows us to consider the probability
-	   of a match.
+let build_dimension_groups options inputs =
+	(* So this function implements two key heuristics.  First,
+	   it takes variables and groups them into 'likely' and 'unlikely'.
+	   the current usecase for this is how long ago a variable
+	   was defined (e.g. if it was livein, it is unlikely to be
+	   an assignment for a liveout variable, but there is a small
+	   chance it could be.)
 
-	   I think that it should be expanded to consider things like likelyhood of names mapping
-	   to each other.   *)
-	(List.map likely (fun l -> Probability(l, 1.0))) @
-	(List.map unlikely (fun l -> Probability(l, 0.5)))
+	   Once these initial probabilites are calculated, the variable
+	   map from the --binding-probabilities flag is passed in.
+	   That modulates the likelyhood of the vairous variables.
+	   *)
+
+    match options.binding_specification with
+    | Some(spec) ->
+        List.map inputs (fun v ->
+            let () = if options.debug_skeleton_probabilities then
+                Printf.printf "Looking up binding probability map for variable %s\n" ((skeleton_dimension_group_type_to_id_string v)) else () in
+            match Hashtbl.find spec.probabilities (skeleton_dimension_group_type_to_id_string v) with
+            | Some(sub_tbl) ->
+                    Probability(v, sub_tbl)
+            | None ->
+                    Probability(v, Hashtbl.create (module String))
+        )
+    | None ->
+            List.map inputs (fun v ->
+                Probability(v, Hashtbl.create (module String))
+            )
 
 let rec repeat n item =
     match n with
@@ -379,16 +399,22 @@ let rec compatible_types from_t to_t: bool =
    since it was designed for many output variables.  However,
    it should eventually be modified to consider more than
    just binary conversions.  *)
-and bindings_for (typesets_in: (skeleton_type * float) list) (output: skeleton_type): (float * assignment_type) list =
+and bindings_for options (typesets_in: (skeleton_type * ((string, float) Hashtbl.t)) list) (output: skeleton_type): (float * assignment_type) list =
 	(* Create all reasonable sets of bindings.  *)
 	match typesets_in with
 	| [] ->
 			(* No matches possible from an enpty list of assigning
 			   variables! *)
 			[]
-	| (itypeset, iprobability) :: rtypesets_in ->
+	| (itypeset, pmap) :: rtypesets_in ->
 			(* If there is type overlap, then get that out. *)
             let types_compatible = compatible_types itypeset output in
+            let iprobability = match Hashtbl.find pmap (skeleton_type_to_id_string output) with
+            | None -> 1.0
+            | Some(p) -> p
+            in
+			let () = if options.debug_skeleton_probabilities then
+				Printf.printf "Within variable map for %s, looking up variable %s --- found probability %f\n" (skeleton_type_to_id_string itypeset) (skeleton_type_to_id_string output) iprobability else () in
 			(* Try using this variable to assign to the output
 			   variable and also try not using it.  *)
 			(* With the assignments made here. *)
@@ -403,7 +429,7 @@ and bindings_for (typesets_in: (skeleton_type * float) list) (output: skeleton_t
 			in
 			(* Without the assignments made here. *)
 			let subtask_without_intersection =
-				bindings_for rtypesets_in output
+				bindings_for options rtypesets_in output
 			in
 			subtask_with_intersection @ subtask_without_intersection
 
@@ -465,7 +491,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 				(* Recurse for the matches.  *)
 				let recurse_assignments: single_variable_binding_option_group list list list =
 					(* Put the undimensioned typelists back with their types.  *)
-					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun ((arrnam, flattened_undimensioned_typeset, prob), dim_mapping) ->
+					List.map (List.zip_exn flattened_undimensioned_typesets dim_mappings) (fun ((arrnam, flattened_undimensioned_typeset, prob_map), dim_mapping) ->
 						let () = if options.debug_generate_skeletons then
 							let () = Printf.printf "Looking at array with name %s\n" (name_reference_to_string arrnam) in
 							let () = Printf.printf "Has flattened undimed typeset %s%!\n" (skeleton_dimension_group_type_list_to_string flattened_undimensioned_typeset) in
@@ -473,7 +499,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 						else () in
                         let () = assert ((List.length dim_mapping) > 0) in
 						let flattened_undimensioned_probability_typeset =
-							List.map flattened_undimensioned_typeset (fun l -> Probability(l, prob)) in
+							List.map flattened_undimensioned_typeset (fun l -> Probability(l, prob_map)) in
 						let () = if options.debug_generate_skeletons then
 							Printf.printf "Generated %d probability_types %!\n" (List.length flattened_undimensioned_probability_typeset) else () in
 						(* Get the possible bindings.  *)
@@ -487,14 +513,30 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 						let result = List.map poss_bindings (fun var_binds ->
 							(* For each possible bind to that variable.  *)
 							List.map var_binds (fun bind ->
+								let fromvars = prepend_all arrnam bind.fromvars_index_nesting in
+								let tovars = sarray_nam :: bind.tovar_index_nesting in
+                                (* Note this recomputes the probability over all the fvars *)
+								let probs = List.map fromvars (fun fvar ->
+									let hashmapname = assignment_type_to_id_string fvar in
+                                    let () = if options.debug_skeleton_probabilities then
+                                         Printf.printf "Within variable map for %s, looking up variable %s\n" (name_reference_list_to_string tovars) (hashmapname) else () in
+									let prob = match Hashtbl.find prob_map hashmapname with
+									| Some(p) -> p
+									| None -> 1.0
+									in
+									prob
+								) in
+                                let overall_probability = List.fold ~init:1.0 ~f:(fun v1 -> (fun v2 -> v1 *. v2)) probs in
+                                let () = if options.debug_skeleton_probabilities then
+                                    Printf.printf "Binding %s to %s has computed probability %f" (assignment_type_list_to_string fromvars) (name_reference_list_to_string tovars) (overall_probability)
+                                else ()
+                                in
 								(* Add the array prefixes.  *)
 								{
-                                    fromvars_index_nesting = prepend_all arrnam bind.fromvars_index_nesting;
-                                    tovar_index_nesting = sarray_nam :: bind.tovar_index_nesting;
+                                    fromvars_index_nesting = fromvars;
+                                    tovar_index_nesting = tovars;
                                     dimensions_set = dim_mapping :: bind.dimensions_set;
-									(* Note that since the probabilities are the same for every sub-element,
-									   this is OK.  Not that I'd like it to stay like this forever.  *)
-									probability = prob
+									probability = overall_probability
                                 }
 							)
                         ) in
@@ -518,7 +560,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 		| STypes(_) -> raise (SkeletonGenerationException "Need to flatten STypes out before getting mappings")
 		| SType(stype_out) ->
 				let zero_dimtypes = flatten_stypes typesets_in in
-				let var_binds = bindings_for zero_dimtypes stype_out in
+				let var_binds = bindings_for options zero_dimtypes stype_out in
                 let constbinds = 
                     (* Generate a list of suitable constant binds
                     for this varaible.  *)
@@ -702,16 +744,17 @@ let cut_unlikely_bindings options binds =
 	let compare = (fun (a: single_variable_binding_option_group) -> fun (b: single_variable_binding_option_group) ->
 		Float.compare a.probability b.probability
 	) in
-	let sorted = List.rev (List.sort binds compare) in
-	(* Cut off when the threshold difference is too big from the first element.  *)
-	let result = match sorted with
-	| [] -> []
-	| head :: rest ->
-			let head_prob = head.probability in
-			let value_check = (fun r -> ((Float.compare (head_prob -. max_threshold_difference) r.probability) = -1)) in
-			(* Want to take all the elements that have prob greater than the prob diff.  *)
-			head :: (List.take_while rest value_check)
-	in
+    let sorted = List.rev (List.sort binds compare) in
+    (* Cut off when the threshold difference is too big from the first
+    element.  *)
+    let result = match sorted with
+       | [] -> []
+       | head :: rest ->
+               let head_prob = head.probability in
+               let value_check = (fun r -> ((Float.compare (head_prob -. max_threshold_difference) r.probability) = -1)) in
+               (* Want to take all the elements that have prob greater than the prob diff.  *)
+               head :: (List.take_while rest value_check)
+               in
 	let _ =
 		if options.debug_generate_skeletons then
 			let () = Printf.printf "Post cutting binding are %s\n"
@@ -826,12 +869,12 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types (livein_api_types @ liveout_types) in
     (* Now use these to create skeletons.  *)
 	(* Prebinds *)
-	let prebind_inputs = build_dimension_groups livein_types [] in
+	let prebind_inputs = build_dimension_groups options livein_types  in
 	let pre_skeletons: skeleton_type_binding list = binding_skeleton options PreBinding typemap constant_options_map prebind_inputs livein_api_types define_only_api_types in
 	(* Postbinds *)
 	(* Aim is to get the types bound using the liveout api types, but with the original
 	livein types being used if required.  *)
-	let postbind_inputs = build_dimension_groups liveout_api_types livein_types in
+	let postbind_inputs = build_dimension_groups options (liveout_api_types @ livein_types) in
 	let post_skeletons = binding_skeleton options PostBinding typemap constant_options_map postbind_inputs liveout_types [] in
 	let _ = Printf.printf "Types are: \n(postbind: %s)\n(prebind: %s)\n" (skeleton_dimension_probabilistic_group_type_list_to_string postbind_inputs) (skeleton_dimension_probabilistic_group_type_list_to_string prebind_inputs) in
 	(* Flatten the skeletons that had multiple options for dimvars.  *)

@@ -4,6 +4,7 @@ open Parse_compile_settings
 open Parse_iospec
 open Parse_classmap
 open Parse_api
+open Parse_probabilities
 open Synthesize
 open Options
 open Spec_utils
@@ -43,12 +44,13 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         debug_gir_generate_define_statements debug_infer_structs
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
 		debug_skeleton_deduplicate max_string_size heuristics_mode
-		debug_parse_type =
+		debug_parse_type probabilities_spec_file debug_skeleton_probabilities =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
     let options = {
 		compile_settings = compile_settings;
+		binding_specification = load_binding_specification probabilities_spec_file;
 
         target = target_type;
 		execution_folder = execution_folder;
@@ -120,6 +122,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_skeleton_multiple_lengths_filter = debug_skeleton_multiple_lengths_filter;
         debug_skeleton_range_filter = debug_skeleton_range_filter;
 		debug_skeleton_filter = debug_skeleton_filter;
+        debug_skeleton_probabilities = debug_skeleton_probabilities;
         debug_input_map_generation = debug_input_map_generation;
 
 		debug_range_check = debug_range_check;
@@ -153,6 +156,11 @@ let iospec =
 let apispec =
     let doc = "IO Specification for the target API" in
     Arg.(required & pos 2 (some string) None & info [] ~docv:"APISpec" ~doc)
+
+(* Optional configuation file flags.  *)
+let probabilities_spec =
+	let doc = "Probabilities that variables bind to each other.  Formatp should be a dict of iospec vars with each iospec var having a dict of apispec vars as sub-elements." in
+	Arg.(value & opt (some string) None & info ["binding-probability"] ~docv:"BindingProbabilitiesJson" ~doc)
 
 (* Configuration flags *)
 let target =
@@ -296,6 +304,9 @@ let debug_skeleton_range_filter =
 let debug_skeleton_filter =
 	let doc = "Debug the skeleton filter" in
 	Arg.(value & flag & info ["debug-skeleton-filter"] ~docv:"DebugSkeletonFIlter" ~doc)
+let debug_skeleton_probabilities =
+	let doc = "Debug the skeleton probabilities" in
+	Arg.(value & flag & info ["debug-skeleton-probabilities"] ~docv:"DebugSkeletonProbs" ~doc)
 let debug_input_map_generation =
     let doc = "Debug skeleton input map generation" in
     Arg.(value & flag & info ["debug-input-map-generation"] ~docv:"DebugInputMapGeneration" ~doc)
@@ -384,6 +395,7 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
 	$ skip_test $ mse_threshold $ debug_input_map_generation $
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
-	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type)
+	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type
+	$ probabilities_spec $ debug_skeleton_probabilities)
 
 let () = Term.exit @@ Term.eval (args_t, info)

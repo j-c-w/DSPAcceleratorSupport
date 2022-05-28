@@ -1,5 +1,6 @@
 open Range_definition;;
 open Compile_settings;;
+open Spec_definition;;
 
 exception OptionsException of string
 
@@ -50,6 +51,7 @@ let range_factor_from_option o =
 
 type options = {
 	compile_settings: compile_settings;
+	binding_specification: binding_spec option;
 
 	(* Generic configuration *)
 	target: backend_target; (* Language target *)
@@ -124,6 +126,7 @@ type options = {
 	debug_skeleton_multiple_lengths_filter: bool;
     debug_skeleton_range_filter: bool;
 	debug_skeleton_filter: bool;
+    debug_skeleton_probabilities: bool;
 	debug_input_map_generation: bool;
 
 	(* Post Synthesis type debug.  *)
@@ -144,6 +147,7 @@ type options = {
    one opt parser issue is a better way to deal with this. *)
 let default_options = {
 	compile_settings = default_compile_settings;
+	binding_specification = None;
 
 	(* Generic configuration *)
 	target = CXX;
@@ -219,6 +223,7 @@ let default_options = {
 	debug_skeleton_multiple_lengths_filter = false;
     debug_skeleton_range_filter = false;
     debug_skeleton_filter = false;
+    debug_skeleton_probabilities = false;
 	debug_input_map_generation = false;
 
     (* Post synthesis passes debug.  *)

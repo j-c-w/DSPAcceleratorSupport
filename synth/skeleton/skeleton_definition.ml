@@ -44,7 +44,7 @@ and skeleton_dimension_group_type =
 
 (* This is for bindings, to keep track of things that are more/less likely.  *)
 type skeleton_dimension_probabilistic_group_type =
-	Probability of skeleton_dimension_group_type * float
+	Probability of skeleton_dimension_group_type * (string, float) Hashtbl.t
 
 type assignment_type =
     (* ie. this is trying to keep track of where the list

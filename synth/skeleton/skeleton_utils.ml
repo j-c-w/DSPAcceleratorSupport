@@ -134,11 +134,27 @@ let skeleton_type_to_string stype =
 	| SFloat(name) -> "SFloat(" ^ (name_reference_to_string name) ^ ")"
 	| SString(name) -> "SString(" ^ (name_reference_to_string name) ^ ")"
 
+(* For use looking thes variables up in maps.  *)
+let skeleton_type_to_id_string stype =
+    let nr = match stype with
+    | SInt(nr) -> nr
+    | SBool(nr) -> nr
+    | SFloat(nr) -> nr
+    | SString(nr) -> nr
+    in
+    name_reference_to_id_string nr
+
 let assignment_type_to_string stype =
     match stype with
     | AssignVariable(v) -> name_reference_list_to_string v
     | AssignConstant(c) ->
             "Constant(" ^ synth_value_to_string c ^ ")"
+
+let assignment_type_to_id_string stype =
+    match stype with
+    | AssignVariable(v) -> name_reference_to_id_string (StructName(v))
+    | AssignConstant(c) ->
+            synth_value_to_string c
 
 let type_of_assignment tmap stype =
 	match stype with
@@ -159,10 +175,15 @@ let rec skeleton_dimension_group_type_to_string stype =
 let skeleton_dimension_group_type_list_to_string typs =
 	String.concat ~sep:", " (List.map typs skeleton_dimension_group_type_to_string)
 
+let probability_table_to_string p =
+	String.concat ~sep:", " (List.map (Hashtbl.keys p) (fun k ->
+		k ^ ": " ^ (Float.to_string (Hashtbl.find_exn p k))
+	)
+	)
 let skeleton_dimension_probabilistic_group_type_to_string stype =
 	match stype with
 	| Probability(sgroup, p) ->
-			skeleton_dimension_group_type_to_string sgroup ^ " (probability" ^ (Float.to_string p) ^ ") "
+			skeleton_dimension_group_type_to_string sgroup ^ " (with probabilities " ^ (probability_table_to_string p) ^ ") "
 
 let skeleton_dimension_probabilistic_group_type_list_to_string stypes =
 	String.concat ~sep:"\n" (List.map stypes skeleton_dimension_probabilistic_group_type_to_string)
@@ -196,7 +217,7 @@ let flat_skeleton_list_to_string bindings =
 			flat_skeleton_type_binding_to_string bindings_for_var
 	))) ^ "\n"
 
-let single_variable_binding_to_string (binding: single_variable_binding_option_group) =
+let single_variable_binding_group_to_string (binding: single_variable_binding_option_group) =
 	   "\nWith the array index wrappers " ^ (String.concat ~sep:"," (List.map binding.tovar_index_nesting name_reference_to_string)) ^
 	   "\nAnd (fromvars) [" ^ (String.concat ~sep:"], [" 
 		   (List.map binding.fromvars_index_nesting (assignment_type_to_string))) ^ "]" ^
@@ -206,13 +227,42 @@ let single_variable_binding_to_string (binding: single_variable_binding_option_g
 
 let single_variable_binding_list_to_string binds =
 	"SKELETON:\n" ^ String.concat ~sep:"\n" (
-	List.map binds single_variable_binding_to_string)
+	List.map binds single_variable_binding_group_to_string)
 
 let skeleton_type_binding_to_string binds =
     single_variable_binding_list_to_string binds.bindings
 
 let skeleton_dimension_group_types_to_string typs =
     String.concat ~sep:", DimensionType:" (List.map typs skeleton_dimension_group_type_to_string)
+
+let skeleton_type_is_annon ty =
+    let nr = 
+    match ty with
+            | SInt(nr) -> nr
+            | SBool(nr) -> nr
+            | SFloat(nr) -> nr
+            | SString(nr) -> nr
+    in
+    name_reference_is_annon nr
+
+let skeleton_dimension_group_type_is_annon ty =
+    match ty with
+    | SType(sty) -> skeleton_type_is_annon sty
+    | STypes(stys) -> false (* I mean, they could syntactically be, but that would definitely be an error. *)
+    | SArray(_, _, _) -> false
+
+let skeleton_dimension_group_type_to_id_string ty =
+    match ty with
+    | SType(sty) -> skeleton_type_to_id_string sty
+    | STypes(stys) -> assert false (* Shouldn't have this --- we can'g generate a single ID string from a list of types.  *)
+    | SArray(nam, stys, dim) ->
+            if skeleton_dimension_group_type_is_annon stys then
+                (* if this is just int[] (e.g.), then we don't
+                want the random AnnonymousName on the end.  *)
+                (name_reference_to_string nam)
+            else
+                (name_reference_to_string nam) ^ "." ^ (skeleton_dimension_group_type_to_string stys)
+
 
 let skeleton_list_to_string bindings =
 	"BINDINGS:\n"^ (String.concat ~sep:">(new binding): \n" (

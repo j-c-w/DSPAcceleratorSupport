@@ -78,6 +78,14 @@ type structtype = {
     io_typemap: ((string, synth_type) Hashtbl.t);
 }
 
+type binding_spec = {
+	(* This is a double lookup: lookup the 
+	   iospec variable, then lookup the apispec
+	   var, and that should give you the conversion
+	   between them.  *)
+	probabilities: (string, (string, float) Hashtbl.t) Hashtbl.t
+}
+
 type structure_metadata =
 	| ClassMetadata of classtype
 	| StructMetadata of structtype

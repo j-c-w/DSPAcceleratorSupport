@@ -6,6 +6,81 @@ open Utils;;
 
 exception RangeError of string
 
+let range_size_add x y = match x, y with
+    | Infinite, _ -> Infinite
+    | _, Infinite -> Infinite
+    | Finite(x), Finite(y) -> Finite(x + y)
+
+let range_item_size ritem =
+    match ritem with
+    | RangeItem(i) -> Finite(1)
+    | RangeRange(start, finish) ->
+            (
+            match start, finish with
+            | RangeInteger(s), RangeInteger(f) -> Finite(f - s)
+            | RangeFloat(s), RangeFloat(f) ->
+                    (* Can we do better than this? *)
+                    (* Perhaps by adding to the range size type? *)
+                    Infinite
+			| RangeBool(s), RangeBool(f) ->
+					if (Bool.compare s f) = 0 then
+						Finite(1)
+					else
+						Finite(2)
+            | RangeArray(typ, low), RangeArray(typ2, high) ->
+                    raise (RangeError "Invlaid range range with arrays")
+			| _, _ ->
+					raise (RangeError ("Type Error"))
+            )
+
+(* How many items in this set? *)
+let range_size r =
+    match r with
+    | RangeSet(items) ->
+            let item_lengths = Array.map items range_item_size in
+            Array.fold item_lengths ~f:range_size_add ~init:(Finite(0))
+
+let rec range_value_to_item i = match i with
+    | RInt(fint) -> RangeInteger(fint)
+    | RFloat(ffloat) -> RangeFloat(ffloat)
+	| RBool(fbool) -> RangeBool(fbool)
+	| RArray(typ, farr) -> RangeArray(typ, List.map farr range_value_to_item)
+
+let range_size_to_string n =
+    match n with
+    | Finite(x) -> string_of_int x
+    | Infinite -> "Inf"
+
+let rec range_item_to_string i =
+    match i with
+    | RangeInteger(i) -> (string_of_int i)
+    | RangeFloat(f) -> (string_of_float f)
+    | RangeBool(b) -> (string_of_bool b)
+    | RangeArray(t, vs) ->
+            "[" ^ (String.concat ~sep:", " (List.map vs range_item_to_string)) ^ "]"
+
+let range_value_to_string v =
+	range_item_to_string (range_value_to_item v)
+
+let range_range_to_string rrange =
+	match rrange with
+	| RangeRange(f, t) ->
+            (range_item_to_string f) ^ " to " ^ (range_item_to_string t)
+    | RangeItem(i) ->
+            (range_item_to_string i)
+
+let range_set_to_string rset =
+	match rset with
+	| RangeSet(elems) ->
+			"{" ^ (String.concat ~sep:", " (Array.to_list (Array.map elems range_range_to_string))) ^ "}"
+
+let range_map_to_string rangemap =
+	let keys = Hashtbl.keys rangemap in
+	String.concat ~sep:"\n" (List.map keys (fun key ->
+		let range = Hashtbl.find_exn rangemap key in
+		"For key " ^ key ^ ": have range " ^ (range_set_to_string range) ^ "(size " ^ (range_size_to_string (range_size range)) ^ ")"
+	))
+
 let rec value_from_range_item item =
 	match item with
 	| RangeInteger(i) -> RInt(i)
@@ -20,11 +95,13 @@ let random_value_from_range_range_in_range r =
 	| RangeRange(small, large) ->
 			let vsmall = value_from_range_item small in
 			let vlarge = value_from_range_item large in
+            let () = Printf.printf "Generating from %s \n" (range_range_to_string r) in
 			match vsmall, vlarge with
 			| RInt(low), RInt(high) ->
 					let v = Random.int (high - low) in
 					RInt(v + low)
 			| RFloat(low), RFloat(high) ->
+                    let () = Printf.printf "Generating float" in
 					let v = Random.float (high -. low) in
 					RFloat(v +. low)
 			| RBool(low), RBool(high) ->
@@ -55,47 +132,6 @@ let random_value_in_range range =
 			let n = Random.int (Array.length items) in
 			(* Pick a random item and get the thing from that.  *)
 			random_value_from_range_range_in_range (Array.get items n);;
-
-let range_size_add x y = match x, y with
-    | Infinite, _ -> Infinite
-    | _, Infinite -> Infinite
-    | Finite(x), Finite(y) -> Finite(x + y)
-
-let range_item_size ritem =
-    match ritem with
-    | RangeItem(i) -> Finite(1)
-    | RangeRange(start, finish) ->
-            (
-            match start, finish with
-            | RangeInteger(s), RangeInteger(f) -> Finite(f - s)
-            | RangeFloat(s), RangeFloat(f) ->
-                    (* Can we do better than this? *)
-                    (* Perhaps by adding to the range size type? *)
-                    Infinite
-			| RangeBool(s), RangeBool(f) ->
-					if (Bool.compare s f) = 0 then
-						Finite(1)
-					else
-						Finite(2)
-            | RangeArray(typ, low), RangeArray(typ2, high) ->
-                    raise (RangeError "Invlaid range range with arrays")
-			| _, _ ->
-					raise (RangeError ("Type Error"))
-            )
-
-
-(* How many items in this set? *)
-let range_size r =
-    match r with
-    | RangeSet(items) ->
-            let item_lengths = Array.map items range_item_size in
-            Array.fold item_lengths ~f:range_size_add ~init:(Finite(0))
-
-let rec range_value_to_item i = match i with
-    | RInt(fint) -> RangeInteger(fint)
-    | RFloat(ffloat) -> RangeFloat(ffloat)
-	| RBool(fbool) -> RangeBool(fbool)
-	| RArray(typ, farr) -> RangeArray(typ, List.map farr range_value_to_item)
 
 let range_values_range_range rr =
     match rr with
@@ -386,41 +422,6 @@ let range_size_divide n m =
 	| Finite(n), Infinite -> Finite(0)
 	| Finite(n), Finite(0) -> Infinite
 	| Finite(n), Finite(m) -> Finite(n / m)
-
-let range_size_to_string n =
-    match n with
-    | Finite(x) -> string_of_int x
-    | Infinite -> "Inf"
-
-let rec range_item_to_string i =
-    match i with
-    | RangeInteger(i) -> (string_of_int i)
-    | RangeFloat(f) -> (string_of_float f)
-    | RangeBool(b) -> (string_of_bool b)
-    | RangeArray(t, vs) ->
-            "[" ^ (String.concat ~sep:", " (List.map vs range_item_to_string)) ^ "]"
-
-let range_value_to_string v =
-	range_item_to_string (range_value_to_item v)
-
-let range_range_to_string rrange =
-	match rrange with
-	| RangeRange(f, t) ->
-            (range_item_to_string f) ^ " to " ^ (range_item_to_string t)
-    | RangeItem(i) ->
-            (range_item_to_string i)
-
-let range_set_to_string rset =
-	match rset with
-	| RangeSet(elems) ->
-			"{" ^ (String.concat ~sep:", " (Array.to_list (Array.map elems range_range_to_string))) ^ "}"
-
-let range_map_to_string rangemap =
-	let keys = Hashtbl.keys rangemap in
-	String.concat ~sep:"\n" (List.map keys (fun key ->
-		let range = Hashtbl.find_exn rangemap key in
-		"For key " ^ key ^ ": have range " ^ (range_set_to_string range) ^ "(size " ^ (range_size_to_string (range_size range)) ^ ")"
-	))
 
 let empty_range_set r =
 	let rsize = range_size r in

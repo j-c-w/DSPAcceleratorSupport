@@ -4,11 +4,24 @@ open Range_definition;;
 
 exception SpecException of string
 
+let name_reference_is_annon nref =
+	match nref with
+	| AnonymousName -> true
+	| _ -> false
+
 let rec name_reference_to_string nref =
 	match nref with
 	| AnonymousName -> "Annon"
 	| Name(s) -> s
 	| StructName(ns) -> (String.concat ~sep:"." (List.map ns name_reference_to_string))
+
+(* For lookup in hashmaps (i.e. w/out the Annon parts) *)
+let rec name_reference_to_id_string nref =
+    match nref with
+    | AnonymousName -> ""
+    | Name(s) -> s
+    | StructName(ns) -> (String.concat ~sep:"." (List.map ns name_reference_to_id_string))
+
 
 let name_reference_list_to_string nrefs =
 	String.concat ~sep:", " (List.map nrefs name_reference_to_string)
