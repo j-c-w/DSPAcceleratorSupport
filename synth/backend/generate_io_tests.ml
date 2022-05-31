@@ -32,7 +32,7 @@ let generate_int_within_range rangemap namestring =
 			let () = Printf.printf "Rangeset is emapy is %b\n" (empty_range_set range) in *)
             match random_value_in_range range with
             | RInt(v) -> v
-            | _ -> raise (TypeException "Unexpected non-int result to int query")
+            | _ -> raise (TypeException ("Unexpected non-int result to int query for variable " ^ namestring))
 
 let generate_uint_within_range rangemap namestring =
 	match Hashtbl.find rangemap namestring with
@@ -41,7 +41,7 @@ let generate_uint_within_range rangemap namestring =
 	| Some(range) ->
 			match random_value_in_range range with
 			| RInt(v) -> v
-			| _ -> raise (TypeException "Unexepcted non-int result to int query")
+			| _ -> raise (TypeException ("Unexepcted non-int result to int query for varibale " ^ namestring))
 
 let generate_bool_within_range rangemap namestring =
 	match Hashtbl.find rangemap namestring with
@@ -50,7 +50,7 @@ let generate_bool_within_range rangemap namestring =
 			match random_value_in_range range  with
 			| RBool(v) -> v
 			| RInt(v) -> (v <> 0)
-			| _ -> raise (TypeException "Unexpected non-bool result")
+			| _ -> raise (TypeException ("Unexpected non-bool result for variable " ^ namestring))
 
 let generate_float_within_range rangemap namestring =
     match Hashtbl.find rangemap namestring with
@@ -59,7 +59,7 @@ let generate_float_within_range rangemap namestring =
     | Some(range) ->
             match random_value_in_range range with
             | RFloat(v) -> v
-            | _ -> raise (TypeException "Unexepced non-float result to float query")
+            | _ -> raise (TypeException ("Unexepced non-float result to float query for variable " ^ namestring))
 
 let generate_string_within_range options rangemap namestring =
 	let rec generate_string_of_length n =
