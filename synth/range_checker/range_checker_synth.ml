@@ -100,6 +100,14 @@ let positive_check_for vname var_type range_set =
                     of correspondance with ints.  *)
                     (* Not sure what is should be cast to? *)
                     Compare(Cast(vname, Int16), ivalue, Equal)
+				else if is_float_type var_type then
+					(* Need to cast:  Note that this case is not
+					always generated, but for some algorithms,
+					supporting int->float casts is useful.  *)
+					(* Also not sure exctly what this should be
+					cast to --- does it depend on the type of
+					the vname? *)
+					Compare(vname, Cast(ivalue, Float32), FloatEqual)
                 else
                     raise (RangeSynthError "Unsupported type to compare to ints")
 		| RangeItem(RangeFloat(i)) ->

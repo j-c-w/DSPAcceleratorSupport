@@ -32,6 +32,15 @@ let generate_int_within_range rangemap namestring =
 			let () = Printf.printf "Rangeset is emapy is %b\n" (empty_range_set range) in *)
             match random_value_in_range range with
             | RInt(v) -> v
+			(* Internally, we can cast from bools to ints,
+			   so when we back-propagate the validity requirements,
+			   we might end up generating a bool input here.  *)
+			(* TODO --- this is kind of a hacky fix --- we
+			 should really back-propagate any casts through the
+			 validity map rather than cast here (because we need
+			 to compute the intersection elsewhere, and this
+			 fix will fail with that.) *)
+			| RBool(v) -> if v then 1 else 0
             | _ -> raise (TypeException ("Unexpected non-int result to int query for variable " ^ namestring))
 
 let generate_uint_within_range rangemap namestring =
@@ -59,6 +68,10 @@ let generate_float_within_range rangemap namestring =
     | Some(range) ->
             match random_value_in_range range with
             | RFloat(v) -> v
+			| RInt(v) ->
+					(* See notes above about back-propagating
+					   the validity map.  *)
+					Int.to_float v
             | _ -> raise (TypeException ("Unexepced non-float result to float query for variable " ^ namestring))
 
 let generate_string_within_range options rangemap namestring =
@@ -91,7 +104,7 @@ let generate_array_from_range rangemap namestring =
 (* TODO --- Could do with making this a bit more deterministic. *)
 let rec generate_inputs_for options rangemap values_so_far name_string infered_type t structure_ordering =
 	let () = if options.debug_generate_io_tests then
-		let () = Printf.printf "Generating value for %s...\n" (name_string) in
+		let () = Printf.printf "Generating value for %s (type %s)...\n" (name_string) (synth_type_to_string infered_type) in
 		()
 	else ()
 	in
