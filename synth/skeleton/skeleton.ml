@@ -58,8 +58,8 @@ let get_plausible_constants_for optsmap name =
     match Hashtbl.find optsmap (name_reference_to_string (name_refs_from_skeleton name)) with
     | Some(opts) ->
 			(* We should really have a better probabilistic likelyhood calculator -- as-is this calculation
-			   might push out more likely variables.  *)
-            List.map opts (fun opt -> (1.0, AssignConstant(opt)))
+			   might get pushed out by unlikely variables.  *)
+            List.map opts (fun opt -> (0.0, AssignConstant(opt)))
     | None -> []
 
 let rec big_intersection lists =
@@ -410,7 +410,7 @@ and bindings_for options (typesets_in: (skeleton_type * ((string, float) Hashtbl
 			(* If there is type overlap, then get that out. *)
             let types_compatible = compatible_types itypeset output in
             let iprobability = match Hashtbl.find pmap (skeleton_type_to_id_string output) with
-            | None -> 1.0
+            | None -> 0.0 (* Default to 0.0 so that you don't have to specify everything *)
             | Some(p) -> p
             in
 			let () = if options.debug_skeleton_probabilities then
@@ -522,7 +522,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                                          Printf.printf "Within variable map for %s, looking up variable %s\n" (name_reference_list_to_string tovars) (hashmapname) else () in
 									let prob = match Hashtbl.find prob_map hashmapname with
 									| Some(p) -> p
-									| None -> 1.0
+									| None -> 0.0
 									in
 									prob
 								) in
@@ -657,7 +657,9 @@ let rec define_bindings_for direction valid_dimvars vs =
 					tovar_index_nesting = [name_reference_base_name arnam; AnonymousName];
 					fromvars_index_nesting = [];
 					dimensions_set = [dimvar_bindings];
-					probability = 1.0
+					probability = 1.0 (* note that we usually do 0 as default probabilities, but these
+					are probabilities of defines, which should be 1.0 --- they're usually set because
+					no alternative is needed.  *)
                 }]
 		| SType(SInt(n)) ->
 				[{
@@ -751,6 +753,9 @@ let cut_unlikely_bindings options binds =
        | [] -> []
        | head :: rest ->
                let head_prob = head.probability in
+			   let () = if options.debug_skeleton_probabilities then
+				   Printf.printf "Most likely binding is %f, meaning threshold is %f\n" (head_prob) (head_prob -. max_threshold_difference)
+			   else () in
                let value_check = (fun r -> ((Float.compare (head_prob -. max_threshold_difference) r.probability) = -1)) in
                (* Want to take all the elements that have prob greater than the prob diff.  *)
                head :: (List.take_while rest value_check)

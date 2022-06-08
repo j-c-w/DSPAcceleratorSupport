@@ -194,7 +194,7 @@ let flat_single_variable_binding_to_string (binding: flat_single_variable_bindin
 		   (List.map binding.fromvars_index_nesting (assignment_type_to_string))) ^ "]" ^
        "\nUnder dimensions [" ^ (String.concat ~sep:", "
             (List.map binding.dimensions dimension_constraint_to_string)) ^ "]" ^
-       "\nWith conversion function " ^ (conversion_function_to_string binding.conversion_function)
+       "\nWith conversion function " ^ (conversion_function_to_string binding.conversion_function) 
 
 
 let flat_single_variable_binding_list_to_string skels =
@@ -223,7 +223,8 @@ let single_variable_binding_group_to_string (binding: single_variable_binding_op
 		   (List.map binding.fromvars_index_nesting (assignment_type_to_string))) ^ "]" ^
        "\nUnder dimensions [" ^ (String.concat ~sep:", "
             (List.map binding.dimensions_set (fun dimset ->
-                String.concat ~sep:" or " (List.map dimset dimension_constraint_to_string)))) ^ "]"
+                String.concat ~sep:" or " (List.map dimset dimension_constraint_to_string)))) ^ "]" ^
+	   "\nAnd Probability " ^ (Float.to_string binding.probability)
 
 let single_variable_binding_list_to_string binds =
 	"SKELETON:\n" ^ String.concat ~sep:"\n" (
