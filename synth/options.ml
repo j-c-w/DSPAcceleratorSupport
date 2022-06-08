@@ -52,6 +52,11 @@ let range_factor_from_option o =
 type options = {
 	compile_settings: compile_settings;
 	binding_specification: binding_spec option;
+	(* See notes in skeleton.ml.  Binding likelyhood
+	is computed as everything within epsilon of the most
+	likely candidate.  This controls how big that
+	epsilon should be.  *)
+	binding_threshold: float;
 
 	(* Generic configuration *)
 	target: backend_target; (* Language target *)
@@ -148,6 +153,7 @@ type options = {
 let default_options = {
 	compile_settings = default_compile_settings;
 	binding_specification = None;
+	binding_threshold = 0.4;
 
 	(* Generic configuration *)
 	target = CXX;

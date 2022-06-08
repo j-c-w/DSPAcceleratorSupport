@@ -44,13 +44,15 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         debug_gir_generate_define_statements debug_infer_structs
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
 		debug_skeleton_deduplicate max_string_size heuristics_mode
-		debug_parse_type probabilities_spec_file debug_skeleton_probabilities =
+		debug_parse_type probabilities_spec_file debug_skeleton_probabilities
+		binding_threshold =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
     let options = {
 		compile_settings = compile_settings;
 		binding_specification = load_binding_specification probabilities_spec_file;
+		binding_threshold = binding_threshold;
 
         target = target_type;
 		execution_folder = execution_folder;
@@ -161,6 +163,9 @@ let apispec =
 let probabilities_spec =
 	let doc = "Probabilities that variables bind to each other.  Formatp should be a dict of iospec vars with each iospec var having a dict of apispec vars as sub-elements." in
 	Arg.(value & opt (some string) None & info ["binding-probability"] ~docv:"BindingProbabilitiesJson" ~doc)
+let binding_threshold =
+	let doc = "When computing binding options, the options used are the ones within an epsilon of the best available option.  This variable sets that threshold. (e.g. if there are candiates with probability 1.0, 0.8 and 0.3 and this is set to 0.3, then the candidates w/p. 1.0 and 0.8 will be considered" in
+	Arg.(value & opt float 0.4 & info ["binding-threshold"] ~docv:"BindingThreshold" ~doc)
 
 (* Configuration flags *)
 let target =
@@ -396,6 +401,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
 	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type
-	$ probabilities_spec $ debug_skeleton_probabilities)
+	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold)
 
 let () = Term.exit @@ Term.eval (args_t, info)

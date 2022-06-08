@@ -52,14 +52,18 @@ let rec contains x ys =
 	| [] -> false
 	| y :: ys -> (x = y) || (contains x ys)
 
-let get_plausible_constants_for optsmap name =
+let get_plausible_constants_for options optsmap name =
 	(* let () = Printf.printf "Looking for consts compatible with %s\n" (skeleton_type_to_string name) in
 	let () = Printf.printf "table keys are %s\n " (String.concat ~sep:", " (Hashtbl.keys optsmap)) in *)
     match Hashtbl.find optsmap (name_reference_to_string (name_refs_from_skeleton name)) with
     | Some(opts) ->
 			(* We should really have a better probabilistic likelyhood calculator -- as-is this calculation
 			   might get pushed out by unlikely variables.  *)
-            List.map opts (fun opt -> (0.0, AssignConstant(opt)))
+            (* That said -- it's not super clear what the probability
+            of this should be.  Perhaps it should be set by a flag
+            that's rather than just set to the binding threshold
+            as a proxy.  *)
+            List.map opts (fun opt -> (options.binding_threshold, AssignConstant(opt)))
     | None -> []
 
 let rec big_intersection lists =
@@ -410,7 +414,7 @@ and bindings_for options (typesets_in: (skeleton_type * ((string, float) Hashtbl
 			(* If there is type overlap, then get that out. *)
             let types_compatible = compatible_types itypeset output in
             let iprobability = match Hashtbl.find pmap (skeleton_type_to_id_string output) with
-            | None -> 0.0 (* Default to 0.0 so that you don't have to specify everything *)
+            | None -> options.binding_threshold (* Default to binding_threshold so that you don't have to specify everything *)
             | Some(p) -> p
             in
 			let () = if options.debug_skeleton_probabilities then
@@ -522,7 +526,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                                          Printf.printf "Within variable map for %s, looking up variable %s\n" (name_reference_list_to_string tovars) (hashmapname) else () in
 									let prob = match Hashtbl.find prob_map hashmapname with
 									| Some(p) -> p
-									| None -> 0.0
+									| None -> options.binding_threshold
 									in
 									prob
 								) in
@@ -564,7 +568,7 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                 let constbinds = 
                     (* Generate a list of suitable constant binds
                     for this varaible.  *)
-                    get_plausible_constants_for constant_options_map stype_out in
+                    get_plausible_constants_for options constant_options_map stype_out in
                 let all_binds = var_binds @ constbinds in
 				let () = if (List.length all_binds) = 0 then
 					let () = Printf.printf "Found no plausible binds for variable %s!\n%!" (name_reference_to_string (name_refs_from_skeleton stype_out)) in
@@ -742,7 +746,7 @@ let cut_unlikely_bindings options binds =
 				(single_variable_binding_list_to_string binds)
 		else ()
 	in
-	let max_threshold_difference = 0.4 in
+	let max_threshold_difference = options.binding_threshold in
 	let compare = (fun (a: single_variable_binding_option_group) -> fun (b: single_variable_binding_option_group) ->
 		Float.compare a.probability b.probability
 	) in
