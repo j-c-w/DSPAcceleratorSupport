@@ -77,5 +77,5 @@ let info =
 	let doc = "Generate IO Examples" in
 	Term.info "IOGen" ~doc
 
-let args_t = Term.(const main $ iospec $ number $ destfolder $ max_string_size)
+let args_t = Term.(const main $ iospec $ number $ destfolder $ max_string_size $ seed)
 let () = Term.exit @@ Term.eval (args_t, info)
