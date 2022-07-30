@@ -135,6 +135,11 @@ let rec unzip3 ls =
 
 let power_of_two i = 1 lsl i
 
+let rec deduplicate eq xs =
+    match xs with
+    | [] -> []
+    | x :: xs -> if (List.mem xs x eq) then deduplicate eq xs else x :: (deduplicate eq xs)
+
 let strings_any_equal s1s s2s =
 	List.exists s1s (fun s1 ->
 		List.exists s2s (fun s2 ->

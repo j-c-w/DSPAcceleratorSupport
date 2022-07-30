@@ -235,7 +235,7 @@ let name_from_opt opt =
 
 (* Generates the base typesets for a class. *)
 let rec generate_typesets classmap inptype parentname inpname: skeleton_dimension_group_type =
-    let () = Printf.printf "Looking at intput type %s, with inpname %s\n" (synth_type_to_string inptype) (match inpname with | None -> "None" | Some(inpname) ->  inpname) in
+    (* let () = Printf.printf "Looking at intput type %s, with inpname %s\n" (synth_type_to_string inptype) (match inpname with | None -> "None" | Some(inpname) ->  inpname) in *)
     let result = match inptype with
 	| Struct(name) ->
 			(
@@ -308,7 +308,7 @@ let rec generate_typesets classmap inptype parentname inpname: skeleton_dimensio
 	| Float32 -> SType(SFloat(name_from_opt inpname))
 	| Float64 -> SType(SFloat(name_from_opt inpname))
     in
-    let () = Printf.printf "Generated result types %s\n" (skeleton_dimension_group_type_to_string result) in
+    (* let () = Printf.printf "Generated result types %s\n" (skeleton_dimension_group_type_to_string result) in *)
     result
 
 let skeleton_type_lookup typemap names =
@@ -714,7 +714,7 @@ let rec define_bindings_for direction valid_dimvars vs =
 let possible_skeletons options possible_bindings_for_var =
 	(* Get the skeletons for assigining to variables.  *)
 	let res = find_possible_skeletons options possible_bindings_for_var in
-	let () = Printf.printf "Finsihed execuging find possible skeletons\n%!" in
+	(* let () = Printf.printf "Finsihed execuging find possible skeletons\n%!" in *)
 	res
 
 let rec get_dimvars_used typeset =
@@ -826,7 +826,7 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
 let binding_skeleton options direction typemap constant_options_map typesets_in typesets_out typesets_define =
 	let possible_bindings_list = assign_and_define_bindings options direction constant_options_map typesets_in typesets_out typesets_define in
 	let () = if options.debug_generate_skeletons then
-		Printf.printf "Done generating possible bindings\n%!"
+		Printf.printf "Done generating possible bindings (%d possible)\n%!" (List.length possible_bindings_list)
 	else ()
 	in
 	(* Verify that there is exactly one variable per list, and that
@@ -834,7 +834,7 @@ let binding_skeleton options direction typemap constant_options_map typesets_in 
 	(* Then, filter out various bindings that might not make any sense.  *)
 	let sensible_bindings = List.filter possible_bindings_list binding_check in
 	let () = if options.debug_generate_skeletons then
-		Printf.printf "Done filtering possible bindings\n%!"
+		Printf.printf "Done filtering possible bindings (%d sensible)\n%!" (List.length sensible_bindings)
 	else ()
 	in
 	(* Finally, create some skeletons from those bindings.  *)
@@ -844,7 +844,7 @@ let binding_skeleton options direction typemap constant_options_map typesets_in 
 		Printf.printf "Done generating possible skeletons (%d of them)\n%!" (List.length possible_skeletons_list)
 	else ()
 	in
-	let sensible_skeletons = List.filter possible_skeletons_list skeleton_check in
+	let sensible_skeletons = List.filter possible_skeletons_list (skeleton_check options) in
 	(* Debug info: *)
 	if options.debug_generate_skeletons then
 		(Printf.printf "Call to binding_skeleton\n";
@@ -885,7 +885,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
 	livein types being used if required.  *)
 	let postbind_inputs = build_dimension_groups options (liveout_api_types @ livein_types) in
 	let post_skeletons = binding_skeleton options PostBinding typemap constant_options_map postbind_inputs liveout_types [] in
-	let _ = Printf.printf "Types are: \n(postbind: %s)\n(prebind: %s)\n" (skeleton_dimension_probabilistic_group_type_list_to_string postbind_inputs) (skeleton_dimension_probabilistic_group_type_list_to_string prebind_inputs) in
+	(* let _ = Printf.printf "Types are: \n(postbind: %s)\n(prebind: %s)\n" (skeleton_dimension_probabilistic_group_type_list_to_string postbind_inputs) (skeleton_dimension_probabilistic_group_type_list_to_string prebind_inputs) in *)
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
@@ -954,7 +954,7 @@ let generate_all_skeleton_pairs opts typemaps iospec apispec =
 	let result = List.concat (
 		List.map typemaps (fun typemap ->
             let result = generate_skeleton_pairs opts typemap iospec apispec in
-            let () = Printf.printf "Keys in typemap are %s%!\n" (String.concat ~sep:"\n" (List.map result (fun r -> (String.concat ~sep:", " (Hashtbl.keys r.typemap.variable_map))))) in
+            (* let () = Printf.printf "Keys in typemap are %s%!\n" (String.concat ~sep:"\n" (List.map result (fun r -> (String.concat ~sep:", " (Hashtbl.keys r.typemap.variable_map))))) in *)
             result
 		)
 	) in

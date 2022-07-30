@@ -8,13 +8,14 @@ open Options;;
 open Utils;;
 open Builtin_conversion_functions;;
 
-let flatten_binding (svar_binding: single_variable_binding_option_group) =
+let flatten_binding options (svar_binding: single_variable_binding_option_group) =
     (* let () = Printf.printf "Length of bindings is %d\n" (List.length svar_binding.dimensions_set) in *)
 	if List.length svar_binding.dimensions_set > 0 then
-		let reduced_constraint_set = List.map svar_binding.dimensions_set filter_constraints_set in
+		let reduced_constraint_set = List.map svar_binding.dimensions_set (filter_constraints_set options) in
 		let combinations = cross_product reduced_constraint_set in
+        (* let () = Printf.printf "Reduced constraint set to size %d\n" (List.length combinations) in *)
 		List.map combinations (fun dim ->
-		(* let () = Printf.printf "Building for dimensions %s" (dimvar_mapping_list_to_string dim) in*)
+		(* let () = Printf.printf "Building for dimensions %s" (dimension_constraint_list_to_string dim) in*)
 		{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
 			tovar_index_nesting = svar_binding.tovar_index_nesting;
@@ -23,6 +24,7 @@ let flatten_binding (svar_binding: single_variable_binding_option_group) =
 		}
 		)
 	else
+        (* let () = Printf.printf ("Dimensions set size was zero") in*)
 		(* Not everything /has/ to have a vlid dimension --
 			and we still want to keep those.  *)
 		[{
@@ -50,7 +52,7 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 					()
 				else () in
                 (* Each elt in the skel bindings is a list of possible dimvars *)
-				let binding_options = List.map skel.bindings flatten_binding in
+				let binding_options = List.map skel.bindings (flatten_binding opts) in
                 (* Product them all together so each is a sinlge list of options.  *)
 				let bindings = cross_product binding_options in
                 let () = if opts.debug_skeleton_flatten then
@@ -68,7 +70,7 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	}
     ) in
 	let () = if opts.debug_skeleton_flatten then
-		Printf.printf "Produced results of length %d \n " (List.length result)
+		Printf.printf "Produced results of length %d (input length %d)\n " (List.length result) (List.length skels)
 	else () in
 	(* There must be more things after we expand them. *)
     (* Failure of this assertion implies that there is something odd going on

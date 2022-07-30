@@ -147,11 +147,13 @@ let rec generate_variable_reference_to namerefs =
 let generate_const_reference_to const =
 	Constant(const)
 
+
 (*  This should generate a list of functions
 that can be used to generate wrappers when
 given a simple assignment sequence Assignment.  *)
 (* It also keeps track of the index variables *)
-let rec generate_loop_wrappers_from_dimensions typelookup constraints =
+let rec generate_loop_wrappers_from_single_dimension typelookup constraints =
+    (* let () = Printf.printf "Generating loop wrappers from dimension %s\n" (dimension_constraint_to_string constraints) in *)
 	(* Get the dimension out of the constraints *)
 	let dim = match constraints with
 	| DimensionConstraints(_, dim) -> dim
@@ -234,6 +236,23 @@ let rec generate_loop_wrappers_from_dimensions typelookup constraints =
 			in
 				(in_loop_assign, [indvar])
 
+(* Given a multi-dimensional set of constraints, generate
+   an assign function for that loop. *)
+let rec generate_loop_wrappers_from_dimensions typelookup constraints =
+    match constraints with
+    | [] -> ((fun assign -> assign), [])
+    | x :: xs ->
+            (* Outer one first. *)
+            let outer_assfunc, outer_indvars =
+                generate_loop_wrappers_from_single_dimension typelookup x
+            in
+            let inner_assfunc, inner_indvars =
+                generate_loop_wrappers_from_dimensions typelookup xs
+            in
+            (fun assign ->
+                outer_assfunc (inner_assfunc assign)),
+               outer_indvars @ inner_indvars
+
 let rec maybe_create_reference_from post_indexes indvarnames =
 	(* let post_indexes_str =
 		String.concat ~sep:", " (List.map post_indexes (fun p ->
@@ -295,9 +314,11 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 					(* We expect one index_var for each fromvar_index and each tovar_index --- those
 					capture the parts of the variable names
 					that are refered to by each.  *)
-					(* let () = Printf.printf "Ind nest is %s\n" (variable_reference_option_list_to_string fvar_ind_nest) in
+					(* let () = Printf.printf "Ind nest is %s\n" (assignment_type_to_string fvar_ind_nest) in
 					let () = Printf.printf "Index vars is %s\n" (gir_name_list_to_string index_vars) in
-					let () = Printf.printf "tvars is %s\n" (variable_reference_option_list_to_string tvar_index_nesting) in
+					let () = Printf.printf "tvars is %s\n" (name_reference_list_to_string tvar_index_nesting) in
+					let () = Printf.printf "fvars is %s\n" (assignment_type_list_to_string fvar_index_nestings) in
+                    let () = Printf.printf "assignment is %s\n" (assignment_type_to_string fvar_ind_nest) in
 					let () = Printf.printf "fvar ind nest length is %d \n " (List.length fvar_index_nestings) in *)
 					let () = assert(match fvar_ind_nest with
 					| AssignVariable(vlist) -> List.length(vlist) - 1 = List.length index_vars
@@ -729,8 +750,8 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
 			let () = Printf.printf "(END BINDING)\n" in
             ()
 		else () in
-		let loop_wrappers = List.map single_variable_binding.dimensions
-			(generate_loop_wrappers_from_dimensions typemap.variable_map) in
+        let loop_wrappers =
+            generate_loop_wrappers_from_dimensions typemap.variable_map single_variable_binding.dimensions in
 		let conversion_function, conversion_function_name = generate_conversion_function single_variable_binding.conversion_function in
         let fvars_indexes = single_variable_binding.fromvars_index_nesting in
         let tovar_indexes = single_variable_binding.tovar_index_nesting in
@@ -754,24 +775,17 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
             if options.debug_generate_gir then
                 let () = Printf.printf "------\n\nFor variable %s\n" (flat_single_variable_binding_to_string single_variable_binding) in
 				let () = Printf.printf "Valid dimensions were %s\n" (dimension_constraint_list_to_string single_variable_binding.dimensions) in
-                let () = Printf.printf "Loop wrappers found are %d\n" (List.length loop_wrappers) in
 				let () = Printf.printf "Loop assignment functions are %d\n" (List.length assign_funcs) in
 				Printf.printf "Define used is %s\n" (gir_to_string define)
             else
                 () in
 		(* Do every combination of assignment loops and assign funcs. *)
 		let assignment_statements =
-			if (List.length loop_wrappers > 0) then
-				List.concat (List.map loop_wrappers (fun (lwrap, ind_vars) ->
-					List.map assign_funcs (fun assfunc ->
-						(* Combine the loops! *)
-						lwrap (assfunc ind_vars)
-					)
-				))
-			else
-				(* If there are no loops, we can just do the raw assignments.  *)
-                (List.map assign_funcs (fun assfunc -> assfunc []))
-		in
+            match loop_wrappers with
+            | lwrap, indvars ->
+                    List.map assign_funcs(fun assfunc ->
+                        lwrap (assfunc indvars))
+        in
 		let assigns_with_defines =
 			if (List.length assignment_statements) > 0 then
 				List.map assignment_statements (fun ass -> Sequence([define; ass]))

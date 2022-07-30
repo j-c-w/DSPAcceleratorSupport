@@ -29,8 +29,20 @@ let eval_binary_comp comp (v1: synth_value) (v2: synth_value) =
 			let v1_i = Option.value_exn (string_from_value v1) in
 			let v2_i = Option.value_exn (string_from_value v2) in
 			String.compare v1_i v2_i
+		(* These last two cases sometimes (rarely) come up.
+		I think they have to do with the JSON generation
+		sometimes truncating FP values that it prints. *)
+		else if (is_int_value v1) && (is_float_value v2) then
+			let v1_f = Int.to_float (Option.value_exn (int_from_value v1)) in
+			let v2_f = Option.value_exn (float_from_value v2) in
+			Float.compare v1_f v2_f
+
+		else if (is_float_value v1) && (is_int_value v2) then
+			let v1_f = Option.value_exn (float_from_value v1) in
+			let v2_f = Int.to_float (Option.value_exn (int_from_value v2)) in
+			Float.compare v1_f v2_f
 		else
-			raise (EvaluationException "Can't compare nonints/floats/bools/strings")
+			raise (EvaluationException ("Can't compare nonints/floats/bools/strings " ^ (synth_value_to_string v1) ^ " and " ^ (synth_value_to_string v2)))
 	in
 	BoolV(
 	match comp with

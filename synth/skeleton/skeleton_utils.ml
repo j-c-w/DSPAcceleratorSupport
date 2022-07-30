@@ -336,3 +336,8 @@ let name_refs_from_skeleton sk =
 	| SFloat(nr) -> nr
 	| SString(nr) -> nr
 
+
+let var_match_equal (nr1, nr2, dim_rel) (nr1', nr2', dim_rel') =
+	(name_reference_equal nr1 nr1') &&
+	(name_reference_equal nr2 nr2') &&
+	(dim_relation_equal dim_rel dim_rel')

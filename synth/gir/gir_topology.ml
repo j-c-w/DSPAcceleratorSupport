@@ -506,19 +506,19 @@ let khan (options: options) (gir_uses: use_def_info list) predefed preassed =
 	in
     let s =
         List.filter gir_uses (fun gir ->
-			let () = Printf.printf "Looking at GIR %s\n" (use_def_to_string gir) in
+			(* let () = Printf.printf "Looking at GIR %s\n" (use_def_to_string gir) in *)
             (List.for_all gir.uses (fun u ->
 				if (member u preassed) then
 					true
 				else
-					let () = Printf.printf "Has unassed use %s\n" (ud_name_to_string u) in
+					(* let () = Printf.printf "Has unassed use %s\n" (ud_name_to_string u) in *)
 					false
 			)) &&
             (List.for_all gir.assigns (fun u ->
 				if (member u predefed) then
 					true
 				else
-					let () = Printf.printf "Has undefed ass %s\n" (ud_name_to_string u) in
+					(* let () = Printf.printf "Has undefed ass %s\n" (ud_name_to_string u) in *)
 					false
 			))
                     ) in

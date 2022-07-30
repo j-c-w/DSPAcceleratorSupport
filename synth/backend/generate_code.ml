@@ -102,7 +102,13 @@ let rec cxx_vectors_type_signature_synth_type_to_string typ =
     | Float32 -> "float"
     | Float64 -> "double"
 	| String -> "char *"
-    | Array(stype, _) -> "std::vector<" ^ (cxx_vectors_type_signature_synth_type_to_string stype) ^ ">"
+	(* I think we need to use a pointer notation here, because
+	it's assigned to directly from the internal value, and
+	we can't cast arrays to vectors.  *)
+	(* Not 100% sure if this function has any point outside
+	of this, but it is called within the scope of assigning
+	to vectors. *)
+    | Array(stype, _) -> "" ^ (cxx_vectors_type_signature_synth_type_to_string stype) ^ "*"
 	| Pointer(stype) -> (cxx_vectors_type_signature_synth_type_to_string stype) ^ "*"
     | Unit -> "void"
     (* Again, assume not as pointer *)
@@ -210,18 +216,32 @@ let rec cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier =
             | Dimension(x) -> "[" ^ (dim_ratio_modifier (cxx_dimension_value_to_string typemap "" x)) ^ "]"
 			| EmptyDimension -> "TOFILL"
 
-let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier =
+let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier outermost =
     match typ with
     | Array(stype, dimtype) ->
-			(* This isn;t going to work for multi-dimensional arrays, but I suppose
-			that s OK.  The C memory model doesn't strictly support those
-			anyway, so we may be able to get away without this here.  *)
-            let postfix = cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier in
-			(* TODO --- I think to support nested arrays the dim ratio modifier
-			has to be some equally nested type, but I don't want
-			to think about it right now.  *)
-            let prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix typemap stype name dim_ratio_modifier in
-            prefix, postfix ^ sub_postfix
+			(* For multi-dimensional arrays, the outer-most arary
+			is specified using [ ] notation, and the inner
+			arrays are treated as pointers.  It's not super
+			clear that this is the only way to do thing,
+			e.g. you could imagine a function signature
+			that looks like f(x[n][m]) for which this
+			is not compatible.  (This is compatible with
+			the much more common f( **x) style signature).
+
+			IMO the best fix would re-jig the types to use
+			a combination of the pointer and array
+			types to mean something.  *)
+			(* TODO --- ^^^ Support boxy arrays with this
+		and use the pointer(array(...)) to support 
+		arrays like float ***x *)
+			let prefix, postfix =
+				if outermost then
+					"", cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier
+				else
+					"*", ""
+			in
+            let sub_prefix, sub_postfix = cxx_definition_synth_type_to_string_prefix_postfix typemap stype name dim_ratio_modifier false in
+            sub_prefix ^ prefix, postfix ^ sub_postfix
     | othertyp ->
             (* If it's another type, then use the simple type generator *)
             (cxx_type_signature_synth_type_to_string othertyp, "")
@@ -396,7 +416,7 @@ let assignment_for_type options typemap escapes alignment dim_ratio_modifier con
 						static_prefix ^ " " ^ prefix ^ " " ^ name ^ align_postfix ^ assign_postfix ^ ";"
 				else
 					let (prefix, postfix) =
-						cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier in
+						cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier true in
 					(* Prefix is like the type name, 'name' is the variable name,
 					   postfix is array markings like [n], and then we need
 					   to add a semi colon. *)

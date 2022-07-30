@@ -9,10 +9,13 @@ open Builtin_conversion_functions;;
 
 exception SkeletonFilter of string
 
-let filter_constraints_set cons = 
+let filter_constraints_set options cons = 
     (* We don't need to have the same dimension with
     the same source var for multiple targets.  *)
 	(* Same thing with the to varaibles :) *)
+	(* let () = Printf.printf "Looking at cons %s\n" *)
+	(* 	(dimension_constraint_list_to_string cons) *)
+	(* in *)
     let flookup = Hashtbl.create (module String) in
 	let tlookup = Hashtbl.create (module String) in
 	let tbllookup_set = fun (tbl, n) ->
@@ -28,10 +31,35 @@ let filter_constraints_set cons =
         let dm = match con with | DimensionConstraints(dm, _) -> dm in
         match dm with
         | DimvarOneDimension(VarMatch(matches)) ->
-                List.for_all matches (fun (f, t, mode) -> (
-            let result = (tbllookup_set (flookup, f)) && (tbllookup_set (tlookup, t)) in
-            (* let () = Printf.printf "Inspecting variable %s, with results %b\n" (dimvar_mapping_to_string dm) (result) in *)
-            result
+                (* FACC won't generate duplicated matches
+    internally, but if the input specifies
+    duplicated array lengths, it trips this section
+    up.  *)
+                (* I'ts not 100% clear to me that this is the
+                right place to do this deduplication,
+                it may be more useful to do it earlier.  *)
+                let deduplicated_matches =
+                    Utils.deduplicate var_match_equal matches
+                in
+            (* let () = Printf.printf "Filtering matchies %s\n" (dimvar_mapping_to_string dm) in *)
+                List.for_all deduplicated_matches (fun (f, t, mode) -> (
+                    let tdup =
+                        (* TODO -- find a better way to handle these
+                        heuristics.   For GEMM, we are likely
+                        to have situations where a square GEMM
+                        needs to run on a non-square accelerator.
+                        For FFT, this helps cut down the search
+                        sapce --- note that for multi-dimensional
+                        ffts, we may benefit just as much from not having
+                        this.
+                        *)
+                        match options.heuristics_mode with
+                        | FFT -> tbllookup_set (tlookup, t)
+                        | GEMM -> true
+                    in
+                    let result = (tbllookup_set (flookup, f)) && (tdup) in
+                    (* let () = Printf.printf "Inspecting variable %s, with results %b\n" (dimvar_mapping_to_string dm) (result) in *)
+                    result
                 ))
         (* TODO -- do we also need to do some filtering here? *)
 		| DimvarOneDimension(ConstantMatch(f)) ->
@@ -452,11 +480,15 @@ let length_assignment_check options api_spec skeleton =
 	result
 
 (* Check a single skeleton.  *)
-let skeleton_check skel =
+let skeleton_check options skel =
 	(* Don't assign to multiple interface variables
 	from the same input variable --- that seems
 	unlikely to happen in most contexts.  *)
-	no_multiple_cloning_check skel
+	(* (for 1D inputs, not so much for multi-dimensional
+	ones *)
+	match options.heuristics_mode with
+	| FFT -> true
+	| GEMM -> true
 
 let skeleton_pair_check options api_spec p =
 	(* Don't assign to/from a variable using different

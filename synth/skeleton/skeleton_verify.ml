@@ -26,7 +26,7 @@ let rec join_index_nesting_helper indnest =
     | x :: xs ->
             let subjoin = join_index_nesting_helper xs in
             match x with
-            | AnonymousName -> assert false
+            | AnonymousName -> []
             | Name(_) -> x :: subjoin
 			(* Remove the anon names that are
 			sub elets of StructName, sicne we aren't
