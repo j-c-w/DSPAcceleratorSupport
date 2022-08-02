@@ -30,42 +30,50 @@ let infer_structs_on_typemap options typemap variables =
                     (* TODO *)
                     [(variable, Array(t, d))], []
                 else
-                    (* FFT-specific heuristic: try making this a 2-tuple.  *)
-					let newdims =
-						match d with
-						(* If we are infering a 2x struct on this variable, we'll need to reduce
-						it by a factor of two.  *)
-						(* Note that we don't use the newdim
-						if the inference fails.  *)
-						| Dimension(DimConstant(c)) -> [Dimension(DimConstant(c / 2)); Dimension(DimConstant(c))]
-						| Dimension(DimVariable(v, DimEqualityRelation)) -> [
-							(* We are infering structs below that
-							affect the effective length of the array
-							by a factor of two.  So,
-							depending on how ingrained this infered
-							type is in user code, it may or may
-							not affect the struct by a factor of two. *)
-							Dimension(DimVariable(v, DimEqualityRelation)); Dimension(DimVariable(v, DimDivByRelation(2)))
-						]
-						(* TODO -- completeness would suggest that we need the same
-						expansion for Po2 lengths. *)
-						| other -> [other]
-					in
-                    (
-                    match t with
-                    | Float16 ->
-                            (* TODO *)
-                            [(variable, Array(t, d))], []
-                    | Float32 ->
-							(List.map newdims (fun newdim -> (variable, Array(two_float32_type, newdim)))) @
-                            [(variable, Array(t, d))], [two_float32_type]
-                    | Float64 ->
-							(List.map newdims (fun newdim -> (variable, Array(two_float64_type, newdim)))) @
-                            [(variable, Array(t, d))], [two_float64_type]
-                    | other ->
-                            (* TODO -- support ints here? *)
-                            [(variable, Array(t, d))], []
-                    )
+					(
+					match options.heuristics_mode with
+					| FFT ->
+						(* FFT-specific heuristic: try making this a 2-tuple.  *)
+						let newdims =
+							match d with
+							(* If we are infering a 2x struct on this variable, we'll need to reduce
+							it by a factor of two.  *)
+							(* Note that we don't use the newdim
+							if the inference fails.  *)
+							| Dimension(DimConstant(c)) -> [Dimension(DimConstant(c / 2)); Dimension(DimConstant(c))]
+							| Dimension(DimVariable(v, DimEqualityRelation)) -> [
+								(* We are infering structs below that
+								affect the effective length of the array
+								by a factor of two.  So,
+								depending on how ingrained this infered
+								type is in user code, it may or may
+								not affect the struct by a factor of two. *)
+								Dimension(DimVariable(v, DimEqualityRelation)); Dimension(DimVariable(v, DimDivByRelation(2)))
+							]
+							(* TODO -- completeness would suggest that we need the same
+							expansion for Po2 lengths. *)
+							| other -> [other]
+						in
+						(
+						match t with
+						| Float16 ->
+								(* TODO *)
+								[(variable, Array(t, d))], []
+						| Float32 ->
+								(List.map newdims (fun newdim -> (variable, Array(two_float32_type, newdim)))) @
+								[(variable, Array(t, d))], [two_float32_type]
+						| Float64 ->
+								(List.map newdims (fun newdim -> (variable, Array(two_float64_type, newdim)))) @
+								[(variable, Array(t, d))], [two_float64_type]
+						| other ->
+								(* TODO -- support ints here? *)
+								[(variable, Array(t, d))], []
+						)
+					| GEMM ->
+							(* No inferred types required for
+							GEMM.  *)
+							[(variable, Array(t, d))], []
+					)
         | Struct(name) as other ->
                 (* We don't handle structs here *)
                 [(variable, other)], []

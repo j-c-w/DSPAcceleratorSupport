@@ -27,9 +27,17 @@ let generate_results_for (opts: options) typemap (iospec: iospec) inp_files =
 			() else ()
 		in
         if res <> 0 then
+			let () =
+				if opts.debug_iospec_manipulator then
+				Printf.printf "Failed due to zero res\n"
+				else () in
             RunFailure
         else
 			if outfile_has_errors opts typemap outfile then
+				let () =
+					if opts.debug_iospec_manipulator then
+					Printf.printf "Failed due to outfile erros\n"
+					else () in
 				RunFailure
 			else
 				RunSuccess(outfile)
