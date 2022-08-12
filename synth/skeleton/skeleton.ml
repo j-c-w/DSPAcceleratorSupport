@@ -374,7 +374,7 @@ let binding_check binding = true
    a type to_t --- that is, can we get the information
    to create a suitably-valued to_t with the information
 			in a from_t.  *)
-let rec compatible_types from_t to_t: bool =
+let rec compatible_types options from_t to_t: bool =
 	match from_t, to_t with
 	(* TODO -- handle cross-conversion between bool and int? *)
 	| SInt(nfrom), SBool(nto) -> true
@@ -384,10 +384,21 @@ let rec compatible_types from_t to_t: bool =
 	| SFloat(nfrom), SFloat(nto) -> true
 	| SString(nfrom), SString(nto) -> true
 	(* Sometimes, cross conversoin sbetween floats and its
-	   are useful -- can we use heuristics to decide when this
-	   is likely to be the case? *)
-	| SFloat(nfrom), SInt(nto) -> true
-	| SInt(nfrom), SFloat(sto) -> true
+	   are useful -- can we integrate this into a sliding
+	   scale (e.g. based on how many candidates have been
+	   generated so far?) *)
+	| SFloat(nfrom), SInt(nto) ->
+			(
+			match options.heuristics_mode with
+			| GEMM -> false
+			| FFT -> true
+			)
+	| SInt(nfrom), SFloat(sto) ->
+			(
+			match options.heuristics_mode with
+			| GEMM -> false
+			| FFT -> true
+			)
 	(* There are all kinds of other conversions that could be matched,
 	   just need to add them in here.  *)
 	| _ -> false
@@ -412,7 +423,7 @@ and bindings_for options (typesets_in: (skeleton_type * ((string, float) Hashtbl
 			[]
 	| (itypeset, pmap) :: rtypesets_in ->
 			(* If there is type overlap, then get that out. *)
-            let types_compatible = compatible_types itypeset output in
+            let types_compatible = compatible_types options itypeset output in
             let iprobability = match Hashtbl.find pmap (skeleton_type_to_id_string output) with
             | None -> options.binding_threshold (* Default to binding_threshold so that you don't have to specify everything *)
             | Some(p) -> p
@@ -452,11 +463,11 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 		   into the subtypes, which might also be dimension types.
 		   (And then we need to find appropriate assignments for
 		   those). *)
-		| SArray(sarray_nam, array_subtyps, dim_options) ->
+		| SArray(sarray_nam, array_subtyps, dim_options) as arr ->
 				let valid_dimensioned_typesets_in, dim_mappings  = List.unzip (List.filter_map typesets_in (fun intype ->
                     (* let () = Printf.printf "Variable name is %s\n" (skeleton_dimension_probabilistic_group_type_to_string intype) in *)
 					match intype with
-					| Probability(SArray(_, _, in_dim_options), p) ->
+					| Probability(SArray(_, _, in_dim_options) as in_arr, p) ->
 							(* Get the set of possible typevar
 							   bindings that would make this mapping
 							   possible.  *)
@@ -840,6 +851,9 @@ let binding_skeleton options direction typemap constant_options_map typesets_in 
 	(* Finally, create some skeletons from those bindings.  *)
     (* Need to have one set of bindings for each output variable.  *)
 	let possible_skeletons_list: skeleton_type_binding list = possible_skeletons options sensible_bindings in
+	let () = if List.length possible_skeletons_list > 1_000_000 then
+		raise (SkeletonGenerationException "Error: Generated more than 1 million skeletons --- this will take too long to process, please use a probabilities.json file (--probabilities) to reduce the search space")
+	else () in
 	let () = if options.debug_generate_skeletons then
 		Printf.printf "Done generating possible skeletons (%d of them)\n%!" (List.length possible_skeletons_list)
 	else ()

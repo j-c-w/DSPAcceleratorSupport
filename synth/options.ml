@@ -153,7 +153,7 @@ type options = {
 let default_options = {
 	compile_settings = default_compile_settings;
 	binding_specification = None;
-	binding_threshold = 0.4;
+	binding_threshold = 0.2;
 
 	(* Generic configuration *)
 	target = CXX;

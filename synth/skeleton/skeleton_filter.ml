@@ -71,7 +71,7 @@ let filter_constraints_set options cons =
     unique_dimvar_set
 
 (* No variables assigned from more than once.  *)
-let no_multiple_cloning_check (skel: skeleton_type_binding) =
+let no_multiple_cloning_check options (skel: skeleton_type_binding) =
     let assigned_from = Hashtbl.create (module String) in
     let () = ignore(
         List.map skel.bindings (fun bind ->
@@ -95,7 +95,16 @@ let no_multiple_cloning_check (skel: skeleton_type_binding) =
     Could update this to allow variables being used in
     multidefs to be used more than once, but that is a task
     for anohter day.  *)
-    List.for_all (Hashtbl.data assigned_from) (fun v -> v = 1)
+	match options.heuristics_mode with
+	(* For GEMM, there are configuraiton parameters
+	that should be double-assigned from. (e.g. lda/ldb).
+	I don't think that this is the right way to handle
+	those (I think different APIs w/out those variables
+	avaiable is the right way to handle those), but
+	for now we are stuck like this.  *)
+	| GEMM -> true
+	| FFT ->
+		List.for_all (Hashtbl.data assigned_from) (fun v -> v = 1)
 
 let rec build_whole_arnm_internal arnms =
 	match arnms with
@@ -406,6 +415,9 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
 					acutally 100% what it should do if this is wrong --
 					using && gives us no matches :) *)
                     List.exists matches (fun (tov, fromv, mode) ->
+                        let () = Printf.printf
+                        "Have match from %s to %s under %s\n"
+                        (name_reference_to_string fromv) (name_reference_to_string tov) (dim_relation_to_string mode) in
                         match mode with
                         | DimEqualityRelation ->
                             (* In theory, the order of this doesn't matter,
@@ -413,8 +425,12 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
                             if dim_assign_equal tovars tov then
                                 (* conversion function must preserve the dimension relation.  *)
                                 (* let () = Printf.printf "Tovars equal\n" in*)
-                                (dim_assign_any_equal equiv_fromvars fromv) &&
-                                (is_identity_conversion conversion_function)
+                                ((dim_assign_any_equal equiv_fromvars fromv) &&
+                                (is_identity_conversion conversion_function))
+
+                            else if (name_reference_equal fromv tov) then
+                                (* THis is a tuatology :) *)
+                                true
                             else
                                 (* This dimension has no overlap with
                                 the assignment we are considering. *)
@@ -443,6 +459,7 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
             in
             let () = 
                 if options.debug_skeleton_multiple_lengths_filter then
+                    let () = Printf.printf "Checked for assignment satisfying var match %s\n" (dimvar_mapping_to_string dimvar_map) in
                     let () = Printf.printf "Result was %b\n" result in
                     () else ()
             in
