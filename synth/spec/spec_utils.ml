@@ -15,13 +15,20 @@ let rec name_reference_to_string nref =
 	| Name(s) -> s
 	| StructName(ns) -> (String.concat ~sep:"." (List.map ns name_reference_to_string))
 
+(* Filter annonymous names out of a list of name refs.  *)
+let rec name_reference_filter_annon nrefs =
+    List.filter nrefs (fun nref ->
+        match nref with
+        | AnonymousName -> false
+        | Name(s) -> true
+        | StructName(ns) -> true
+    )
 (* For lookup in hashmaps (i.e. w/out the Annon parts) *)
 let rec name_reference_to_id_string nref =
     match nref with
     | AnonymousName -> ""
     | Name(s) -> s
-    | StructName(ns) -> (String.concat ~sep:"." (List.map ns name_reference_to_id_string))
-
+    | StructName(ns) -> (String.concat ~sep:"." (List.map (name_reference_filter_annon ns) name_reference_to_id_string))
 
 let name_reference_list_to_string nrefs =
 	String.concat ~sep:", " (List.map nrefs name_reference_to_string)

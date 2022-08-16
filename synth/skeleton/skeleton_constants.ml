@@ -150,10 +150,21 @@ let generate_plausible_constants_map options supplied_constmap validmap defaultm
                 let len_range_consts: int = opt_length_of range_consts in
 				let len_default_consts: int = opt_length_of default_consts in
                 let () = Printf.printf "Length of variuos sub-arrays is provided consts: %d, length parameters: %d, valid range constants:%d, valid default consts: %d\n" (len_consts) (len_lparams) (len_range_consts) (len_default_consts) in
+				let () = Printf.printf "Note: If default is set, all other consts are ignored. \n" in
                 ()
             else ()
             in
-			let const_options = join_option_lists [consts; lparams; range_consts; default_consts] in
+			(* If default field is set, that is the only thing
+			   we will use as an option.  --- That's the point
+			   of a default I think, can't really think why you
+			   would want a default, but also want to try
+			   other constant values.  *)
+			let const_options =
+				match default_consts with
+				| Some(cs) -> join_option_lists [default_consts]
+				| None ->
+					join_option_lists [consts; lparams; range_consts; default_consts]
+			in
             let restricted_const_options =
                 match range_consts, const_options with
                 | Some(rconst), Some(copts) ->

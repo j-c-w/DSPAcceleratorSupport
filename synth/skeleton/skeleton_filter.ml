@@ -415,9 +415,9 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
 					acutally 100% what it should do if this is wrong --
 					using && gives us no matches :) *)
                     List.exists matches (fun (tov, fromv, mode) ->
-                        let () = Printf.printf
+                        (* let () = Printf.printf
                         "Have match from %s to %s under %s\n"
-                        (name_reference_to_string fromv) (name_reference_to_string tov) (dim_relation_to_string mode) in
+                        (name_reference_to_string fromv) (name_reference_to_string tov) (dim_relation_to_string mode) in *)
                         match mode with
                         | DimEqualityRelation ->
                             (* In theory, the order of this doesn't matter,

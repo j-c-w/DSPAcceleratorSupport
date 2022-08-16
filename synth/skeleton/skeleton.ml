@@ -330,13 +330,18 @@ let build_dimension_groups options inputs =
     match options.binding_specification with
     | Some(spec) ->
         List.map inputs (fun v ->
-            let () = if options.debug_skeleton_probabilities then
-                Printf.printf "Looking up binding probability map for variable %s\n" ((skeleton_dimension_group_type_to_id_string v)) else () in
-            match Hashtbl.find spec.probabilities (skeleton_dimension_group_type_to_id_string v) with
+            let tbl = match Hashtbl.find spec.probabilities (skeleton_dimension_group_type_to_id_string v) with
             | Some(sub_tbl) ->
-                    Probability(v, sub_tbl)
+                    sub_tbl
             | None ->
-                    Probability(v, Hashtbl.create (module String))
+                    Hashtbl.create (module String)
+            in
+            let () = if options.debug_skeleton_probabilities then
+                let () = Printf.printf "Looking up binding probability map for variable %s\n" ((skeleton_dimension_group_type_to_id_string v)) in
+                let () = Printf.printf "It has sub-keys %s\n" (String.concat ~sep:", " (Hashtbl.keys tbl)) in
+                ()
+                else () in
+            Probability(v, tbl)
         )
     | None ->
             List.map inputs (fun v ->
@@ -532,18 +537,26 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 								let tovars = sarray_nam :: bind.tovar_index_nesting in
                                 (* Note this recomputes the probability over all the fvars *)
 								let probs = List.map fromvars (fun fvar ->
-									let hashmapname = assignment_type_to_id_string fvar in
+                                    (* TODO --- Why does this assignment come from tovars?  It should come from fvar.  Not
+                                     Clear where the probability map is getting flipped.*)
+									let hashmapname = assignment_type_to_id_string (AssignVariable(tovars)) in
                                     let () = if options.debug_skeleton_probabilities then
-                                         Printf.printf "Within variable map for %s, looking up variable %s\n" (name_reference_list_to_string tovars) (hashmapname) else () in
+                                         Printf.printf "Within variable map for %s, looking up variable '%s'\n" (name_reference_list_to_string tovars) (hashmapname) else () in
+									let () = Printf.printf "Prob map keps are %s\n" (String.concat ~sep:"," (Hashtbl.keys prob_map)) in
 									let prob = match Hashtbl.find prob_map hashmapname with
 									| Some(p) -> p
-									| None -> options.binding_threshold
+									| None ->
+											let () = if options.debug_skeleton_probabilities then
+												Printf.printf "Variable binding not found, falling back to binding_threshold\n"
+											else ()
+											in
+											options.binding_threshold
 									in
 									prob
 								) in
                                 let overall_probability = List.fold ~init:1.0 ~f:(fun v1 -> (fun v2 -> v1 *. v2)) probs in
                                 let () = if options.debug_skeleton_probabilities then
-                                    Printf.printf "Binding %s to %s has computed probability %f" (assignment_type_list_to_string fromvars) (name_reference_list_to_string tovars) (overall_probability)
+                                    Printf.printf "Binding %s to %s has computed probability %f\n" (assignment_type_list_to_string fromvars) (name_reference_list_to_string tovars) (overall_probability)
                                 else ()
                                 in
 								(* Add the array prefixes.  *)
@@ -885,7 +898,9 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let livein_api_types = skeleton_type_lookup typemap apispec.livein in
     let liveout_api_types = skeleton_type_lookup typemap apispec.liveout in
     let liveout_types = skeleton_type_lookup typemap (Utils.remove_duplicates Utils.string_equal (iospec.returnvar @ iospec.liveout)) in
-    let () = Printf.printf "Liveout types are %s\n" (skeleton_dimension_group_type_list_to_string liveout_types) in
+	let () = if options.debug_generate_skeletons then
+		let () = Printf.printf "Liveout types are %s\n" (skeleton_dimension_group_type_list_to_string liveout_types) in ()
+	else () in
     (* Get the types that are not livein, but are function args.  *)
     let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the binds.  *)
