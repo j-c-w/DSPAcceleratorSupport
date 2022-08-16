@@ -131,5 +131,10 @@ type apispec = {
 	funargs: string list;
 	required_includes: string list;
     compiler_flags: string list;
+	(* Which inputs are valid for a particular
+	   variable.  *)
 	validmap: (string, range_set) Hashtbl.t;
+	(* Some API variables can have default
+	variables.  *)
+	defaultmap: (string, range_item) Hashtbl.t;
 }

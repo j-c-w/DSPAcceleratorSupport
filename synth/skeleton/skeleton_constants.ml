@@ -62,6 +62,14 @@ let get_length_constants styp input_styps: synth_value list option =
 	| SBool(nr) -> None
 	| SFloat(nr) -> None
 	| SString(nr) -> None
+	
+let generate_constants_from_defaults options vdefault: synth_value list option =
+	match vdefault with
+	| None -> None
+	| Some(vdefault) ->
+			Some([
+				range_value_to_synth_value (range_item_to_value vdefault)
+			])
 
 let generate_plausible_constants_from_range options vrange: synth_value list option =
 	match vrange with
@@ -97,7 +105,7 @@ let opt_length_of l =
 
 (* Generate a list of constants to pass in as plausible
 assignments.  *)
-let generate_plausible_constants_map options supplied_constmap validmap input_stypes stypes =
+let generate_plausible_constants_map options supplied_constmap validmap defaultmap input_stypes stypes =
 	let constmap = Hashtbl.create (module String) in
     let () = if options.debug_skeleton_constant_gen then
         Printf.printf "Starting gen constants\n"
@@ -131,16 +139,21 @@ let generate_plausible_constants_map options supplied_constmap validmap input_st
             parameters that correspond to each value
             within that range.  *)
             let range_consts: synth_value list option = generate_plausible_constants_from_range options (Hashtbl.find validmap vname) in
-
+			(* Fourth, we look at the defaults table: if that has
+			  something, then we can generate that as a possible
+			  constant.  *)
+			let default_consts: synth_value list option =
+				generate_constants_from_defaults options (Hashtbl.find defaultmap vname) in
             let () = if options.debug_skeleton_constant_gen then
                 let len_consts: int = opt_length_of consts in
                 let len_lparams: int = opt_length_of lparams in
                 let len_range_consts: int = opt_length_of range_consts in
-                let () = Printf.printf "Length of variuos sub-arrays is provided consts: %d, length parameters: %d, valid range constants:%d\n" (len_consts) (len_lparams) (len_range_consts) in
+				let len_default_consts: int = opt_length_of default_consts in
+                let () = Printf.printf "Length of variuos sub-arrays is provided consts: %d, length parameters: %d, valid range constants:%d, valid default consts: %d\n" (len_consts) (len_lparams) (len_range_consts) (len_default_consts) in
                 ()
             else ()
             in
-            let const_options = join_option_lists [consts; lparams; range_consts] in
+			let const_options = join_option_lists [consts; lparams; range_consts; default_consts] in
             let restricted_const_options =
                 match range_consts, const_options with
                 | Some(rconst), Some(copts) ->

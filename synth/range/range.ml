@@ -46,6 +46,12 @@ let rec range_value_to_item i = match i with
 	| RBool(fbool) -> RangeBool(fbool)
 	| RArray(typ, farr) -> RangeArray(typ, List.map farr range_value_to_item)
 
+let rec range_item_to_value i = match i with
+	| RangeInteger(fint) -> RInt(fint)
+	| RangeFloat(ffloat) -> RFloat(ffloat)
+	| RangeBool(fbool) -> RBool(fbool)
+	| RangeArray(typ, farr) -> RArray(typ, List.map farr range_item_to_value)
+
 let range_size_to_string n =
     match n with
     | Finite(x) -> string_of_int x

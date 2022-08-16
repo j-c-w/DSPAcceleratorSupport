@@ -20,8 +20,13 @@
 
 %start t
 %type <Range_definition.sugared_range_set> t
+%start rangeitem
+%type <Range_definition.sugared_range_item> rangeitem
 
 %%
+
+rangeitem:
+    | item; { $1 }
 
 t:
 	| SET LPAREN set_contents RPAREN EOF { SugaredRangeSet(Array.of_list $3) }

@@ -463,11 +463,11 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 		   into the subtypes, which might also be dimension types.
 		   (And then we need to find appropriate assignments for
 		   those). *)
-		| SArray(sarray_nam, array_subtyps, dim_options) as arr ->
+		| SArray(sarray_nam, array_subtyps, dim_options) ->
 				let valid_dimensioned_typesets_in, dim_mappings  = List.unzip (List.filter_map typesets_in (fun intype ->
                     (* let () = Printf.printf "Variable name is %s\n" (skeleton_dimension_probabilistic_group_type_to_string intype) in *)
 					match intype with
-					| Probability(SArray(_, _, in_dim_options) as in_arr, p) ->
+					| Probability(SArray(_, _, in_dim_options), p) ->
 							(* Get the set of possible typevar
 							   bindings that would make this mapping
 							   possible.  *)
@@ -889,7 +889,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     (* Get the types that are not livein, but are function args.  *)
     let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the binds.  *)
-    let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap livein_types (livein_api_types @ liveout_types) in
+    let constant_options_map = generate_plausible_constants_map options iospec.constmap apispec.validmap apispec.defaultmap livein_types (livein_api_types @ liveout_types) in
     (* Now use these to create skeletons.  *)
 	(* Prebinds *)
 	let prebind_inputs = build_dimension_groups options livein_types  in

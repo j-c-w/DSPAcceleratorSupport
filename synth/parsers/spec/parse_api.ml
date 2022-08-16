@@ -35,6 +35,7 @@ let load_target_api options filename =
 	let funargs = List.map (json |> member "functionargs" |> to_list) to_string in
 	let alignment_requiremts = load_alignment_map (json |> member "alignment") in
 	let valid_tbl = load_rangetable options classmap typemap (json |> member "valid") in
+	let defaults_tbl = load_defaults_map options classmap typemap (json |> member "defaults") in
     (* Compiler flags not required --- empty list of flags if so.
     To be honest, this is a bit of a hack, we'd really like the entire
     thing to be backend independent.  However, it is sane for the calling
@@ -53,5 +54,6 @@ let load_target_api options filename =
 		required_includes = required_includes;
         compiler_flags = compiler_flags;
 		validmap = valid_tbl;
+		defaultmap = defaults_tbl;
 	} in
 	apispec, typemap, classmap, alignment_requiremts;;

@@ -72,6 +72,24 @@ let parse_range options typ range_string =
 		let () = Printf.printf "Type is %s and range is %s\n" (synth_type_to_string typ) (range_string) in
         raise (TypeCheckException "Range for variable doesn't typecheck")
 
+(* Note that this uses the same APIs as the parse_range internally,
+which is why it is here.  However, defaults can't be sets --- just
+rangeitems. *)
+let parse_defaults options typ default_string =
+	let lexbuf = Lexing.from_string default_string in
+	let ast = desugar_item (Rangeparse.rangeitem Rangelex.read lexbuf) in
+	let res = typecheck_item typ ast in
+	let () =
+		if options.debug_load then
+			let () = Printf.printf "Type is %s and default is %s\n" (synth_type_to_string typ) (default_string) in
+			() else ()
+	in
+	if res then
+		ast
+	else
+		let () = Printf.printf "For type %s and default %s\n" (synth_type_to_string typ) (default_string) in
+		raise (TypeCheckException "Default for variable doesn't typecheck.")
+
 
 let load_rangetable options classmap typemap range_field =
     let range_tbl = Hashtbl.create (module String) in
@@ -91,3 +109,22 @@ let load_rangetable options classmap typemap range_field =
 	() in
     range_tbl
 
+let load_defaults_map options classmap typemap defaults_field =
+	let defaults_tbl = Hashtbl.create (module String) in
+	let () = match defaults_field with
+	| `Null -> ()
+	| defaults_json ->
+			let defaulted_vars = keys defaults_json in
+			let _ = List.map defaulted_vars (fun v ->
+				let typof = type_of typemap classmap v in
+				let d = Hashtbl.add defaults_tbl v (parse_defaults options typof (defaults_field |> member v |> to_string)) in
+                let () = match d with
+                | `Ok -> ()
+                | `Duplicate -> raise (TypeCheckException "Duplicate default def")
+                in
+                ()
+                )
+                in
+                ()
+    in
+    defaults_tbl
