@@ -95,16 +95,9 @@ let no_multiple_cloning_check options (skel: skeleton_type_binding) =
     Could update this to allow variables being used in
     multidefs to be used more than once, but that is a task
     for anohter day.  *)
-	match options.heuristics_mode with
-	(* For GEMM, there are configuraiton parameters
-	that should be double-assigned from. (e.g. lda/ldb).
-	I don't think that this is the right way to handle
-	those (I think different APIs w/out those variables
-	avaiable is the right way to handle those), but
-	for now we are stuck like this.  *)
-	| GEMM -> true
-	| FFT ->
-		List.for_all (Hashtbl.data assigned_from) (fun v -> v = 1)
+    (* let () = Printf.printf "Checking assigned from list %s\n"  (String.concat ~sep:", " (Hashtbl.keys assigned_from)) in
+    let () = Printf.printf "Scores are %s\n" (String.concat ~sep:", " (List.map (Hashtbl.keys assigned_from) (fun k -> string_of_int (Hashtbl.find_exn assigned_from k)))) in *)
+	List.for_all (Hashtbl.data assigned_from) (fun v -> v <= 1)
 
 let rec build_whole_arnm_internal arnms =
 	match arnms with
@@ -501,11 +494,7 @@ let skeleton_check options skel =
 	(* Don't assign to multiple interface variables
 	from the same input variable --- that seems
 	unlikely to happen in most contexts.  *)
-	(* (for 1D inputs, not so much for multi-dimensional
-	ones *)
-	match options.heuristics_mode with
-	| FFT -> true
-	| GEMM -> true
+	no_multiple_cloning_check options skel
 
 let skeleton_pair_check options api_spec p =
 	(* Don't assign to/from a variable using different

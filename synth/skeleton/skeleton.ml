@@ -541,8 +541,10 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
                                      Clear where the probability map is getting flipped.*)
 									let hashmapname = assignment_type_to_id_string (AssignVariable(tovars)) in
                                     let () = if options.debug_skeleton_probabilities then
-                                         Printf.printf "Within variable map for %s, looking up variable '%s'\n" (name_reference_list_to_string tovars) (hashmapname) else () in
+										let () = Printf.printf "Within variable map for %s, looking up variable '%s'\n" (name_reference_list_to_string tovars) (hashmapname) in
 									let () = Printf.printf "Prob map keps are %s\n" (String.concat ~sep:"," (Hashtbl.keys prob_map)) in
+									()
+									else () in
 									let prob = match Hashtbl.find prob_map hashmapname with
 									| Some(p) -> p
 									| None ->
@@ -623,6 +625,29 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 			results
 		))
 
+let in_binding (binding: single_variable_binding_option_group) sub =
+	List.exists sub.bindings (fun b ->
+		(* Check each fromvar --- we only check generate
+		 singleton fromvar lists right now, but this
+		 should perhaps be a for_all if we generate
+		 more than one fromvar. *)
+		List.exists b.fromvars_index_nesting (fun assignment ->
+			let this_assignment = binding.fromvars_index_nesting in
+
+			(* Likewise with this list.exists. *)
+			List.exists this_assignment (fun other_assignment ->
+				(* We do this check because assignment_type_equal
+				will return true for the same two constants.
+				In this case, it's probably OK to have the same
+				two constants --- we only check for variable
+				equalities. *)
+				match assignment with
+				| AssignConstant(_) -> false
+				| _ -> assignment_type_equal assignment other_assignment
+			)
+		)
+	)
+
 (* Given a list of variables, and an equally sized list of
    possible bindings, select one of the possible bindings
    for each variable.  *)
@@ -652,7 +677,25 @@ let rec find_possible_skeletons options (possible_bindings_for_var: single_varia
             (* Note that we can't just /not/ bind a variable, so we need to
                make sure that we don't skip a binding at any
                occasion.  *)
-			List.concat (List.map binding (fun b -> List.map subbindings (fun sub -> { bindings = (b :: sub.bindings)})))
+			List.concat (List.map binding (fun b ->
+				List.filter_map subbindings (fun sub ->
+					if (in_binding b sub) then
+					(* Only produce the new binding
+					if the variable that is assigned from
+					hasn't been used already.  This is
+					a crappy place to have this heuristic,
+					because it doesn't fit with the generate/filter
+					pattern used elsewhere.  However, without
+					it here, these lists can get waay too long
+					to be scalable.  *)
+						None
+					else
+						Some({
+                            bindings = (b :: sub.bindings)
+						})
+				)
+				)
+			)
 
 (* Given some variable that only has to be defined
 and not assigned to, create a binding for it.  This
@@ -864,7 +907,7 @@ let binding_skeleton options direction typemap constant_options_map typesets_in 
 	(* Finally, create some skeletons from those bindings.  *)
     (* Need to have one set of bindings for each output variable.  *)
 	let possible_skeletons_list: skeleton_type_binding list = possible_skeletons options sensible_bindings in
-	let () = if List.length possible_skeletons_list > 1_000_000 then
+	let () = if List.length possible_skeletons_list > 4_000_000 then
 		raise (SkeletonGenerationException "Error: Generated more than 1 million skeletons --- this will take too long to process, please use a probabilities.json file (--probabilities) to reduce the search space")
 	else () in
 	let () = if options.debug_generate_skeletons then

@@ -144,6 +144,11 @@ let skeleton_type_to_id_string stype =
     in
     name_reference_to_id_string nr
 
+let assignment_type_equal ass1 ass2 =
+	match ass1, ass2 with
+	| AssignVariable(v1), AssignVariable(v2) -> name_reference_equal (StructName(v1)) (StructName(v2))
+	| AssignConstant(c1), AssignConstant(c2) -> synth_value_equal c1 c2
+
 let assignment_type_to_string stype =
     match stype with
     | AssignVariable(v) -> name_reference_list_to_string v
