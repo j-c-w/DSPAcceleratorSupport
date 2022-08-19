@@ -45,7 +45,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
 		debug_skeleton_deduplicate max_string_size heuristics_mode
 		debug_parse_type probabilities_spec_file debug_skeleton_probabilities
-		binding_threshold =
+		binding_threshold skip_post_synthesis =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -83,6 +83,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		stop_before_build = stop_before_build;
 		skip_test = skip_test;
 		use_parmap = not no_parmap;
+		skip_post_synthesis = skip_post_synthesis;
 		
 		only_test = only_test;
 
@@ -244,6 +245,9 @@ let stop_before_build =
 let skip_test =
 	let doc = "Only run post-synth and not testing. Debug only. " in
 	Arg.(value & flag & info ["skip-test"] ~docv:"SkipTest" ~doc)
+let skip_post_synthesis =
+	let doc = "Don't run post-synthesis. " in
+	Arg.(value & flag & info ["skip-post-synthesis"] ~docv:"SkipPostSynthesis" ~doc)
 
 (* Print IR flags *)
 let dump_skeletons =
@@ -401,6 +405,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
 	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type
-	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold)
+	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold $ skip_post_synthesis)
 
 let () = Term.exit @@ Term.eval (args_t, info)

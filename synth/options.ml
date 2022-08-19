@@ -87,6 +87,7 @@ type options = {
 	stop_before_build: bool;
 	skip_test: bool;
 	use_parmap: bool;
+	skip_post_synthesis: bool;
 
 	(* IR Dumps *)
 	dump_typemaps: bool;
@@ -185,6 +186,7 @@ let default_options = {
 	stop_before_build = false;
 	skip_test = false;
 	use_parmap = true;
+	skip_post_synthesis = false;
 
 	(* IR Dumps *)
 	dump_typemaps = false;
