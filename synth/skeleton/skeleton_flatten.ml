@@ -13,9 +13,9 @@ let flatten_binding options (svar_binding: single_variable_binding_option_group)
 	if List.length svar_binding.dimensions_set > 0 then
 		let reduced_constraint_set = List.map svar_binding.dimensions_set (filter_constraints_set options) in
 		let combinations = cross_product reduced_constraint_set in
-        let () = Printf.printf "Reduced constraint set to size %d\n" (List.length combinations) in
+        (* let () = Printf.printf "Reduced constraint set to size %d\n" (List.length combinations) in *)
 		List.map combinations (fun dim ->
-		let () = Printf.printf "Building for dimensions %s" (dimension_constraint_list_to_string dim) in
+		(* let () = Printf.printf "Building for dimensions %s" (dimension_constraint_list_to_string dim) in *)
 		{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
 			tovar_index_nesting = svar_binding.tovar_index_nesting;
