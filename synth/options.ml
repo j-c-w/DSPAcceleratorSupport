@@ -130,6 +130,7 @@ type options = {
 	debug_skeleton_deduplicate: bool;
 	debug_skeleton_verify: bool;
 	debug_skeleton_multiple_lengths_filter: bool;
+	debug_skeleton_constraints_filter: bool;
     debug_skeleton_range_filter: bool;
 	debug_skeleton_filter: bool;
     debug_skeleton_probabilities: bool;
@@ -229,6 +230,7 @@ let default_options = {
 	debug_skeleton_deduplicate = false;
 	debug_skeleton_verify = false;
 	debug_skeleton_multiple_lengths_filter = false;
+	debug_skeleton_constraints_filter = false;
     debug_skeleton_range_filter = false;
     debug_skeleton_filter = false;
     debug_skeleton_probabilities = false;

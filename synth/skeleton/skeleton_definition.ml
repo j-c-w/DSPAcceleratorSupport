@@ -8,15 +8,16 @@ open Range_definition;;
    eventually include more complicated mappings
    than the direct mappings entailed by this.  *)
 type one_dim_var_mapping =
-	| VarMatch of (name_reference * name_reference * dimension_relation) list
+	| VarMatch of name_reference * name_reference * dimension_relation
 	| ConstantMatch of int
 
 type dimvar_mapping =
     | DimvarOneDimension of one_dim_var_mapping
+	| DimvarMultiDimension of one_dim_var_mapping list
 
 (* Stores both a set of constraints and the assignment required.  *)
 type dim_constraints =
-	| DimensionConstraints of dimvar_mapping * dimension_value
+	| DimensionConstraints of dimvar_mapping * dimension_type
 
 (* This is an abstracted type that is used
    for matching different likely compatible types

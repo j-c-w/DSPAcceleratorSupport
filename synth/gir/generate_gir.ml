@@ -147,6 +147,17 @@ let rec generate_variable_reference_to namerefs =
 let generate_const_reference_to const =
 	Constant(const)
 
+let generate_dim_reference typelookup dim =
+	match dim with
+	| DimVariable(name, mode) -> (
+			(* Generate a loop for each of the dimvars.  *)
+			(* Also try just a straight up assignment.  *)
+			let girname = VariableReference(Variable(Name(name_reference_to_string name))) in
+			girname
+	)
+	| DimConstant(from) ->
+			let name = VariableReference(generate_const_reference_to (Int64V(from))) in
+			name
 
 (*  This should generate a list of functions
 that can be used to generate wrappers when
@@ -159,30 +170,21 @@ let rec generate_loop_wrappers_from_single_dimension typelookup constraints =
 	| DimensionConstraints(_, dim) -> dim
 	in
 	match dim with
-	| DimVariable(name, mode) -> (
-			(* Generate a loop for each of the dimvars.  *)
-			(* Also try just a straight up assignment.  *)
+	(* Does this need to throw?  Could we get away w/out throwing
+and putting a TODO note like in the backend? *)
+	| EmptyDimension -> raise (GenerateGIRException "Dimensions should be assigned by generate gir")
+	| SingleDimension(dim) ->
 			let indvar = new_induction_variable () in
-			let girname = VariableReference(Variable(Name(name_reference_to_string name))) in
-			let in_loop_assign =(fun assign ->
-				match mode with
-				| DimEqualityRelation ->
-					LoopOver(assign, indvar, girname)
-				| DimPo2Relation ->
-					(* So I was generating the conversion in the
-					loop, but it turns out by using the tov,
-					you don't have to do the conversion :) *)
-					LoopOver(assign, indvar, girname)
-						(* LoopOver(assign, indvar, FunctionCall(FunctionRef(Name("Pow2")), VariableList([generate_variable_reference_to tov]))) *)
-				| DimDivByRelation(x) ->
-					LoopOver(assign, indvar, girname)
-				) in
+			let maxref = generate_dim_reference typelookup dim in
+			let in_loop_assign = (fun assign ->
+				LoopOver(assign, indvar, maxref)
+				)
+			in
 			(in_loop_assign, [indvar])
-	)
-	(* Wow this is a lot of code, hopfully  it isnt needed *)
-	(* | DimMultipleVariables(vs, mode) ->
-			let girnames = List.map vs (fun name_ref ->
-				Name(name_reference_to_string name_ref)) in
+	| MultiDimension(dims, opmode) ->
+			let dimnames = List.map dims (fun dim ->
+				generate_dim_reference typelookup dim
+			) in
 			let maxvar = new_variable () in
 			let _ = Hashtbl.add typelookup (gir_name_to_string maxvar) (Int64) in
 			let indvar = new_induction_variable () in
@@ -192,34 +194,38 @@ let rec generate_loop_wrappers_from_single_dimension typelookup constraints =
 			   a sequence of assigns to get the assignment to
 			   maxvar with the real max.  *)
 			let precode = (
-			match mode with
+			match opmode with
 			(* Note I'm pretty sure that new modes can reuse
 			the code below almost entirely.  *)
 			| DimMultiply ->
 				let rec generate_precode maxvar vs =
 					match vs with
 					| [] -> assert false (*think this sin't possible? *)
-					| [v] -> [Assignment(LVariable(maxvar), Expression(VariableReference(Variable(v))))]
+					| [v] -> [Assignment(LVariable(maxvar), Expression(v))]
 					| v :: vs ->
 							(* Generate the sub multiplications *)
 							let new_maxvar = new_variable() in
+							let new_tempvar = new_variable() in
 							let _ = Hashtbl.add typelookup (gir_name_to_string new_maxvar) (Int64) in
+							let _ = Hashtbl.add typelookup (gir_name_to_string new_tempvar) (Int64) in
 							let sub_precode = generate_precode (Variable(new_maxvar)) vs in
 
 							(* Add def for new_maxvar *)
-							[Definition(new_maxvar, false, Some(Int64), None)] @
+							[Definition(new_maxvar, false, Some(Int64), None);
+							Definition(new_tempvar, false, Some(Int64), None);
+							Assignment(LVariable(Variable(new_tempvar)), Expression(v))] @
 							sub_precode @ [
 								(* Do multiply with V and then assign
 								   to the maxvar passed in.  *)
 								Assignment(LVariable(maxvar),
 									Expression(FunctionCall(
 										FunctionRef(Name("Multiply")),
-										VariableList([Variable(new_maxvar); Variable(v)])
+										VariableList([Variable(new_maxvar); Variable(new_tempvar)])
 									))
 								)
 							]
 				in
-				generate_precode (Variable(maxvar)) girnames
+				generate_precode (Variable(maxvar)) dimnames
 			) in
 			let result = (fun assign ->
 				Sequence(
@@ -229,14 +235,6 @@ let rec generate_loop_wrappers_from_single_dimension typelookup constraints =
 				])
 			) in
 			(result, [indvar])
-			*)
-	| DimConstant(from) ->
-			let indvar = new_induction_variable () in
-			let in_loop_assign = (fun assign ->
-				LoopOver(assign, indvar, VariableReference(generate_const_reference_to (Int64V(from))))
-				)
-			in
-				(in_loop_assign, [indvar])
 
 (* Given a multi-dimensional set of constraints, generate
    an assign function for that loop. *)

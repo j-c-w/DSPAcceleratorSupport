@@ -45,7 +45,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
 		debug_skeleton_deduplicate max_string_size heuristics_mode
 		debug_parse_type probabilities_spec_file debug_skeleton_probabilities
-		binding_threshold skip_post_synthesis =
+		binding_threshold skip_post_synthesis debug_skeleton_constraints_filter =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -123,6 +123,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_skeleton_deduplicate = debug_skeleton_deduplicate;
 		debug_skeleton_verify = debug_skeleton_verify;
 		debug_skeleton_multiple_lengths_filter = debug_skeleton_multiple_lengths_filter;
+		debug_skeleton_constraints_filter = debug_skeleton_constraints_filter;
         debug_skeleton_range_filter = debug_skeleton_range_filter;
 		debug_skeleton_filter = debug_skeleton_filter;
         debug_skeleton_probabilities = debug_skeleton_probabilities;
@@ -307,6 +308,9 @@ let debug_skeleton_verify =
 let debug_skeleton_multiple_lengths_filter =
 	let doc = "Debug multiple lengths removal pass" in
 	Arg.(value & flag & info ["debug-multiple-length-filter"] ~docv:"DebugMultipleLengthFilter" ~doc)
+let debug_skeleton_constraints_filter =
+	let doc = "Debug the skeleton constraints filter pass" in
+	Arg.(value & flag & info ["debug-skeleton-constraints-filter"] ~docv:"DebugSkeletonConstraintsFilter" ~doc)
 let debug_skeleton_range_filter =
     let doc = "Debug the range filtering pass" in
     Arg.(value & flag & info ["debug-skeleton-range-filter"] ~docv:"DebugRangeFilter" ~doc)
@@ -405,6 +409,7 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
     generate_timing_code $ array_length_threshold $ no_parmap $ debug_gir_generate_define_statements $
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
 	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type
-	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold $ skip_post_synthesis)
+	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold $ skip_post_synthesis
+	$ debug_skeleton_constraints_filter)
 
 let () = Term.exit @@ Term.eval (args_t, info)

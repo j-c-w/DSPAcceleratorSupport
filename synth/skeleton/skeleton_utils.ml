@@ -7,25 +7,25 @@ open Builtin_conversion_functions;;
 
 let one_dim_var_mapping_to_string map =
 	match map with
-	| VarMatch(matches) ->
-            String.concat ~sep:"&&" (List.map matches (fun (fromv, tov, mode) ->
+	| VarMatch(fromv, tov, mode) ->
             (name_reference_to_string fromv) ^
     " = " ^ (name_reference_to_string tov) ^ (dim_relation_to_string mode)
-            ))
 	| ConstantMatch(from_const) ->
 			(string_of_int from_const)
 
 let rec dimvar_mapping_to_string mapping = match mapping with
 	| DimvarOneDimension(map) -> one_dim_var_mapping_to_string map
+	| DimvarMultiDimension(maps) ->
+            String.concat ~sep:" && " (List.map maps one_dim_var_mapping_to_string)
 
 let dimvar_mapping_list_to_string mapping =
     String.concat ~sep:"\n" (List.map mapping dimvar_mapping_to_string)
 
 let dimension_constraint_to_string cons =
 	match cons with
-	| DimensionConstraints(dim_map, dimension_value) ->
+	| DimensionConstraints(dim_map, dim_type) ->
             "Dimension: " ^ 
-            (dimension_value_to_string dimension_value) ^
+            (dimension_type_to_string dim_type) ^
             " with constraints " ^
             (dimvar_mapping_to_string dim_map)
 
@@ -34,17 +34,11 @@ let dimension_constraint_list_to_string conslist =
 
 let one_dimension_mapping_equal m1 m2 =
     match m1, m2 with
-    | VarMatch(matches1), VarMatch(matches2) ->
+    | VarMatch(fromv1, tov1, mode1), VarMatch(fromv2, tov2, mode2) ->
             (
-            match (List.zip matches1 matches2) with
-            (* All sub-constraints must be equal for these to be equivalent --- we could (and probably should) consider
-             * that && is reflexive. *)
-            | Ok(l) -> List.for_all l (fun ((fromv1, tov1, mode1), (fromv2, tov2, mode2)) ->
                 (name_reference_equal fromv1 fromv2) &&
                 (name_reference_equal tov1 tov2) &&
                 (dim_relation_equal mode1 mode2)
-            )
-            | Unequal_lengths -> false
             )
 	| ConstantMatch(fconst1), ConstantMatch(fconst2) ->
 			(fconst1 = fconst2)
@@ -63,11 +57,8 @@ let one_dimension_mapping_equal_commutative equivalence_map m1 m2 =
         | None -> [(name_reference_to_string v)]
     in
 	match m1, m2 with
-    | VarMatch(ms1), VarMatch(ms2) ->
+    | VarMatch(fromv1, tov1, rel1), VarMatch(fromv2, tov2, rel2) ->
             (
-            match (List.zip ms1 ms2) with
-            (* TODO -- we should really support a = b && c = d and c = d && a = b being equal *)
-            | Ok(l) -> List.for_all l (fun ((fromv1, tov1, rel1), (fromv2, tov2, rel2)) -> 
                     match rel1, rel2 with
                     | DimEqualityRelation, DimEqualityRelation ->
                             let from1alternatives = get_equivalent_variables equivalence_map fromv1 in
@@ -80,8 +71,6 @@ let one_dimension_mapping_equal_commutative equivalence_map m1 m2 =
              (Utils.strings_any_equal from2alternatives to1alternatives))
                     (* TODO --- something for pow2? *)
                     | _, _ -> one_dimension_mapping_equal m1 m2
-                    )
-            | Unequal_lengths -> false
             )
 	| other1, other2 ->
 			(* No difference for constant matching *)
@@ -90,11 +79,31 @@ let one_dimension_mapping_equal_commutative equivalence_map m1 m2 =
 let dimvar_equal m1 m2 =
 	match m1, m2 with
 	| DimvarOneDimension(map1), DimvarOneDimension(map2) -> one_dimension_mapping_equal map1 map2
+    | DimvarMultiDimension(maps1), DimvarMultiDimension(maps2) ->
+            (
+            match List.zip maps1 maps2 with
+            (* TODO --- should consider reflexivity of && *)
+            | Ok(l) ->
+                    List.for_all l (fun (d1, d2) -> one_dimension_mapping_equal d1 d2)
+            | Unequal_lengths -> false
+            )
+    | _, _ -> false (* TODO --- should we handle singleton multdimensions? IIUC those are not generated yet so not an issue? *)
 
 let dimvar_equal_commutative equivalence_map m1 m2 =
 	match m1, m2 with
 	| DimvarOneDimension(map1), DimvarOneDimension(map2) ->
 			one_dimension_mapping_equal_commutative equivalence_map map1 map2
+    | DimvarMultiDimension(maps1), DimvarMultiDimension(maps2) ->
+            (
+            match List.zip maps1 maps2 with
+            | Ok(l) ->
+                    List.for_all l (fun (v1, v2) ->
+                        one_dimension_mapping_equal_commutative equivalence_map v1 v2
+                    )
+            | Unequal_lengths -> false
+            )
+    | _, _ -> false
+    (* Likewise -- see above about singleton mult dimensions? *)
 
 let dimvar_list_equal m1 m2 =
     let zipped = List.zip m1 m2 in

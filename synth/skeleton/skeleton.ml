@@ -124,19 +124,19 @@ let dimvar_match x y =
 	(* x is the accelerator var, y is the input var *)
     let result = match x, y with
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimEqualityRelation) ->
-            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimEqualityRelation)])))
+            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
     | DimVariable(vname1, DimPo2Relation), DimVariable(vname2, DimPo2Relation) ->
-            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimEqualityRelation)])))
+            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
     | DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimPo2Relation) ->
-            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimPo2Relation)])))
+            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimPo2Relation)))
 	| DimVariable(vname1, DimDivByRelation(x)), DimVariable(vname2, DimDivByRelation(y)) ->
 			if x = y then
-                Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimEqualityRelation)])))
+                Some(DimvarOneDimension(VarMatch(vname1, vname2, DimEqualityRelation)))
 			else
 				(* TODO --- infer another multiplication factor? *)
 				None
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimDivByRelation(x)) ->
-            Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimDivByRelation(x))])))
+            Some(DimvarOneDimension(VarMatch(vname1, vname2, DimDivByRelation(x))))
             (* TODO -- do we need an inverse po2/mulby relation? *)
     | DimVariable(vname1, _), DimVariable(vname2, _) ->
             (* TODO --- does it do us any good to do a
@@ -175,10 +175,29 @@ let rec dimvar_contains direction x y =
 			| None -> dimvar_contains direction x ys
             (* Keep track of the original assignment in addition
              * to the generated constraints.  *)
-			| Some(vs) -> (DimensionConstraints(vs, x')) :: (dimvar_contains direction x ys)
+			| Some(vs) -> (DimensionConstraints(vs, SingleDimension(x'))) :: (dimvar_contains direction x ys)
 
 let rec dim_has_overlap direction x y =
 	List.concat (List.map x (fun xel -> dimvar_contains direction xel y ))
+
+(* /only/ match the inputs in the order they are given.
+   This is used for the MultiDimension structs that can
+   be matched to each other, but require that the elements
+   are matched in order.
+
+   Not clear what the best generic solution to this problem
+   is, because the requirement of fixed orders is clearly
+   too much, but also I'm not sure what the solution
+   to the generic problem is.  *)
+let rec dim_overlap_no_permute direction x y =
+    match List.zip x y with
+    | Ok(l) ->
+            List.concat (
+                List.map l (fun (x', y') ->
+                    dimvar_contains direction x' [y']
+                )
+            )
+    | Unequal_lengths -> []
 
 let rec dimensions_overlap direction x y =
     (* let () =
@@ -197,7 +216,45 @@ let rec dimensions_overlap direction x y =
 			match List.zip nrefs1 nrefs2 with
 			(* Create an equality relation expectation for each variable --- TODO --- find a way to support
 			the reflexivity of '*' *)
-            | Ok(l) -> dim_has_overlap direction nrefs1 nrefs2
+            | Ok(l) ->
+                    (* Need to use the no permute option here, because
+                    the permute option produces all pairwise elements,
+                and we are alooking for a single complete mapping.  *)
+                    (* (we could of course generate that form the pairwise mappings,
+                    but not sure that's worth it ATM --- would introduce
+                     a much higher cost for the longer length
+                     expressions IMO.  *)
+					let single_dims = dim_overlap_no_permute direction nrefs1 nrefs2 in
+                    (* let () = Printf.printf "Input lists were: %s and %s\n" (dimension_value_list_to_string nrefs1) (dimension_value_list_to_string nrefs2) in
+                    let () = Printf.printf "Number of single dims created is %d\n" (List.length single_dims) in
+                    let () = Printf.printf "Single dims are %s\n" (dimension_constraint_list_to_string single_dims) in *)
+					(* The single dims contain constraints
+					a bunch of singledimensions --- need
+					to recreate the structure of the multi-dimension.
+					Note that this will need to change if
+						there are more than DimMultiply modes.  *)
+					let mappings, dim_types = List.fold ~init:([], []) ~f:(fun (matches, dtypes) -> fun dim_constraints ->
+						match dim_constraints with
+						| DimensionConstraints(vmatch, dimtype) ->
+                                let this_vmatch = match vmatch with
+                                | DimvarOneDimension(d) -> [d]
+                                (* Don't expect this case to come up. *)
+                                | DimvarMultiDimension(ds) -> ds
+                                in
+                                let this_dim_value = match dimtype with
+                                | EmptyDimension -> assert false (* Think this should be impossible. *)
+                                | SingleDimension(d) -> [d]
+                                (* Think this won't appear, if it does, need to think
+                                about  how to handle the mode.  *)
+                                | MultiDimension(d, mode) -> assert false
+                                in
+								this_vmatch @ matches, this_dim_value @ dtypes
+					) single_dims in
+					(* Combine these into a single 
+					   multi-dimension. *)
+                    let gen_constraint = DimensionConstraints(DimvarMultiDimension(mappings), MultiDimension(dim_types, DimMultiply)) in
+                    (* let () = Printf.printf "Generated teh following constraints: %s\n" (dimension_constraint_to_string gen_constraint) in *)
+                    [gen_constraint]
 			| Unequal_lengths -> []
 			)
     in

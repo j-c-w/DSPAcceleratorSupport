@@ -13,24 +13,33 @@ let filter_constraints_set options cons =
     (* We don't need to have the same dimension with
     the same source var for multiple targets.  *)
 	(* Same thing with the to varaibles :) *)
-	(* let () = Printf.printf "Looking at cons %s\n" *)
-	(* 	(dimension_constraint_list_to_string cons) *)
-	(* in *)
+    let () = if options.debug_skeleton_constraints_filter then
+        let () = Printf.printf "Looking at cons %s\n"
+            (dimension_constraint_list_to_string cons)
+        in ()
+    else () in
     let flookup = Hashtbl.create (module String) in
 	let tlookup = Hashtbl.create (module String) in
 	let tbllookup_set = fun (tbl, n) ->
 		let str = (name_reference_to_string n) in
 		let already_mapped = Hashtbl.find tbl str in
 		let () = Hashtbl.set tbl str true in
-		match already_mapped with
+        let result = match already_mapped with
 			| Some(n) -> false
 			| None -> true
+        in
+        let () = if options.debug_skeleton_constraints_filter then
+            let () = Printf.printf "Lookng to see if %s is already mapped, found that it %b\n" (str) (result) in ()
+        else () in
+        result
 	in
-    (* let () = Printf.printf "Length of input dms is %d\n" (List.length dms) in *)
+    let () = if options.debug_skeleton_constraints_filter then
+        let () = Printf.printf "Length of input dms is %d\n" (List.length cons) in ()
+    else () in
     let filtered = List.filter cons (fun con ->
         let dm = match con with | DimensionConstraints(dm, _) -> dm in
         match dm with
-        | DimvarOneDimension(VarMatch(matches)) ->
+        | DimvarMultiDimension(matches) ->
                 (* FACC won't generate duplicated matches
     internally, but if the input specifies
     duplicated array lengths, it trips this section
@@ -39,10 +48,14 @@ let filter_constraints_set options cons =
                 right place to do this deduplication,
                 it may be more useful to do it earlier.  *)
                 let deduplicated_matches =
-                    Utils.deduplicate var_match_equal matches
+                    Utils.deduplicate one_dimension_mapping_equal matches
                 in
-            (* let () = Printf.printf "Filtering matchies %s\n" (dimvar_mapping_to_string dm) in *)
-                List.for_all deduplicated_matches (fun (f, t, mode) -> (
+                let () = if options.debug_skeleton_constraints_filter then
+                    let () = Printf.printf "Filtering matchies %s\n" (dimvar_mapping_to_string dm) in ()
+                else () in
+                List.for_all deduplicated_matches (fun vmatch ->
+                    match vmatch with
+                    | VarMatch(f, t, mode) -> (
                     let tdup =
                         (* TODO -- find a better way to handle these
                         heuristics.   For GEMM, we are likely
@@ -58,16 +71,23 @@ let filter_constraints_set options cons =
                         | GEMM -> true
                     in
                     let result = (tbllookup_set (flookup, f)) && (tdup) in
-                    (* let () = Printf.printf "Inspecting variable %s, with results %b\n" (dimvar_mapping_to_string dm) (result) in *)
+                    let () = if options.debug_skeleton_constraints_filter then
+                        let () = Printf.printf "Inspecting variable %s, with results %b\n" (dimvar_mapping_to_string dm) (result) in ()
+                    else () in
                     result
-                ))
+                    )
+                    | ConstantMatch(_) -> true
+                    )
         (* TODO -- do we also need to do some filtering here? *)
-		| DimvarOneDimension(ConstantMatch(f)) ->
+		| DimvarOneDimension(_) ->
                 (* let () = Printf.printf "Looking at a constant, %s\n" (dimvar_mapping_to_string dm) in *)
                 true
     )
     in
     let unique_dimvar_set = Utils.remove_duplicates dimension_constraint_equal filtered in
+    let () = if options.debug_skeleton_constraints_filter then
+        let () = Printf.printf "Result set size was %d\n" (List.length unique_dimvar_set) in ()
+    else () in
     unique_dimvar_set
 
 (* No variables assigned from more than once.  *)
@@ -396,57 +416,71 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
             | DimensionConstraints(dimmap, value) ->
                     dimmap
             in
-            let result = match dimvar_map with
-            | DimvarOneDimension(VarMatch(matches)) ->
-					(* Even though this is a &&, for this we
-					use || because otherwise nothing will every pass! *)
-					(* e.g. if you say a = x and b = y, then you
-					are just looking for one of those assignments
-					to be matched here.  I think this is right,
-					but could be the source of some hard-to-debug
-					bugs.   Unaddressed here, because I'm not
-					acutally 100% what it should do if this is wrong --
-					using && gives us no matches :) *)
-                    List.exists matches (fun (tov, fromv, mode) ->
-                        (* let () = Printf.printf
-                        "Have match from %s to %s under %s\n"
-                        (name_reference_to_string fromv) (name_reference_to_string tov) (dim_relation_to_string mode) in *)
-                        match mode with
-                        | DimEqualityRelation ->
-                            (* In theory, the order of this doesn't matter,
-                            although the order should be normalized. *)
-                            if dim_assign_equal tovars tov then
-                                (* conversion function must preserve the dimension relation.  *)
-                                (* let () = Printf.printf "Tovars equal\n" in*)
-                                ((dim_assign_any_equal equiv_fromvars fromv) &&
-                                (is_identity_conversion conversion_function))
+			(* Used as a sub-call below. *)
+			let check_assignment matches =
+				(* Even though this is a &&, for this we
+				use || because otherwise nothing will every pass! *)
+				(* e.g. if you say a = x and b = y, then you
+				are just looking for one of those assignments
+				to be matched here.  I think this is right,
+				but could be the source of some hard-to-debug
+				bugs.   Unaddressed here, because I'm not
+				acutally 100% what it should do if this is wrong --
+				using && gives us no matches :) *)
+				List.exists matches (fun vmatch ->
+					match vmatch with
+					| VarMatch(tov, fromv, mode) ->
+					(
+					(* let () = Printf.printf
+					"Have match from %s to %s under %s\n"
+					(name_reference_to_string fromv) (name_reference_to_string tov) (dim_relation_to_string mode) in *)
+					match mode with
+					| DimEqualityRelation ->
+						(* In theory, the order of this doesn't matter,
+						although the order should be normalized. *)
+						if dim_assign_equal tovars tov then
+							(* conversion function must preserve the dimension relation.  *)
+							(* let () = Printf.printf "Tovars equal\n" in*)
+							((dim_assign_any_equal equiv_fromvars fromv) &&
+							(is_identity_conversion conversion_function))
 
-                            else if (name_reference_equal fromv tov) then
-                                (* THis is a tuatology :) *)
-                                true
-                            else
-                                (* This dimension has no overlap with
-                                the assignment we are considering. *)
-                                false
-                        | DimPo2Relation ->
-                            if dim_assign_equal tovars tov then
-                                (* as above.  *)
-                                (dim_assign_equal fromvars fromv) &&
-                                (is_po2_conversion conversion_function)
-                            else
-                                (* no overlap.  *)
-                                false
-                        | DimDivByRelation(x) ->
-                            if dim_assign_equal tovars tov then
-                                (* as above *)
-                                (dim_assign_equal fromvars fromv) &&
-                                (match conversion_function with
-                                | DivideByConversion(mby) -> x = mby
-                                | _ -> false)
-                            else
-                                (* no overlap.  *)
-                                false
-                    )
+						else if (name_reference_equal fromv tov) then
+							(* THis is a tuatology :p *)
+							true
+						else
+							(* This dimension has no overlap with
+							the assignment we are considering. *)
+							false
+					| DimPo2Relation ->
+						if dim_assign_equal tovars tov then
+							(* as above.  *)
+							(dim_assign_equal fromvars fromv) &&
+							(is_po2_conversion conversion_function)
+						else
+							(* no overlap.  *)
+							false
+					| DimDivByRelation(x) ->
+						if dim_assign_equal tovars tov then
+							(* as above *)
+							(dim_assign_equal fromvars fromv) &&
+							(match conversion_function with
+							| DivideByConversion(mby) -> x = mby
+							| _ -> false)
+						else
+							(* no overlap.  *)
+							false
+					)
+				(* I'm not 100% sure what this should be.
+				It feels like a constant match should introduce
+				some constraits, but probably not best
+				inforced here. *)
+				| ConstantMatch(c) -> true
+			) in
+            let result = match dimvar_map with
+			| DimvarOneDimension(VarMatch(tov, fromv, mode) as vmatch) ->
+					check_assignment [vmatch]
+            | DimvarMultiDimension(matches) ->
+					check_assignment matches
             | DimvarOneDimension(ConstantMatch(_)) ->
 					true
             in
