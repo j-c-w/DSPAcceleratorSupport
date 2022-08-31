@@ -3,6 +3,7 @@ open Gir;;
 open Gir_utils;;
 open Spec_definition;;
 open Spec_utils;;
+open Options;;
 
 exception EvaluationException of string
 
@@ -11,7 +12,10 @@ it will need to be able to do things like call eternally
 defined functions, which will be a bit of a challenge. *)
 (* Anyway, the partially complete version has uses. *)
 
-let eval_binary_comp comp (v1: synth_value) (v2: synth_value) =
+let eval_binary_comp options comp (v1: synth_value) (v2: synth_value) =
+    let () = if options.debug_evaluate_gir then
+		Printf.printf "Comparing %s and %s\n" (synth_value_to_string v1) (synth_value_to_string v2)
+    else () in
 	let comp_result =
 		if (is_float_value v1) && (is_float_value v2) then
 			let v1_f = Option.value_exn (float_from_value v1) in
@@ -29,6 +33,30 @@ let eval_binary_comp comp (v1: synth_value) (v2: synth_value) =
 			let v1_i = Option.value_exn (string_from_value v1) in
 			let v2_i = Option.value_exn (string_from_value v2) in
 			String.compare v1_i v2_i
+		(* Since we are targetting C, also enable bool/int
+		   conversions since that what C does.  Note may need
+		   to change this for other backends --- or it may just
+		   fail before getting here and not matter :) *)
+		else if (is_int_value v1) && (is_bool_value v2) then
+			let v1_i = Option.value_exn (int_from_value v1) in
+			let v1_b = (v1_i <> 0) in (* true if nonzero *)
+            let () =
+                if options.debug_evaluate_gir then
+                    Printf.printf "Partial int bool --- loaded %d and got bool %b\n" v1_i v1_b
+                else ()
+            in
+			let v2_b = Option.value_exn (bool_from_value v2) in
+			Bool.compare v1_b v2_b
+		else if (is_bool_value v1) && (is_int_value v2) then
+			let v1_b = Option.value_exn (bool_from_value v1) in
+			let v2_i = Option.value_exn (int_from_value v2) in
+			let v2_b = (v2_i <> 0) in
+			let () =
+                if options.debug_evaluate_gir then
+                    Printf.printf "Partial int bool --- loaded %d and got bool %b\n" v2_i v2_b
+                else ()
+            in
+			Bool.compare v1_b v2_b
 		(* These last two cases sometimes (rarely) come up.
 		I think they have to do with the JSON generation
 		sometimes truncating FP values that it prints. *)
@@ -44,12 +72,16 @@ let eval_binary_comp comp (v1: synth_value) (v2: synth_value) =
 		else
 			raise (EvaluationException ("Can't compare nonints/floats/bools/strings " ^ (synth_value_to_string v1) ^ " and " ^ (synth_value_to_string v2)))
 	in
-	BoolV(
+	let () =
+        if options.debug_evaluate_gir then
+            Printf.printf "Result of comparison was %d (looking at comp mode %s to determine final result)\n" comp_result (binary_comparitor_to_string comp)
+            else () in
+	let result = BoolV(
 	match comp with
 	| GreaterThan ->
 			comp_result = 1
 	| GreaterThanOrEqual ->
-			comp_result >= 1
+			comp_result >= 0
 	| LessThan ->
 			comp_result = -1
 	| LessThanOrEqual ->
@@ -62,7 +94,11 @@ let eval_binary_comp comp (v1: synth_value) (v2: synth_value) =
 			let v1_val = Option.value_exn (float_from_value v1) in
 			let v2_val = Option.value_exn (float_from_value v2) in
 			Utils.float_equal v1_val v2_val
-	)
+	) in
+	let () = if options.debug_evaluate_gir then
+        Printf.printf "Result as bool was %s\n" (synth_value_to_string result) else ()
+    in
+	result
 and eval_unary_check ucomp value =
 	match ucomp with
 	| PowerOfTwo ->
@@ -128,18 +164,22 @@ and eval_expression expr valuemap =
 			(* This could really easily be implemented.. *)
 			raise (EvaluationException "Simulation of GIRMap not currently supported (easy chanes to support it though IMO)")
 
-and eval_conditional conditional valuemap =
-	match conditional with
+and eval_conditional options conditional valuemap =
+	let () =
+        if options.debug_evaluate_gir then
+            Printf.printf "Evaling conditional %s\n" (conditional_to_string conditional)
+        else () in
+	let result = match conditional with
 	| Compare(v1, v2, compop) ->
 			let v1_value = eval_variable v1 valuemap in
 			let v2_value = eval_variable v2 valuemap in
-			eval_binary_comp compop v1_value v2_value
+			eval_binary_comp options compop v1_value v2_value
 	| Check(v1, unary_comp) ->
 			let v1_value = eval_variable v1 valuemap in
 			eval_unary_check unary_comp v1_value
 	| CondOr(e1, e2) ->
-			let e1_result = eval_conditional e1 valuemap in
-			let e2_result = eval_conditional e2 valuemap in
+			let e1_result = eval_conditional options e1 valuemap in
+			let e2_result = eval_conditional options e2 valuemap in
 			(
 			match e1_result, e2_result with
 			| BoolV(e1), BoolV(e2) ->
@@ -147,11 +187,17 @@ and eval_conditional conditional valuemap =
 			| _ -> raise (EvaluationException "Unsupported nonbool type")
 			)
 	| CondAnd(e1, e2) ->
-			let e1_result = eval_conditional e1 valuemap in
-			let e2_result = eval_conditional e2 valuemap in
+			let e1_result = eval_conditional options e1 valuemap in
+			let e2_result = eval_conditional options e2 valuemap in
 			(
 			match e1_result, e2_result with
 			| BoolV(e1), BoolV(e2) ->
 					BoolV(e1 && e2)
 			| _ -> raise (EvaluationException "Unsupported nobool type")
 			)
+	in
+	let () =
+        if options.debug_evaluate_gir then
+            Printf.printf "Result of evaluating conditioanl %s was %s\n" (conditional_to_string conditional) (synth_value_to_string result)
+        else () in
+	result

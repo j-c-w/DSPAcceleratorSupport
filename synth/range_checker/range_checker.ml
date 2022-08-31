@@ -18,13 +18,13 @@ exception RangeCheckerException of string
 	It is intended to be used with the outputs
 	from the pre_acc_call results.
 	*)
-let inputs_in_range (program: program) inputs =
+let inputs_in_range options (program: program) inputs =
 	match program.range_checker with
 	| None ->
 			(* No range checker, so
 			the inputs are in range :) *)
 			true
 	| Some(rprog) ->
-		match eval_conditional rprog.condition inputs with
+		match eval_conditional options rprog.condition inputs with
         | BoolV(v) -> v
         | _ -> raise (RangeCheckerException "Conditional produced non bool result!")

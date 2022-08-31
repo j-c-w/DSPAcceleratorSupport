@@ -167,7 +167,12 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
                     if output_checked_result = 0 then
 						let () = assert (not (outfile_has_errors options (get_io_typemap program) experiment_outname)) in
 						let inp_values = load_value_map_from testin in
-						let inp_passes = inputs_in_range program inp_values in
+						let inp_passes = inputs_in_range options program inp_values in
+						let () =
+							if not inp_passes then
+								Printf.printf "Warning: The generated inputs do not match the range restrictions: check that value profiles do not conflict with range analysis\n"
+							else ()
+						in
                         {
                             input=testin;
                             true_output=Some(outf);

@@ -91,7 +91,7 @@ let post_synthesis_io_pairs options apispec iospec iofiles program configuration
 			(* This doesn't use the valid in range of the accelerator,
 			but rather the range detection pass inserted by the
 			range_check_synth pass.  *)
-			if inputs_in_range program inp_values then
+			if inputs_in_range options program inp_values then
 				Some({
 					input=outp_values;
 					output=true_outp_values

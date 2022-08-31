@@ -45,7 +45,8 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_expand_typemaps dump_typemaps debug_generate_malloc
 		debug_skeleton_deduplicate max_string_size heuristics_mode
 		debug_parse_type probabilities_spec_file debug_skeleton_probabilities
-		binding_threshold skip_post_synthesis debug_skeleton_constraints_filter =
+		binding_threshold skip_post_synthesis
+		debug_skeleton_constraints_filter debug_evaluate_gir =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -115,6 +116,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_gir_topology_sort = debug_gir_topology_sort;
 		debug_gir_reduce = debug_gir_reduce;
 		debug_gir_generate_define_statements = debug_gir_generate_define_statements;
+		debug_evaluate_gir = debug_evaluate_gir;
 
         debug_synth_topology = debug_synth_topology;
 		
@@ -286,6 +288,9 @@ let debug_gir_reduce =
 let debug_gir_generate_define_statements =
     let doc = "Debug GIR generate define statements" in
     Arg.(value & flag & info ["debug-gir-generate-define-statements"] ~docv:"DebugGIRDefines" ~doc)
+let debug_evaluate_gir =
+    let doc = "Debug the GIR interpreter (not a compelte debug flag)." in
+    Arg.(value & flag & info ["debug-gir-evaluate"] ~docv:"DebugGIREvaluate" ~doc)
 
 (* debug stype passes.  *)
 let debug_synth_topology =
@@ -410,6 +415,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
 	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type
 	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold $ skip_post_synthesis
-	$ debug_skeleton_constraints_filter)
+	$ debug_skeleton_constraints_filter $ debug_evaluate_gir)
 
 let () = Term.exit @@ Term.eval (args_t, info)
