@@ -37,14 +37,16 @@ let rec get_dependencies_for typemap typ =
 	| Pointer(tp) -> get_dependencies_for typemap tp
 	| Array(tp, dims) ->
 			(* let () = Printf.printf "Dimvar is %s\n" (dimension_type_to_string dims) in *)
-			let this_deps = match dims with
-			| Dimension(x) -> (match x with
+			let deps_from_var x = (match x with
                 (* We only consider non-interlooping structs here, although we could support
-                more complex things with a more complex algorihtm.  *)
-				| DimMultipleVariables(vs, op) -> List.map vs name_reference_top_level_name
+				more complex things with a more complex algorihtm.  *)
 				| DimVariable(v, relation) -> [name_reference_top_level_name v]
 				| DimConstant(_) -> []
-			)
+			) in
+			let this_deps = match dims with
+			| SingleDimension(x) -> deps_from_var x
+			| MultiDimension(xs, op) ->
+					List.concat (List.map xs deps_from_var)
 			| EmptyDimension -> raise (STopologyException "Unhandled")
 			in
 			this_deps @ (get_dependencies_for typemap tp)

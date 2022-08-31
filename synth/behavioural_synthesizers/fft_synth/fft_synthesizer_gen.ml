@@ -14,50 +14,54 @@ let generate_ind_name () =
 	ind_name_count := !ind_name_count + 1;
 	"bi_" ^ (string_of_int !ind_name_count)
 
+let fft_generate_gir_from_dimension_variable x =
+	match x with
+	| DimVariable(x, dimension_relation) ->
+			(
+			match dimension_relation with
+			| DimEqualityRelation ->
+					EmptyGIR, Variable(Name(name_reference_to_string x))
+			| DimPo2Relation ->
+					let tmpvar = generate_ind_name () in
+					Sequence([Definition(Name(tmpvar), false, Some(Int64), None);
+					Assignment(
+						LVariable(Variable(Name(tmpvar))),
+						Expression(FunctionCall(FunctionRef(Name("Pow2")),
+						VariableList([Variable(Name(name_reference_to_string x))])
+						)
+					))]),
+					Variable(Name(tmpvar))
+			| DimDivByRelation(mby) ->
+					let tmpvar = generate_ind_name () in
+					Sequence([Definition(Name(tmpvar), false, Some(Int64), None);
+					Assignment(
+						LVariable(Variable(Name(tmpvar))),
+						Expression(FunctionCall(FunctionRef(Name("IntDivide")),
+						VariableList([Variable(Name(name_reference_to_string x)); Constant(Int64V(mby))])
+					)))]), Variable(Name(tmpvar))
+			)
+	| DimConstant(c) -> EmptyGIR, Constant(Int64V(c))
+
 let fft_generate_gir_from_dimension (x: dimension_type) =
     match x with
     | EmptyDimension -> raise (CXXHoleError "Dimension too empty")
-    | Dimension(x) ->
-			(
-			match x with
-			| DimMultipleVariables(vs, op) ->
-					let fname = match op with
-					DimMultiply -> "PRODUCT"
-					in
-                    (* Define a temp var with the result of the dim muple variable.  *)
-                    let tempvariable = generate_ind_name () in
-					Sequence([Definition(Name(tempvariable), false, Some(Int64), None);
-                    Assignment(
-                        LVariable(Variable(Name(tempvariable))),
-                        Expression(FunctionCall(FunctionRef(Name(fname)),
-                            VariableList(List.map vs (fun v -> Variable(Name(name_reference_to_string v))))
-					)))]), Variable(Name(tempvariable))
-			| DimVariable(x, dimension_relation) ->
-					(
-					match dimension_relation with
-					| DimEqualityRelation ->
-							EmptyGIR, Variable(Name(name_reference_to_string x))
-					| DimPo2Relation ->
-							let tmpvar = generate_ind_name () in
-							Sequence([Definition(Name(tmpvar), false, Some(Int64), None);
-							Assignment(
-								LVariable(Variable(Name(tmpvar))),
-								Expression(FunctionCall(FunctionRef(Name("Pow2")),
-								VariableList([Variable(Name(name_reference_to_string x))])
-								)
-							))]),
-							Variable(Name(tmpvar))
-					| DimDivByRelation(mby) ->
-							let tmpvar = generate_ind_name () in
-							Sequence([Definition(Name(tmpvar), false, Some(Int64), None);
-							Assignment(
-								LVariable(Variable(Name(tmpvar))),
-								Expression(FunctionCall(FunctionRef(Name("IntDivide")),
-								VariableList([Variable(Name(name_reference_to_string x)); Constant(Int64V(mby))])
-							)))]), Variable(Name(tmpvar))
-					)
-			| DimConstant(c) -> EmptyGIR, Constant(Int64V(c))
-			)
+    | SingleDimension(x) ->
+			fft_generate_gir_from_dimension_variable x
+	| MultiDimension(vs, op) ->
+				let fname = match op with
+				DimMultiply -> "PRODUCT"
+				in
+				(* Define a temp var with the result of the dim muple variable.  *)
+				(* TODO --- need to support non-binary cases with a fold
+				rather than a map.  *)
+				let precodes, varlist = List.unzip (List.map vs fft_generate_gir_from_dimension_variable) in
+				let tempvariable = generate_ind_name () in
+				Sequence(precodes @ [Definition(Name(tempvariable), false, Some(Int64), None);
+				Assignment(
+					LVariable(Variable(Name(tempvariable))),
+					Expression(FunctionCall(FunctionRef(Name(fname)),
+						VariableList(varlist)
+				)))]), Variable(Name(tempvariable))
 
 let rec generate_gir_program options typemap fft_behaviour =
 	match fft_behaviour with

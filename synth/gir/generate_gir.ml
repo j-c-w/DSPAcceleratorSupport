@@ -179,7 +179,8 @@ let rec generate_loop_wrappers_from_single_dimension typelookup constraints =
 				) in
 			(in_loop_assign, [indvar])
 	)
-	| DimMultipleVariables(vs, mode) ->
+	(* Wow this is a lot of code, hopfully  it isnt needed *)
+	(* | DimMultipleVariables(vs, mode) ->
 			let girnames = List.map vs (fun name_ref ->
 				Name(name_reference_to_string name_ref)) in
 			let maxvar = new_variable () in
@@ -228,6 +229,7 @@ let rec generate_loop_wrappers_from_single_dimension typelookup constraints =
 				])
 			) in
 			(result, [indvar])
+			*)
 	| DimConstant(from) ->
 			let indvar = new_induction_variable () in
 			let in_loop_assign = (fun assign ->
@@ -394,11 +396,12 @@ let get_unwarpped_dim_dependency (dimension_value): gir_name list =
         | Name(n) -> [Name(n)]
         | _ -> raise (GenerateGIRException "Can't convert anything that isn't a name!")
         )
-	| DimMultipleVariables(vs, op) ->
+	(* | DimMultipleVariables(vs, op) ->
 			List.map vs (fun v -> match v with
 				| Name(n) -> Name(n)
 				| _ -> raise (GenerateGIRException "Can't convert anything that isn't a name")
 			)
+	*)
 	| DimConstant(c) -> []
 
 let generate_conversion_function conv = match conv with
@@ -487,27 +490,10 @@ let get_definition_type_for options escapes validmap typemap v =
                 match ty with
                 | Array(sb, dim) ->
                         let stype_new = size_concreteization sb in
-                        let dimmax = match dim with
-                        | Dimension(DimConstant(c)) -> Some(DimConstant(c))
-						| Dimension(DimMultipleVariables(vs, op)) ->
-								let ranges = List.map vs (fun v -> Hashtbl.find validmap (name_reference_to_string v)) in
-								let rmaxes = List.map ranges (fun r -> match r with
-								| None -> None (* Not everythign has to have a specified range.  *)
-								| Some(range) ->
-										match range_max range with
-										| RangeInteger(i) -> Some(i)
-										| _ -> assert false (* Can't handle non integer array length *)
-								) in
-								let int_result = (
-								match op with
-								| DimMultiply ->
-									List.fold ~init:(Some(1)) ~f:(fun v1 -> (fun v2 -> (match v1, v2 with
-									| Some(i1), Some(i2) -> Some(i1 * i2)
-									| _, _ -> None
-									))) rmaxes
-								) in
-								Option.map int_result (fun r -> DimConstant(r))
-                        | Dimension(DimVariable(dimv, relation)) ->
+						let dimmax_from_single_dimension d =
+							match d with
+                        | DimConstant(c) -> Some((c))
+                        | DimVariable(dimv, relation) ->
                                 let range = Hashtbl.find validmap (name_reference_to_string dimv) in
 								let raw_max = (
                                 match range with
@@ -526,14 +512,29 @@ let get_definition_type_for options escapes validmap typemap v =
 								) in
 								(
 								match relation with
-								| DimEqualityRelation -> Option.map raw_max (fun r -> DimConstant(r))
-								| DimPo2Relation -> Option.map raw_max (fun r -> DimConstant(Utils.power_of_two r))
+								| DimEqualityRelation -> Option.map raw_max (fun r -> (r))
+								| DimPo2Relation -> Option.map raw_max (fun r -> (Utils.power_of_two r))
 								| DimDivByRelation(mby) ->
-										Option.map raw_max (fun r -> DimConstant(r / mby))
+										Option.map raw_max (fun r -> (r / mby))
 								)
+						in
+						let dimmax = match dim with
+						| SingleDimension(d) ->
+								Option.map (dimmax_from_single_dimension d) (fun d -> DimConstant(d))
+						| MultiDimension(ds, op) ->
+								let rmaxes: int option list = List.map ds dimmax_from_single_dimension in
+								let int_result = (
+								match op with
+								| DimMultiply ->
+									List.fold ~init:(Some(1)) ~f:(fun v1 -> (fun v2 -> (match v1, v2 with
+									| Some(i1), Some(i2) -> Some(i1 * i2)
+									| _, _ -> None
+									))) rmaxes
+								) in
+								Option.map int_result (fun r -> DimConstant(r))
                         | EmptyDimension -> assert false
-                        in
-                        Option.join (Option.map dimmax (fun m -> Option.map stype_new (fun s -> Array(s, Dimension(m)))))
+						in
+                        Option.join (Option.map dimmax (fun m -> Option.map stype_new (fun s -> Array(s, SingleDimension(m)))))
                 | Pointer(sp) ->
 						Option.map (size_concreteization sp) (fun p -> Pointer(p))
                 | other -> Some(other)
@@ -553,6 +554,12 @@ let get_definition_type_for_tovar options validmap typemap escaping_variables to
             let escapes = List.mem escaping_variables (name_reference_to_string x) Utils.string_equal in
 			get_definition_type_for options escapes validmap typemap x
 
+let generate_variable_reference_to_dimension dim =
+	match dim with
+		| DimVariable(nr, DimEqualityRelation) -> generate_variable_reference_to nr
+		| DimConstant(c) -> Constant(Int64V(c))
+		| _ -> assert false (* TODO -- implement *)
+
 (* Build some loops that can do an N-dimensional copy.  *)
 (* This returns two things: a function, from (GIR -> GIR)
 that gives you the loop (the function takes the body
@@ -568,14 +575,15 @@ let rec generate_gir_copy_loop typemap copytype =
                 let dim =
                     match dims with
                     (* Only support equality relation here, although we could of course support more.  *)
-                    | Dimension(DimVariable(nr, DimEqualityRelation)) -> VariableReference(generate_variable_reference_to nr)
-                    | Dimension(DimMultipleVariables(nrs, op)) ->
+                    | SingleDimension(dm) -> VariableReference(generate_variable_reference_to_dimension dm)
+                    | MultiDimension(nrs, op) ->
                             let fname = match op with
                             | DimMultiply -> "PRODUCT"
                             in
-                            FunctionCall(FunctionRef(Name(fname)), VariableList(List.map nrs (fun n -> generate_variable_reference_to n)))
-                    | Dimension(DimConstant(c)) -> VariableReference(Constant(Int64V(c)))
-                    | _ -> assert false (* TODO --- implement if required. *)
+							(* TODO -- support multiple prods with
+							a fold.  *)
+                            FunctionCall(FunctionRef(Name(fname)), VariableList(List.map nrs (fun n -> generate_variable_reference_to_dimension n)))
+                    | EmptyDimension -> assert false (* Shouldnae happen? *)
                 in
                 (* Compute the index variable for this loop.  *)
                 let indvar = new_induction_variable () in
@@ -844,7 +852,9 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
 let rec all_dimvars_from dimtype =
 	match dimtype with
 			| EmptyDimension -> []
-			| Dimension(nms) -> get_unwarpped_dim_dependency nms
+			| SingleDimension(nms) -> get_unwarpped_dim_dependency nms
+			| MultiDimension(nms, op) ->
+					List.concat (List.map nms get_unwarpped_dim_dependency)
 
 let rec type_topo_dependencies (nam, typ) =
 	match typ with

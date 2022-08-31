@@ -148,6 +148,7 @@ let assignment_type_equal ass1 ass2 =
 	match ass1, ass2 with
 	| AssignVariable(v1), AssignVariable(v2) -> name_reference_equal (StructName(v1)) (StructName(v2))
 	| AssignConstant(c1), AssignConstant(c2) -> synth_value_equal c1 c2
+	| _, _ -> false
 
 let assignment_type_to_string stype =
     match stype with

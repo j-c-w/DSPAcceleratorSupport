@@ -78,7 +78,7 @@ and check_elt_for_uninitialized_read typemap name typ json =
 	| `Int(i), UInt64 -> ()
 	| `String(s), String -> ()
 	| `List(l), Array(t, EmptyDimension) -> raise (JSONCheckException "Unexpected empty dim")
-	| `List(l), Array(t, Dimension(d)) ->
+	| `List(l), Array(t, SingleDimension(d)) ->
 			(* Check the length first. *)
 			let () =
 				match d with
@@ -87,13 +87,13 @@ and check_elt_for_uninitialized_read typemap name typ json =
 							()
 						else
 							raise JSONCheckFailed
-				| DimMultipleVariables(_, _) ->
-						(* likewise *)
-						()
 				| DimVariable(d, _) ->
 						(* TODO --- we could do a more thorough check here... *)
 						()
 			in
+			ignore(List.map l (check_elt_for_uninitialized_read typemap name t))
+	| `List(l), Array(t, MultiDimension(_, _)) ->
+						(* likewise (better check) *)
 			ignore(List.map l (check_elt_for_uninitialized_read typemap name t))
 	| `Null, Float16 -> raise JSONCheckFailed
 	| `Null, Float32 -> raise JSONCheckFailed

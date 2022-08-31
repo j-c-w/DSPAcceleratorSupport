@@ -42,13 +42,17 @@ let rec dimconsts_from_types typ =
 	| SArray(_, subtyps, lenvar) ->
 			let subconsts = dimconsts_from_types subtyps in
 			(* Consts used to define this array.  *)
-			let this_consts = match lenvar with
-			| EmptyDimension -> []
-			| Dimension(dim) ->
+			let consts_from_dim dim =
 					match dim with
-						| DimMultipleVariables(_, _) -> []
 						| DimVariable(_, _) -> []
 						| DimConstant(c) -> [Int64V(c)]
+			in
+			let this_consts = match lenvar with
+			| EmptyDimension -> []
+			| SingleDimension(dim) ->
+					consts_from_dim dim
+			| MultiDimension(dims, op) ->
+					List.concat (List.map dims consts_from_dim)
 			in
 			subconsts @ this_consts
 

@@ -156,16 +156,11 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 				in
 				(* If the name wasn't specified, then we should
 				generate an array.  *)
-				let infered_dimvar_size = match infered_dim with
-				| Dimension(dms) -> dms
-				| EmptyDimension ->
-						raise (TypeException "Can't have empty dimensions!")
-				in
 				(* If this throws, there's an issue with the topo sorting below --- we
 				   expect that the dimvars will have been assigned.  *)
 
 				(* helper function to get the integer value from this *)
-				let get_integer_value_so_far values_so_far dimvar_name = 
+				let size_of_dimension_variable values_so_far dimvar_name = 
 						let wrapper = get_value values_so_far dimvar_name in
 						let arrlen = match wrapper with
 						| Int8V(v) -> v
@@ -183,18 +178,11 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 						in
 						arrlen
 				in
-				let base_arrlen =
-						match infered_dimvar_size with
-						| DimMultipleVariables(dimvars, op) ->
-								let values = List.map dimvars (get_integer_value_so_far values_so_far) in
-								(
-								match op with
-								| DimMultiply ->
-										List.fold ~init:1 ~f:(fun i1 -> (fun i2 -> i1 * i2)) values
-								)
+				let size_of_dimension dim =
+						match dim with
 						| DimVariable(dimvar_name, relation) ->
 								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
-								let arrlen = get_integer_value_so_far values_so_far dimvar_name in
+								let arrlen = size_of_dimension_variable values_so_far dimvar_name in
 								let () = if options.debug_generate_io_tests then
 									Printf.printf "Getting dimension %s, with original array length %d\n" (name_reference_to_string dimvar_name) (arrlen)
 								else () in
@@ -212,6 +200,17 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 								in
 								result_length
 						| DimConstant(c) -> c
+				in
+				let base_arrlen = match infered_dim with
+				| SingleDimension(dms) -> size_of_dimension dms
+				| MultiDimension(dms, op) ->
+						let vals = List.map dms size_of_dimension in
+						(
+						match op with
+						| DimMultiply -> List.fold ~init:1 ~f:(fun i1 -> (fun i2 -> i1 * i2)) vals
+						)
+				| EmptyDimension ->
+						raise (TypeException "Can't have empty dimensions!")
 				in
 				let arrlen_modifier = get_size_modifier_for infered_subtype in
                 let arrlen = arrlen_modifier * base_arrlen in

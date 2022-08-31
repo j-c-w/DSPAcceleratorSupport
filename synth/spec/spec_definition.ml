@@ -32,10 +32,10 @@ and dimension_type =
 	(* This should be assigned in the assign_dimensions pass##
 	or can be specified by the .  *)
     | EmptyDimension
-	| Dimension of dimension_value
+	| SingleDimension of dimension_value
+	| MultiDimension of dimension_value list * dimension_operation
 and dimension_value =
 	| DimVariable of name_reference * dimension_relation
-	| DimMultipleVariables of name_reference list * dimension_operation
 	| DimConstant of int
 and dimension_relation =
 	| DimEqualityRelation

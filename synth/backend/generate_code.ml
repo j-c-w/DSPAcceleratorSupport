@@ -185,12 +185,6 @@ let rec cxx_name_reference_to_string typemap n =
 let cxx_dimension_value_to_string typemap context dvalue =
 	match dvalue with
 	| DimConstant(i) -> (string_of_int i) (* No context to consts *)
-	| DimMultipleVariables(vs, op) ->
-            (
-            match op with
-            | DimMultiply ->
-                    "(" ^ (String.concat (List.map vs (cxx_name_reference_to_string typemap)) ~sep:" * ") ^ ")"
-            )
 	| DimVariable(n, DimEqualityRelation) ->
 			context ^ (cxx_name_reference_to_string typemap n)
 	| DimVariable(n, DimPo2Relation) ->
@@ -202,8 +196,14 @@ let cxx_dimension_value_to_string typemap context dvalue =
 (* e.g. H(..., v) -> v *)
 let cxx_dimtype_to_name typemap context dimtype =
     match dimtype with
-    | Dimension(x) ->
+    | SingleDimension(x) ->
             (cxx_dimension_value_to_string typemap context x)
+	| MultiDimension(xs, op) ->
+			(
+            match op with
+            | DimMultiply ->
+                    "(" ^ (String.concat (List.map xs (cxx_dimension_value_to_string typemap context)) ~sep:" * ") ^ ")"
+            )
             (* Think this can be achieved in the gen_json call.
                Just return a TODO note, since that's what
                has to happen.  If it's (incorrectly)
@@ -211,9 +211,15 @@ let cxx_dimtype_to_name typemap context dimtype =
                error later anyway.  *)
 	| EmptyDimension -> "TOFILL"
 
-let rec cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier =
+let rec cxx_dimtype_to_definition typemap context dimtype dim_ratio_modifier =
     match dimtype with
-            | Dimension(x) -> "[" ^ (dim_ratio_modifier (cxx_dimension_value_to_string typemap "" x)) ^ "]"
+            | SingleDimension(x) -> "[" ^ (dim_ratio_modifier (cxx_dimension_value_to_string typemap "" x)) ^ "]"
+			| MultiDimension(xs, op) ->
+					(
+					match op with
+					| DimMultiply ->
+							"[" ^ (String.concat (List.map xs (cxx_dimension_value_to_string typemap context)) ~sep: "*") ^ "]"
+					)
 			| EmptyDimension -> "TOFILL"
 
 let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_ratio_modifier outermost =
@@ -236,7 +242,7 @@ let rec cxx_definition_synth_type_to_string_prefix_postfix typemap typ name dim_
 		arrays like float ***x *)
 			let prefix, postfix =
 				if outermost then
-					"", cxx_dimtype_to_definition typemap dimtype dim_ratio_modifier
+					"", cxx_dimtype_to_definition typemap "" dimtype dim_ratio_modifier
 				else
 					"*", ""
 			in
@@ -287,17 +293,17 @@ let is_malloc_type typemap typ =
 
 let get_dimension_modifer dim_orig dim_infered modifier =
 	match dim_orig with
-	| Dimension(DimVariable(_, DimEqualityRelation)) ->
+	| SingleDimension(DimVariable(_, DimEqualityRelation)) ->
 			(* Can do lots of conversions here.  *)
 			(
 		match dim_infered with
-			| Dimension(DimVariable(_, DimEqualityRelation)) -> (fun v -> v ^ modifier)
-			| Dimension(DimVariable(_, DimPo2Relation)) -> (fun v -> "(1 << " ^ v ^ ")" ^ modifier)
-			| Dimension(DimVariable(_, DimDivByRelation(x))) ->
+			| SingleDimension(DimVariable(_, DimEqualityRelation)) -> (fun v -> v ^ modifier)
+			| SingleDimension(DimVariable(_, DimPo2Relation)) -> (fun v -> "(1 << " ^ v ^ ")" ^ modifier)
+			| SingleDimension(DimVariable(_, DimDivByRelation(x))) ->
 					(fun v ->  "(" ^ v ^ " / " ^ (string_of_int x) ^ ")" ^ modifier)
-			| Dimension(DimConstant(_)) -> (fun v -> v ^ modifier)
+			| SingleDimension(DimConstant(_)) -> (fun v -> v ^ modifier)
 			| EmptyDimension -> (fun v -> v ^ modifier)
-			| Dimension(DimMultipleVariables(vs, op)) ->
+			| MultiDimension(vs, op) ->
 					(* Don't think this is valid? *)
 					assert false
 			)
@@ -345,9 +351,9 @@ some sense to not have these line up with dimvariables,
 but not with dim constants.  *)
 let use_dim_ratio_modifier adim =
 	match adim with
-	| Dimension(DimConstant(_)) -> false
-	| Dimension(DimVariable(_)) -> true
-    | Dimension(DimMultipleVariables(_)) -> true
+	| SingleDimension(DimConstant(_)) -> false
+	| SingleDimension(DimVariable(_)) -> true
+    | MultiDimension(_, _) -> true
 	| EmptyDimension -> false (* This can arise wehn doing json generation. *)
 
 let is_heap_allocation_mode (alloc_mode: allocation_mode) =

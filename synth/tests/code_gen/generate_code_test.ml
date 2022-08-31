@@ -12,7 +12,7 @@ let test_malloc_results () =
 		original_typemap = None
 	}
 	in
-	let vars = (Array(Array(Float32, Dimension(DimConstant(10))), Dimension(DimConstant(10)))) in
+	let vars = (Array(Array(Float32, SingleDimension(DimConstant(10))), SingleDimension(DimConstant(10)))) in
     (* TODO --- obviouysly this mallocs way too much space --- obviously this is also not the only string
     that would do this shit.  *)
     Alcotest.(check (string)) "same string" "float** testvar = (float**) facc_malloc (0, sizeof(float)*10*10);

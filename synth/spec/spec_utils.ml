@@ -140,9 +140,6 @@ let dimension_operation_to_string op =
 
 let dimension_value_to_string (dim: dimension_value) =
 	match dim with
-	| DimMultipleVariables(xs, op) ->
-			let opstring = dimension_operation_to_string op in
-			String.concat ~sep:opstring (List.map xs name_reference_to_string)
 	| DimConstant(i) -> (string_of_int i)
 	| DimVariable(n, rel) -> (name_reference_to_string n) ^ (dim_relation_to_string rel)
 
@@ -162,26 +159,31 @@ let dimension_operation_equal d1 d2 =
 	
 let dimension_value_equal d1 d2 =
 	match d1, d2 with
-    | DimMultipleVariables(x1s, op1), DimMultipleVariables(x2s, op2) ->
-            (dimension_operation_equal op1 op2) &&
-            (* TODO --- handle cases where op menans order
-            can be flipped (e.g. with * ) *)
-            (name_reference_list_equal x1s x2s)
 	| DimConstant(c1), DimConstant(c2) -> c1 = c2
 	| DimVariable(v1, r1), DimVariable(v2, r2) -> (name_reference_equal v1 v2) && (dim_relation_equal r1 r2)
 	| _, _ -> false
 
+let dimension_value_list_equal l1 l2 =
+	match (List.zip l1 l2) with
+	| Ok(l) -> List.for_all l (fun (a, b) -> dimension_value_equal a b)
+    | Unequal_lengths -> false
+
 let dimension_constant_less_than d1 d2 =
 	match d1, d2 with
-	| Dimension(DimConstant(c1)), Dimension(DimConstant(c2)) ->
+	| SingleDimension(DimConstant(c1)), SingleDimension(DimConstant(c2)) ->
 			c1 < c2
-	| _, _ -> raise (SpecException "not allowed dim constant < comparison with non-constnats")
+			(* Note that we could support multi-dim of constatns
+			here if required.  *)
+	| _, _ -> raise (SpecException "not allowed dim constant < comparison with non-constnats (or dim constant < with dim-multis)")
 
 let rec dimension_type_to_string dim =
     match dim with
     | EmptyDimension -> "No dimensions set!"
-    | Dimension(nrefs) ->
+    | SingleDimension(nrefs) ->
             (dimension_value_to_string nrefs)
+	| MultiDimension(vals, op) ->
+			let opstring = dimension_operation_to_string op in
+			String.concat ~sep:opstring (List.map vals dimension_value_to_string)
 
 let empty_dimension dim = match dim with
 	| EmptyDimension -> true
@@ -194,27 +196,32 @@ let dimension_type_list_to_string dims =
 
 let dimension_type_equal d1 d2 = match d1, d2 with
     | EmptyDimension, EmptyDimension -> true
-    | Dimension(a), Dimension(b) ->
+    | SingleDimension(a), SingleDimension(b) ->
 		dimension_value_equal a b
+	| MultiDimension(a, opa), MultiDimension(b, opb) ->
+			(dimension_operation_equal opa opb) &&
+            (* TODO --- handle cases where op menans order
+            can be flipped (e.g. with * ) *)
+            (dimension_value_list_equal a b)
 	| _ -> false
 
 let is_constant_dimension d =
 	match d with
 	| DimConstant(c) -> true
 	| DimVariable(v, _) -> false
-    | DimMultipleVariables(_, _) -> false
 	
 let is_constant_dimension_variable d =
 	match d with
 	| EmptyDimension -> false
-	| Dimension(d) ->
+	| SingleDimension(d) ->
 			is_constant_dimension d
+	| MultiDimension(ds, op) ->
+			List.for_all ds is_constant_dimension
 
 let constant_dimension_size d =
 	match d with
 	| DimConstant(c) -> Some(c)
 	| DimVariable(_, _) -> None
-    | DimMultipleVariables(_, _) -> None
 
 let rec synth_type_to_string t =
     match t with
@@ -324,7 +331,7 @@ let rec synth_value_to_type v =
 			(* TODO --- support something better for
 			empty arrays? *)
 			let subtype = synth_value_to_type (List.hd_exn vs) in
-			Array(subtype, Dimension(DimConstant(List.length vs)))
+			Array(subtype, SingleDimension(DimConstant(List.length vs)))
 	| StructV(name, cnts) ->
 			Struct(name)
 	| FunV(v) ->
@@ -406,12 +413,35 @@ let rec synth_value_has_type v t =
 			let validdim =
 				match dim with
 				| EmptyDimension -> true (* no assigned dim, so valid length *)
-				| Dimension(dimvalue) ->
+				| SingleDimension(dimvalue) ->
+					(
 					match constant_dimension_size dimvalue with
 					| Some(d) ->
 							(List.length subvals) = d
 					| None -> true (* true since dim is variable
 					length.  *)
+					)
+				| MultiDimension(dimvalues, op) ->
+						let const_sizes: int option list = List.map dimvalues constant_dimension_size in
+						(* Go through and get a const size for this
+						array --- should really be sent out to a
+						sub-function.  *)
+						(
+						match op with
+						| DimMultiply ->
+								let multiplied = List.fold ~init:(Some(1)) ~f:(fun (cur: int option) -> fun (prev: int option) ->
+									match cur, prev with
+									| Some(x), Some(y) -> Some(x * y)
+									| _, _ -> None
+								) const_sizes in
+								match multiplied with
+								| Some(d) ->
+										(List.length subvals) = d
+								| None ->
+										(* at least one of the
+										dims is variable length.  *)
+										true
+						)
             in
 			List.for_all subvals (fun v ->
 				synth_value_has_type v sty

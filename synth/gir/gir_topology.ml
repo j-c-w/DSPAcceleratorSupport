@@ -176,28 +176,24 @@ let rec gnames_from_ud ud =
 	| UDNameNest(rest, n) ->
 			(gnames_from_ud rest) @ [n]
 
+let get_uses_from_dim dim =
+	match dim with
+		| DimVariable(AnonymousName, _) -> raise (TopologicalSortException "No anon names in the typemap!")
+		| DimVariable(Name(n), _) -> [UDName(Name(n))]
+		| DimVariable(StructName(ns), _) -> raise (TopologicalSortException "Congratualations, you hit the case
+		that means you need to do a f*ck of a lot of work fixing the typemaps so that
+		they are actually sane and are recursive rather than the weird implicit
+		'.' that they use now.  Enjoy!")
+		| DimConstant(_) -> []
+
 let rec get_uses_defining_type typ =
     match typ with
     | Array(subtyp, dim) ->
             let this_dim = match dim with
-            | Dimension(nm) ->
-					(
-                    match nm with
-						| DimVariable(AnonymousName, _) -> raise (TopologicalSortException "No anon names in the typemap!")
-						| DimVariable(Name(n), _) -> [UDName(Name(n))]
-						| DimVariable(StructName(ns), _) -> raise (TopologicalSortException "Congratualations, you hit the case
-						that means you need to do a f*ck of a lot of work fixing the typemaps so that
-						they are actually sane and are recursive rather than the weird implicit
-						'.' that they use now.  Enjoy!")
-						| DimMultipleVariables(vs, op) ->
-								List.map vs (fun v ->
-									match v with
-									| AnonymousName -> raise (TopologicalSortException "No anon names in the typemap")
-									| Name(n) -> UDName(Name(n))
-									| StructName(ns) -> raise (TopologicalSortException "Hit a problematic bug --- see notes in source.") (* see identical case above *)
-								)
-						| DimConstant(_) -> []
-					)
+            | SingleDimension(nm) ->
+					get_uses_from_dim nm
+			| MultiDimension(dms, op) ->
+					List.concat(List.map dms get_uses_from_dim)
             | EmptyDimension -> raise (TopologicalSortException "Don't think this is possible?") in
             this_dim @ (get_uses_defining_type subtyp)
 	| Pointer(subty) ->

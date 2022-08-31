@@ -123,14 +123,6 @@ let dimvar_match x y =
 	(* let () = Printf.printf "Matching %s and %s\n" (dimension_value_to_string x) (dimension_value_to_string y) in *)
 	(* x is the accelerator var, y is the input var *)
     let result = match x, y with
-	| DimMultipleVariables(v1s, DimMultiply), DimMultipleVariables(v2s, DimMultiply) ->
-			(
-			match List.zip v1s v2s with
-			(* Create an equality relation expectation for each variable --- TODO --- find a way to support
-			the reflexivity of '*' *)
-            | Ok(l) -> Some(DimvarOneDimension(VarMatch(List.map l (fun (v1, v2) -> (v1, v2, DimEqualityRelation)))))
-			| Unequal_lengths -> None
-			)
 	| DimVariable(vname1, DimEqualityRelation), DimVariable(vname2, DimEqualityRelation) ->
             Some(DimvarOneDimension(VarMatch([(vname1, vname2, DimEqualityRelation)])))
     | DimVariable(vname1, DimPo2Relation), DimVariable(vname2, DimPo2Relation) ->
@@ -162,10 +154,6 @@ let dimvar_match x y =
 			(* TODO -- should work with the range
 			checker to support this case? *)
 			Some(DimvarOneDimension(ConstantMatch(c1)))
-	(* As far as I know, this owuld make no sense? *)
-	(* Or maybe we should support a constant match as above? *)
-	| DimMultipleVariables(_, _), _ -> None
-	| _, DimMultipleVariables(_, _) -> None
     in
     result
 
@@ -199,7 +187,19 @@ let rec dimensions_overlap direction x y =
     let result = match x, y with
 	| EmptyDimension, _ -> []
 	| _, EmptyDimension -> []
-	| Dimension(nrefs), Dimension(nrefs2) -> dim_has_overlap direction [nrefs] [nrefs2]
+	(* No matches if the modse are different right? *)
+	| SingleDimension(_), MultiDimension(_, _) -> []
+	| MultiDimension(_, _), SingleDimension(_) -> []
+	| SingleDimension(nrefs), SingleDimension(nrefs2) -> dim_has_overlap direction [nrefs] [nrefs2]
+	(* TODO -- support other op styles.  *)
+	| MultiDimension(nrefs1, DimMultiply), MultiDimension(nrefs2, DimMultiply) ->
+			(
+			match List.zip nrefs1 nrefs2 with
+			(* Create an equality relation expectation for each variable --- TODO --- find a way to support
+			the reflexivity of '*' *)
+            | Ok(l) -> dim_has_overlap direction nrefs1 nrefs2
+			| Unequal_lengths -> []
+			)
     in
     (* let () =
         Printf.printf "Computed overlap is %s\n"
@@ -278,14 +278,20 @@ let rec generate_typesets classmap inptype parentname inpname: skeleton_dimensio
             | Some(parent) ->
                     match lenvar with
                     | EmptyDimension -> assert false (* No idea WTF to do here.  *)
-                    | Dimension(DimConstant(_)) -> lenvar (* Keep the constant -- that doesn't need the context prepending.  *)
-                    | Dimension(DimVariable(nr, rel)) ->
+                    | SingleDimension(DimConstant(_)) -> lenvar (* Keep the constant -- that doesn't need the context prepending.  *)
+                    | SingleDimension(DimVariable(nr, rel)) ->
                             (* Relation stays the same, but we prepend the context that this particular
                                instance exists within.  *)
-                            Dimension(DimVariable(name_reference_concat parent nr, rel))
-					| Dimension(DimMultipleVariables(vs, op)) ->
-							Dimension(DimMultipleVariables(
-								List.map vs (name_reference_concat parent), op))
+                            SingleDimension(DimVariable(name_reference_concat parent nr, rel))
+					| MultiDimension(vs, op) ->
+							(* TODO --- extract the common code
+							here and above. *)
+							MultiDimension(List.map vs (fun v ->
+								match v with
+								| DimConstant(_) -> v
+								| DimVariable(nr, rel) ->
+										DimVariable(name_reference_concat parent nr, rel))
+							, op)
             in
 			(* This gives the array the name, so 'x' belongs to '[]'.  *)
 			SArray(name_from_opt inpname, subtyps, full_lenvar)
@@ -704,34 +710,48 @@ I'm not sure.  Doing it the simple way, may have
 to flatten the define list and do it the more complicated
 way (ie. work out which defs actually need to be defed
 ).  *)
-let rec define_bindings_for direction valid_dimvars vs =
+let rec define_bindings_for options direction valid_dimvars vs =
 	List.map vs (fun v ->
 		match v with
-        | SArray(_, _, EmptyDimension) ->
-                raise (SkeletonGenerationException "Can't have empty dim")
-		| SArray(arnam, _, Dimension(dms)) ->
-                let dimvar_bindings = dim_has_overlap direction [dms] valid_dimvars in
-                let () = Printf.printf "Got potential dimvars %s\n" (dimension_value_list_to_string valid_dimvars) in
-                let () =
-                    if (List.length dimvar_bindings) = 0 then
-                        let () = Printf.printf "Define binding has no valid dim vars.\n" in
-                        let () = Printf.printf "Direction is %s\n" (binding_mode_to_string direction) in
-                        let () = Printf.printf "array dms is %s\n" (dimension_type_to_string (Dimension(dms))) in
-                        let () = Printf.printf "Valid dimvars is %s\n" (dimension_value_list_to_string valid_dimvars) in
-                        assert false
-                    else ()
-                in
-                let () = (assert (List.length dimvar_bindings > 0)) in
-				[{
-					(* May have to properly
-					deal with array childer. *)
-					tovar_index_nesting = [name_reference_base_name arnam; AnonymousName];
-					fromvars_index_nesting = [];
-					dimensions_set = [dimvar_bindings];
-					probability = 1.0 (* note that we usually do 0 as default probabilities, but these
-					are probabilities of defines, which should be 1.0 --- they're usually set because
-					no alternative is needed.  *)
-                }]
+		| SArray(_, _, _) ->
+				(* Do a sub-match on the particular type of
+				the diemsion, which determiens which bindings
+				we actually use for length variables.  *)
+				let arnam, overlap = match v with
+				| SArray(_, _, EmptyDimension) ->
+						raise (SkeletonGenerationException "Can't have empty dim")
+				| SArray(arnam, _, SingleDimension(dms)) ->
+						let dimvar_bindings = dim_has_overlap direction [dms] valid_dimvars in
+						arnam, dimvar_bindings
+				| SArray(arnam, _, MultiDimension(dms, op)) ->
+						let dimvar_bindings = dim_has_overlap direction dms valid_dimvars in
+						arnam, dimvar_bindings
+				| _ -> assert false (* Not possible --- must be sarray.  *)
+				in
+					let () = if options.debug_generate_skeletons then
+						let () = Printf.printf "Got potential dimvars %s\n" (dimension_value_list_to_string valid_dimvars) in
+					() else () in
+					let () =
+						if (List.length overlap) = 0 then
+							let () = Printf.printf "Define binding has no valid dim vars.\n" in
+							let () = Printf.printf "Direction is %s\n" (binding_mode_to_string direction) in
+							(* TODO -- re-insert that debug statement. *)
+							(* let () = Printf.printf "array dms is %s\n" (dimension_type_to_string (Dimension(dms))) in *)
+							let () = Printf.printf "Valid dimvars is %s\n" (dimension_value_list_to_string valid_dimvars) in
+							assert false
+							else ()
+							in
+						let () = (assert (List.length overlap > 0)) in
+						[{
+							(* May have to properly
+							deal with array childer. *)
+							tovar_index_nesting = [name_reference_base_name arnam; AnonymousName];
+							fromvars_index_nesting = [];
+							dimensions_set = [overlap];
+							probability = 1.0 (* note that we usually do 0 as default probabilities, but these
+							are probabilities of defines, which should be 1.0 --- they're usually set because
+							no alternative is needed.  *)
+								}]
 		| SType(SInt(n)) ->
 				[{
 					tovar_index_nesting = [name_reference_base_name n];
@@ -772,7 +792,7 @@ let rec define_bindings_for direction valid_dimvars vs =
         | STypes(ts) ->
                 (* Think we can get away with nly defing
                 the top level one.  Not 100% sure.  *)
-                let sbase_names = (define_bindings_for direction valid_dimvars ts) in
+                let sbase_names = (define_bindings_for options direction valid_dimvars ts) in
                 List.concat(
                     List.map sbase_names (remove_duplicates single_variable_binding_equal)
                 )
@@ -791,7 +811,8 @@ let rec get_dimvars_used typeset =
             List.map typeset (fun typ ->
                 match typ with
                 | Probability(SArray(_, _, EmptyDimension), _) -> []
-                | Probability(SArray(_, _, Dimension(vs)), _) -> [vs]
+                | Probability(SArray(_, _, SingleDimension(vs)), _) -> [vs]
+				| Probability(SArray(_, _, MultiDimension(vs, op)), _) -> vs
                 | Probability(STypes(subtype), p) ->
                         get_dimvars_used (List.map subtype (fun s -> Probability(s, p)))
                 | _ -> []
@@ -872,7 +893,7 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
     (* Toplevel dimvars.  *)
     let valid_dimvars = get_dimvars_used typesets_in in
 	let define_bindings =
-		define_bindings_for direction valid_dimvars typesets_define_only in
+		define_bindings_for options direction valid_dimvars typesets_define_only in
     let result = List.concat [
 			likely_bindings; define_bindings
 		]

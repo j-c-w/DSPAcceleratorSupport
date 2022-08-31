@@ -15,7 +15,7 @@ let expand_simple_struct () =
 	}
 	in
 
-	let typ = Array(Struct("teststr"), Dimension(DimConstant(10))) in
+	let typ = Array(Struct("teststr"), SingleDimension(DimConstant(10))) in
 	(* Setup the typemap properly.  *)
 	let struct_classmap =  {
 		members = ["mem1"; "mem2"];
@@ -23,7 +23,7 @@ let expand_simple_struct () =
 		io_typemap = Hashtbl.create (module String);
 	} in
 	let _ = Hashtbl.add struct_classmap.typemap "mem1" Int32 in
-	let _ = Hashtbl.add struct_classmap.typemap "mem2" (Array(Float32, Dimension(DimConstant(10)))) in
+	let _ = Hashtbl.add struct_classmap.typemap "mem2" (Array(Float32, SingleDimension(DimConstant(10)))) in
 	let _ = Hashtbl.add testtmap.classmap "teststr" (StructMetadata(struct_classmap)) in
 
 	let expanded_types = get_copy_types_for testtmap typ ["basename1"] ["basename2"] in

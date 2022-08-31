@@ -24,7 +24,7 @@ let infer_structs_on_typemap options typemap variables =
         match current_type with
         | Array(t, d) ->
 				(* TODO -- insert a real struct trheshold.  *)
-                if (is_constant_dimension_variable d) && (dimension_constant_less_than d (Dimension(DimConstant(4)))) then
+                if (is_constant_dimension_variable d) && (dimension_constant_less_than d (SingleDimension(DimConstant(4)))) then
                     (* Allocate this as an n-struct, provided n < struct_threshold *)
                     (* If we do this, we reduce to a single pointer.  *)
                     (* TODO *)
@@ -40,15 +40,15 @@ let infer_structs_on_typemap options typemap variables =
 							it by a factor of two.  *)
 							(* Note that we don't use the newdim
 							if the inference fails.  *)
-							| Dimension(DimConstant(c)) -> [Dimension(DimConstant(c / 2)); Dimension(DimConstant(c))]
-							| Dimension(DimVariable(v, DimEqualityRelation)) -> [
+							| SingleDimension(DimConstant(c)) -> [SingleDimension(DimConstant(c / 2)); SingleDimension(DimConstant(c))]
+							| SingleDimension(DimVariable(v, DimEqualityRelation)) -> [
 								(* We are infering structs below that
 								affect the effective length of the array
 								by a factor of two.  So,
 								depending on how ingrained this infered
 								type is in user code, it may or may
 								not affect the struct by a factor of two. *)
-								Dimension(DimVariable(v, DimEqualityRelation)); Dimension(DimVariable(v, DimDivByRelation(2)))
+								SingleDimension(DimVariable(v, DimEqualityRelation)); SingleDimension(DimVariable(v, DimDivByRelation(2)))
 							]
 							(* TODO -- completeness would suggest that we need the same
 							expansion for Po2 lengths. *)

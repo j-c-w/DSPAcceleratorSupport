@@ -53,15 +53,20 @@ tident:
      | AnonymousName -> Name($1)
  }
 
+t_equation_ident:
+	 | tident { DimVariable($1, DimEqualityRelation) }
+	 | INTEGER { DimConstant($1) }
+
 mul_equation_internal:
-	 | tident { [$1] }
-	 | tident STAR mul_equation_internal { $1 :: $3 }
+	 | t_equation_ident { [$1] }
+	 | t_equation_ident STAR mul_equation_internal { $1 :: $3 }
 
 mul_equation:
-	 | tident STAR mul_equation_internal { DimMultipleVariables($1 :: $3, DimMultiply)  }
+	 | t_equation_ident STAR mul_equation_internal { MultiDimension($1 :: $3, DimMultiply)  }
+	 | t_equation_ident STAR mul_equation_internal { MultiDimension($1 :: $3, DimMultiply) }
 
 t_equation:
-	 | mul_equation { $1 }
+	 | mul_equation; { $1 }
 
 tsub:
  | BOOL { Bool }
@@ -79,8 +84,8 @@ tsub:
  | STRING { String }
  | UNIT { Unit }
  | ARRAY; LPAREN; tsub; RPAREN { Array($3, EmptyDimension) };
- | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, Dimension(DimConstant($5))) };
- | ARRAY; LPAREN; tsub; HASH; tident; RPAREN { Array($3, Dimension(DimVariable($5, DimEqualityRelation))) }
- | ARRAY; LPAREN; tsub; HASH; t_equation; RPAREN { Array($3, Dimension($5)) };
+ | ARRAY; LPAREN; tsub; HASH; INTEGER; RPAREN {  Array($3, SingleDimension(DimConstant($5))) };
+ | ARRAY; LPAREN; tsub; HASH; tident; RPAREN { Array($3, SingleDimension(DimVariable($5, DimEqualityRelation))) }
+ | ARRAY; LPAREN; tsub; HASH; t_equation; RPAREN { Array($3, $5) };
  | POINTER; LPAREN; tsub; RPAREN { Pointer($3) };
  | IDENT {Struct($1)}

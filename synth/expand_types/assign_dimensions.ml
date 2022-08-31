@@ -88,7 +88,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 					List.concat (
 						List.map newsubtyps (fun newsubtyp ->
 							List.map possible_len_vars (fun lvar ->
-								Array(newsubtyp, Dimension(lvar))
+								Array(newsubtyp, SingleDimension(lvar))
 							)
 						)
 					) in
@@ -213,8 +213,8 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 					(check_typ sty) && (
 						match dim with
 						| EmptyDimension -> assert false (* We literally just assigned these.  *)
-						| Dimension(DimConstant(c)) -> true
-						| Dimension(DimVariable(v, DimEqualityRelation)) ->
+						| SingleDimension(DimConstant(c)) -> true
+						| SingleDimension(DimVariable(v, DimEqualityRelation)) ->
 								let vrange = Hashtbl.find rangemap (name_reference_to_string v) in
 								(
 								match vrange with
@@ -233,11 +233,11 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 									probably not worth accelerating? *)
 									(rmin >= 0) && (rmax > 1)
 								)
-						| Dimension(DimVariable(v, DimDivByRelation(x))) ->
+						| SingleDimension(DimVariable(v, DimDivByRelation(x))) ->
 								let _ = Hashtbl.find rangemap (name_reference_to_string v) in
 								(* TODO --- filter by cheecking the multipled range is kinda still in range.  *)
 								true
-						| Dimension(DimVariable(v, DimPo2Relation)) ->
+						| SingleDimension(DimVariable(v, DimPo2Relation)) ->
 								(* Note that rangemaps use a stupid non-nested structure where '.' is in the the actual used name.  *)
 								let vrange = Hashtbl.find rangemap (name_reference_to_string v) in
 								(
@@ -270,7 +270,7 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 								| None -> false
 								)
 							(* What heuristics should we apply? *)
-							| Dimension(DimMultipleVariables(names, DimMultiply)) ->
+							| MultiDimension(xs, mode) ->
 									(* Pablo? *)
 									true
 					)
