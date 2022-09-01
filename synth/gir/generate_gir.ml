@@ -185,8 +185,7 @@ and putting a TODO note like in the backend? *)
 			let dimnames = List.map dims (fun dim ->
 				generate_dim_reference typelookup dim
 			) in
-			let () =
-				(* Printf.printf "From dims %s, generated name references %s\n" (dimension_value_list_to_string dims) (expression_list_to_string dimnames)  in *)
+			(* let () = Printf.printf "From dims %s, generated name references %s\n" (dimension_value_list_to_string dims) (expression_list_to_string dimnames)  in *)
 			let maxvar = new_variable () in
 			let _ = Hashtbl.add typelookup (gir_name_to_string maxvar) (Int64) in
 			let indvar = new_induction_variable () in
