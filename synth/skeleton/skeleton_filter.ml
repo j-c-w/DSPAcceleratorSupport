@@ -80,7 +80,7 @@ let filter_constraints_set options cons =
                     )
         (* TODO -- do we also need to do some filtering here? *)
 		| DimvarOneDimension(_) ->
-                (* let () = Printf.printf "Looking at a constant, %s\n" (dimvar_mapping_to_string dm) in *)
+                (* let () = Printf.printf "Looking at a single dim, %s\n" (dimvar_mapping_to_string dm) in *)
                 true
     )
     in

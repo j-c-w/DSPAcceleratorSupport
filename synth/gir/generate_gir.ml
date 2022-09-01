@@ -167,7 +167,7 @@ let rec generate_loop_wrappers_from_single_dimension typelookup constraints =
     (* let () = Printf.printf "Generating loop wrappers from dimension %s\n" (dimension_constraint_to_string constraints) in *)
 	(* Get the dimension out of the constraints *)
 	let dim = match constraints with
-	| DimensionConstraints(_, dim) -> dim
+	| DimensionConstraints(cons, dim) -> dim
 	in
 	match dim with
 	(* Does this need to throw?  Could we get away w/out throwing
@@ -185,6 +185,8 @@ and putting a TODO note like in the backend? *)
 			let dimnames = List.map dims (fun dim ->
 				generate_dim_reference typelookup dim
 			) in
+			let () =
+				(* Printf.printf "From dims %s, generated name references %s\n" (dimension_value_list_to_string dims) (expression_list_to_string dimnames)  in *)
 			let maxvar = new_variable () in
 			let _ = Hashtbl.add typelookup (gir_name_to_string maxvar) (Int64) in
 			let indvar = new_induction_variable () in

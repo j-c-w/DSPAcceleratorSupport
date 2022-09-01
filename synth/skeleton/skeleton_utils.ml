@@ -13,6 +13,9 @@ let one_dim_var_mapping_to_string map =
 	| ConstantMatch(from_const) ->
 			(string_of_int from_const)
 
+let one_dim_var_mapping_list_to_string maplist =
+	String.concat ~sep:", " (List.map maplist one_dim_var_mapping_to_string)
+
 let rec dimvar_mapping_to_string mapping = match mapping with
 	| DimvarOneDimension(map) -> one_dim_var_mapping_to_string map
 	| DimvarMultiDimension(maps) ->
@@ -31,6 +34,9 @@ let dimension_constraint_to_string cons =
 
 let dimension_constraint_list_to_string conslist =
     String.concat ~sep:", " (List.map conslist dimension_constraint_to_string)
+
+let dimension_constraint_list_list_to_string conslist =
+    String.concat ~sep:" --- " (List.map conslist dimension_constraint_list_to_string)
 
 let one_dimension_mapping_equal m1 m2 =
     match m1, m2 with
@@ -245,8 +251,14 @@ let single_variable_binding_list_to_string binds =
 	"SKELETON:\n" ^ String.concat ~sep:"\n" (
 	List.map binds single_variable_binding_group_to_string)
 
+let single_variable_binding_list_list_to_string binds =
+    String.concat ~sep:"\n======\n" (List.map binds single_variable_binding_list_to_string)
+
 let skeleton_type_binding_to_string binds =
     single_variable_binding_list_to_string binds.bindings
+
+let skeleton_type_binding_list_to_string binds =
+    String.concat ~sep:"\n=======\n" (List.map binds skeleton_type_binding_to_string)
 
 let skeleton_dimension_group_types_to_string typs =
     String.concat ~sep:", DimensionType:" (List.map typs skeleton_dimension_group_type_to_string)

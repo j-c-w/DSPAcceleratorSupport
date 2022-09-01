@@ -11,6 +11,7 @@ open Builtin_conversion_functions;;
 let flatten_binding options (svar_binding: single_variable_binding_option_group) =
     (* let () = Printf.printf "Length of bindings is %d\n" (List.length svar_binding.dimensions_set) in *)
 	if List.length svar_binding.dimensions_set > 0 then
+		(* let () = ignore( List.map svar_binding.dimensions_set (fun dims -> Printf.printf "Before reducing, have a constraints set of %s\n" (dimension_constraint_list_to_string dims))) in *)
 		let reduced_constraint_set = List.map svar_binding.dimensions_set (filter_constraints_set options) in
 		let combinations = cross_product reduced_constraint_set in
         (* let () = Printf.printf "Reduced constraint set to size %d\n" (List.length combinations) in *)

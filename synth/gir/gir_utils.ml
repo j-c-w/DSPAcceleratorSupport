@@ -125,6 +125,9 @@ let gir_list_to_string girl =
 let gir_list_list_to_string girll =
 	String.concat ~sep:"\n=====\n" (List.map girll gir_list_to_string)
 
+let expression_list_to_string exprl =
+	String.concat ~sep:", " (List.map exprl expression_to_string)
+
 let post_behavioural_to_string (pbp: post_behavioural_program option) =
     match pbp with
     | None -> "None"
