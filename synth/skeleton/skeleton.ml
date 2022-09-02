@@ -396,20 +396,31 @@ let build_dimension_groups options inputs =
 
     match options.binding_specification with
     | Some(spec) ->
-        List.map inputs (fun v ->
-            let tbl = match Hashtbl.find spec.probabilities (skeleton_dimension_group_type_to_id_string v) with
-            | Some(sub_tbl) ->
-                    sub_tbl
-            | None ->
-                    Hashtbl.create (module String)
-            in
-            let () = if options.debug_skeleton_probabilities then
-                let () = Printf.printf "Looking up binding probability map for variable %s\n" ((skeleton_dimension_group_type_to_id_string v)) in
-                let () = Printf.printf "It has sub-keys %s\n" (String.concat ~sep:", " (Hashtbl.keys tbl)) in
-                ()
-                else () in
-            Probability(v, tbl)
-        )
+        List.concat (List.map inputs (fun v ->
+			(* Flatten any STypes into SType --- not clear that
+			this is really the best place to do this, but is
+			required to enable interaction with the flat probability
+			map.  I think the added complexity of a not-flat
+			probability map will not make up for the bonus
+			of doing the flattening elsewhere.  *)
+			(* IIRC the real use for non-flat spaces is in
+length inference, which has already happened.  *)
+			let flat_types = flatten_stype_list v in
+			List.map flat_types (fun v ->
+				let tbl = match Hashtbl.find spec.probabilities (skeleton_dimension_group_type_to_id_string v) with
+				| Some(sub_tbl) ->
+						sub_tbl
+				| None ->
+						Hashtbl.create (module String)
+				in
+				let () = if options.debug_skeleton_probabilities then
+					let () = Printf.printf "Looking up binding probability map for variable %s\n" ((skeleton_dimension_group_type_to_id_string v)) in
+					let () = Printf.printf "It has sub-keys %s\n" (String.concat ~sep:", " (Hashtbl.keys tbl)) in
+					()
+					else () in
+				Probability(v, tbl)
+			)
+        ))
     | None ->
             List.map inputs (fun v ->
                 Probability(v, Hashtbl.create (module String))
