@@ -46,7 +46,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		debug_skeleton_deduplicate max_string_size heuristics_mode
 		debug_parse_type probabilities_spec_file debug_skeleton_probabilities
 		binding_threshold skip_post_synthesis
-		debug_skeleton_constraints_filter debug_evaluate_gir =
+		debug_skeleton_constraints_filter debug_evaluate_gir timing =
     (* First make the options object, then call the normal main function.  *)
 	let compile_settings = load_compile_settings compile_settings_file in
     let target_type = backend_target_from_string target in
@@ -70,6 +70,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
 		execution_timeout = execution_timeout;
         generate_timing_code = generate_timing_code;
         heuristics_mode = get_heuristics heuristics_mode;
+		timing = timing;
 
 		param_constant_generation_threshold = param_constant_generation_threshold;
         range_size_difference_factor = range_factor_from_option range_size_diff_factor;
@@ -200,6 +201,9 @@ let execution_timeout =
 let generate_timing_code =
 	let doc = "Generate wrappers to enable timing code" in
 	Arg.(value & flag & info ["generate-timing-code"] ~docv:"GenerateTimingCode" ~doc)
+let timing =
+	let doc = "Print synthesis time numbers" in
+	Arg.(value & flag & info ["timing"] ~docv:"Timing" ~doc)
 
 (* Generation paramter flags *)
 let param_constant_generation_threshold =
@@ -415,6 +419,6 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
 	debug_infer_structs $ debug_expand_typemaps $ dump_typemaps $ debug_generate_malloc
 	$ debug_skeleton_deduplicate $ max_string_size $ heuristics_mode $ debug_parse_type
 	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold $ skip_post_synthesis
-	$ debug_skeleton_constraints_filter $ debug_evaluate_gir)
+	$ debug_skeleton_constraints_filter $ debug_evaluate_gir $ timing)
 
 let () = Term.exit @@ Term.eval (args_t, info)

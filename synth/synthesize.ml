@@ -13,6 +13,7 @@ open Executable_test;;
 open Post_synthesis;;
 open Options;;
 open Code_checker;;
+open Sys;;
 
 exception TypeException of string
 
@@ -38,6 +39,7 @@ let reduce_programs (opts:options) programs =
 let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl.t) (iospec_typemap) (iospec: iospec) (apispec_typemap) (apispec_alignment) (api: apispec) =
 	(* Assign possible dimension equalities between vector types.  *)
 	(* This updates the type ref tables in place, so no reassigns needed.  *)
+	let start_time = Sys.time() in
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Starting synthesis!%!\n"
 	else () in
@@ -81,6 +83,10 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	let () = if opts.print_synthesizer_numbers then
 		Printf.printf "Number of codes generated is %d%!\n" (List.length generated_code)
 	else () in
+	let synthesis_time = Sys.time() in
+	let () = if opts.timing then
+		Printf.printf "[Timing] Binding Synthesis: %fs\n" (synthesis_time .- start_time)
+	else () in
 	if opts.stop_before_build then
 		()
 	else (
@@ -89,6 +95,10 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	let () = if opts.print_synthesizer_numbers then
 		let () = Printf.printf "Number of codes built is %d\n" (List.length code_files) in
 		Printf.printf "Generating tests for the %d programs\n" (List.length reduced_programs)
+	else () in
+	let build_time = Sys.time() in
+	let () = if opts.timing then
+		Printf.printf "[Timing] Build Time: %fs\n" (build_time .- synthesis_time)
 	else () in
 	(* Generate some I/O tests.  *)
 	let io_tests = generate_io_tests opts iospec reduced_programs in
@@ -103,6 +113,10 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	(* Try the code until we find one that works.  *)
 	let working_codes = find_working_code opts code_files io_tests real_response_files in
 	(* END Round 1 of Tests *)
+	let test_time = Sys.time() in
+	let () = if opts.timing then
+		Printf.printf "[Timing] Testing Time (1): %fs\n" (test_time .- build_time)
+	else () in
 
     (* Run post-synthesis *)
 	let () = if opts.print_synthesizer_numbers then
@@ -110,6 +124,11 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	else ()
 	in
     let post_synthesis_programs = run_post_synthesis opts iospec api reduced_programs working_codes in
+	let post_synthesis_time = Sys.time() in
+	let () = if opts.timing then
+		let () = Printf.printf "[Timing] Post Synthesis Time: %fs\n" (post_synthesis_time .- test_time) in
+		Printf.printf "[Timing] Total Time: %fs\n" (post_synthesis_time .- start_time)
+	else () in
     (* TODO --- regenerate the code and output the working ones
         in an output file!. *)
     let working_programs = List.filter_map post_synthesis_programs (fun (p, passing) -> if passing then Some(p) else None) in

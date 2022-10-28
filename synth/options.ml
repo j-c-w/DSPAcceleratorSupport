@@ -68,6 +68,7 @@ type options = {
     execution_timeout: int;
 	generate_timing_code: bool;
     heuristics_mode: heuristics;
+    timing: bool;
 
 	(* Generation Parameters.  *)
 	param_constant_generation_threshold: int;
@@ -170,6 +171,7 @@ let default_options = {
     execution_timeout = 5;
     generate_timing_code = false;
     heuristics_mode = FFT;
+    timing = false; (* Print synthesis times.  *)
 
     param_constant_generation_threshold = 4;
 	range_size_difference_factor = Finite(3);
