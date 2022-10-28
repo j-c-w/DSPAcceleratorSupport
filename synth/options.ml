@@ -249,3 +249,10 @@ let default_options = {
 	(* Generic debug *)
 	print_synthesizer_numbers = false;
 }
+
+
+(* Does the problem require support for multi-dimensional arrays.  *)
+let use_two_dimensional_arrays o =
+    match o.heuristics_mode with
+    | FFT -> false
+    | GEMM -> true

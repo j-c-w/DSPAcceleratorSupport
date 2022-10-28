@@ -65,7 +65,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 					let () = Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," (List.map all_vars_at_level name_reference_to_string))) in
 					Printf.printf "%s\n" ("These are possible: " ^ (String.concat ~sep:"," (List.map possible_len_vars name_reference_to_string)))
 				else () in
-				let possible_len_vars =
+				let single_dim_len_vars =
 					List.concat
 						(List.map possible_len_vars (fun lv ->
 							(* Note that we do not infer the mulby relation here, since
@@ -74,13 +74,29 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 							array by a factor of two, maybe the original N you were
 							using should actually be N / 2 now. ) *)
 							[
-								DimVariable(lv, DimEqualityRelation);
-								DimVariable(lv, DimPo2Relation);
+								SingleDimension(DimVariable(lv, DimEqualityRelation));
+								SingleDimension(DimVariable(lv, DimPo2Relation));
 							]
 							)) in
+                (* For problems that require support for 2d arrays, go thorugh
+                   and infer the length variables for that.
+                   Note that this can get very costly very quickly -- some length
+                   heuristics would be extrememly effective here.  *)
+				let two_dimensional_len_vars =
+                    if use_two_dimensional_arrays opts then
+                        List.concat (
+                            List.map possible_len_vars (fun lv ->
+                                List.map possible_len_vars (fun lv2 ->
+                                    MultiDimension([DimVariable(lv, DimEqualityRelation); DimVariable(lv2, DimEqualityRelation)], DimMultiply)
+                                )
+                            )
+                        )
+                    else []
+                in
+                let possible_len_vars = single_dim_len_vars @ two_dimensional_len_vars in
 				let () = if opts.debug_assign_dimensions then
 					let () = Printf.printf "Array variable has type %s\n" (synth_type_to_string name) in
-					let () = Printf.printf "Looking at the following len vars: %s\n" (String.concat ~sep:", " (List.map possible_len_vars dimension_value_to_string)) in
+					let () = Printf.printf "Looking at the following len vars: %s\n" (String.concat ~sep:", " (List.map possible_len_vars dimension_type_to_string)) in
 					()
 				else ()
 				in
@@ -88,7 +104,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 					List.concat (
 						List.map newsubtyps (fun newsubtyp ->
 							List.map possible_len_vars (fun lvar ->
-								Array(newsubtyp, SingleDimension(lvar))
+								Array(newsubtyp, lvar)
 							)
 						)
 					) in
