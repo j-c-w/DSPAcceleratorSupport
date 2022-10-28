@@ -85,7 +85,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	else () in
 	let synthesis_time = Sys.time() in
 	let () = if opts.timing then
-		Printf.printf "[Timing] Binding Synthesis: %fs\n" (synthesis_time .- start_time)
+		Printf.printf "[Timing] Binding Synthesis: %fs\n" (synthesis_time -. start_time)
 	else () in
 	if opts.stop_before_build then
 		()
@@ -98,7 +98,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	else () in
 	let build_time = Sys.time() in
 	let () = if opts.timing then
-		Printf.printf "[Timing] Build Time: %fs\n" (build_time .- synthesis_time)
+		Printf.printf "[Timing] Build Time: %fs\n" (build_time -. synthesis_time)
 	else () in
 	(* Generate some I/O tests.  *)
 	let io_tests = generate_io_tests opts iospec reduced_programs in
@@ -115,7 +115,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	(* END Round 1 of Tests *)
 	let test_time = Sys.time() in
 	let () = if opts.timing then
-		Printf.printf "[Timing] Testing Time (1): %fs\n" (test_time .- build_time)
+		Printf.printf "[Timing] Testing Time (1): %fs\n" (test_time -. build_time)
 	else () in
 
     (* Run post-synthesis *)
@@ -126,8 +126,8 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
     let post_synthesis_programs = run_post_synthesis opts iospec api reduced_programs working_codes in
 	let post_synthesis_time = Sys.time() in
 	let () = if opts.timing then
-		let () = Printf.printf "[Timing] Post Synthesis Time: %fs\n" (post_synthesis_time .- test_time) in
-		Printf.printf "[Timing] Total Time: %fs\n" (post_synthesis_time .- start_time)
+		let () = Printf.printf "[Timing] Post Synthesis Time: %fs\n" (post_synthesis_time -. test_time) in
+		Printf.printf "[Timing] Total Time: %fs\n" (post_synthesis_time -. start_time)
 	else () in
     (* TODO --- regenerate the code and output the working ones
         in an output file!. *)
