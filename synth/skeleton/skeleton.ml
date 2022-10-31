@@ -538,7 +538,7 @@ and bindings_for options (typesets_in: (skeleton_type * ((string, float) Hashtbl
    Need to get a set of assignments for each
    output. *)
 and possible_bindings options direction constant_options_map (typesets_in: skeleton_dimension_probabilistic_group_type list) (types_out: skeleton_dimension_group_type list): single_variable_binding_option_group list list = 
-    List.concat (List.map types_out (fun type_out ->
+	let result = (List.map types_out (fun type_out ->
 		(*  Make sure that all the possible assingments
 		    have the same dimension.  *)
 		match type_out with
@@ -669,7 +669,10 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
 				else
 					() in
 				let () = verify_single_binding_option_groups concated_recurse_assignments in
-				concated_recurse_assignments
+				if ((List.length concated_recurse_assignments) = 0) then
+					[[]]
+				else
+					concated_recurse_assignments
 		(* If this isn't an array, then allow any type
 		   that isn't an array. *)
 		| STypes(_) -> raise (SkeletonGenerationException "Need to flatten STypes out before getting mappings")
@@ -711,6 +714,10 @@ and possible_bindings options direction constant_options_map (typesets_in: skele
             (* let () = Printf.printf "final bindigns results are %s\n" (single_variable_binding_list_list_to_string results) in *)
 			results
 		))
+	in
+	(* let () = Printf.printf "Result size is %d, catted is %d\n" (List.length result) (List.length (List.concat result)) in *)
+	(* let () = Printf.printf "Have the following number of options for each leelent %s\n" (String.concat ~sep:"," (List.map result (fun r -> string_of_int (List.length r)))) in *)
+	List.concat (result)
 
 let in_binding (binding: single_variable_binding_option_group) sub =
 	List.exists sub.bindings (fun b ->
@@ -958,9 +965,11 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
 	   output.  This is type filtered, so the idea
 	   is that it is sane.  *)
 	let possible_bindings_list = possible_bindings options direction constant_options_map flattened_typesets_in flattened_typesets_out in
+	let () = assert ((List.length flattened_typesets_out) = (List.length possible_bindings_list)) in
     let () =
         if options.debug_skeleton_multiple_lengths_filter then
             let () = Printf.printf "generated possible bindings\n%!" in
+			let () = Printf.printf "Possible bindings list is %d long\n" (List.length possible_bindings_list) in
             let () = Printf.printf "After Generation, Possible binding options are %s\n" (single_variable_binding_list_list_to_string possible_bindings_list) in
         () else ()
     in
@@ -984,7 +993,14 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
 			likely_bindings; define_bindings
 		]
     in
-    
+
+	let () =
+		if options.debug_skeleton_multiple_lengths_filter then
+			let () = Printf.printf "Found possible bindings for %s\n"  (skeleton_dimension_group_types_to_string flattened_typesets_out) in
+			let () = Printf.printf "Have the following variables %d\n" (List.length likely_bindings) in
+			let () = Printf.printf "Have the following number of options for each variable %s\n" (String.concat ~sep:"," (List.map likely_bindings (fun r -> string_of_int (List.length r)))) in
+			() else ()
+	in
     let _ =
         List.map result (fun b ->
             List.map b (fun c ->
@@ -1054,8 +1070,11 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     let liveout_api_types = skeleton_type_lookup typemap apispec.liveout in
     let liveout_types = skeleton_type_lookup typemap (Utils.remove_duplicates Utils.string_equal (iospec.returnvar @ iospec.liveout)) in
 	let () = if options.debug_generate_skeletons then
-		let () = Printf.printf "Liveout types are %s\n" (skeleton_dimension_group_type_list_to_string liveout_types) in ()
-	else () in
+		let () = Printf.printf "Liveout types are %s\n" (skeleton_dimension_group_type_list_to_string liveout_types) in
+		let () = Printf.printf "Livein types are %s\n" (skeleton_dimension_group_type_list_to_string livein_types) in
+		let () = Printf.printf "Livein types (API) are %s\n" (skeleton_dimension_group_type_list_to_string livein_api_types) in
+		let () = Printf.printf "Liveout types (API) are %s\n" (skeleton_dimension_group_type_list_to_string liveout_api_types) in
+		() else () in
     (* Get the types that are not livein, but are function args.  *)
     let define_only_api_types = skeleton_type_lookup typemap (set_difference Utils.string_equal apispec.funargs apispec.livein) in
     (* Get any constants that we should try for the binds.  *)
@@ -1063,7 +1082,9 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
     (* Now use these to create skeletons.  *)
 	(* Prebinds *)
 	let prebind_inputs = build_dimension_groups options livein_types  in
+	(* let () = Printf.printf "Prebind inputs are %s\n" (skeleton_dimension_probabilistic_group_type_list_to_string prebind_inputs) in *)
 	let pre_skeletons: skeleton_type_binding list = binding_skeleton options PreBinding typemap constant_options_map prebind_inputs livein_api_types define_only_api_types in
+	(* let () = Printf.printf "Unflattened Pre skeletons are %s\n" (skeleton_type_binding_list_to_string pre_skeletons) in *)
 	(* Postbinds *)
 	(* Aim is to get the types bound using the liveout api types, but with the original
 	livein types being used if required.  *)
@@ -1073,6 +1094,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
 	(* Flatten the skeletons that had multiple options for dimvars.  *)
 	let flattened_pre_skeletons = flatten_skeleton options pre_skeletons in
 	let flattened_post_skeletons = flatten_skeleton options post_skeletons in
+    (* let () = Printf.printf "Pre skeletons are %s\n" (flat_skeleton_list_to_string flattened_pre_skeletons) in *)
 	(* Do range-checks and input any value map functions.  *)
 	let range_checked_pre_skeletons = rangecheck_skeletons options flattened_pre_skeletons iospec.rangemap apispec.validmap in
 	let range_checked_post_skeletons = rangecheck_skeletons options flattened_post_skeletons apispec.validmap iospec.rangemap in
@@ -1117,7 +1139,7 @@ let generate_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) 
 		Printf.printf "Liveout types are %s\n" (String.concat ~sep:", " (List.map liveout_types skeleton_dimension_group_type_to_string));
 		Printf.printf "Livein types are %s\n" (String.concat ~sep:", " (List.map livein_types skeleton_dimension_group_type_to_string));
 		Printf.printf "Liveout API types are %s\n" (String.concat ~sep:", " (List.map liveout_api_types skeleton_dimension_group_type_to_string));
-		Printf.printf "Livein API types are %s\n" (String.concat ~sep:", " (List.map liveout_api_types skeleton_dimension_group_type_to_string));
+		Printf.printf "Livein API types are %s\n" (String.concat ~sep:", " (List.map livein_api_types skeleton_dimension_group_type_to_string));
         (* Currently no postbinding filtering visible in this function.
         Printf.printf "Number of pre-bindings post-filterings is %d" (List.length 
         Printf.printf "Number of post-bindings post-filterings is %d" (List.length 

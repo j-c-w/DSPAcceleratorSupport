@@ -294,7 +294,7 @@ let assign_dimensions_apply_heuristics options rangemap (typename, types) =
 			) in
 		let result = check_typ typ in
 		let () = if options.debug_assign_dimensions then
-			Printf.printf "Result of check was %b\n" (result)
+			Printf.printf "Result of check (of type %s) was %b\n" (synth_type_to_string typ) (result)
 		else ()
 		in
 		result
@@ -323,6 +323,9 @@ let assign_dimensions (options: options) do_classmaps rangemap typemap inps =
     let () = if options.debug_assign_dimensions then
         let () = Printf.printf "Executed top level assigns!\n" in
         let () = Printf.printf "Names assigned to were %s\n" (String.concat ~sep:", " inps) in
+		let () = Printf.printf "Result typemaps was %d\n" (List.length res_typemaps) in
+		let () = Printf.printf "Result typemaps after filtering was %d\n" (List.length filtered_typemaps) in
+		let () = Printf.printf "Expanded %s, also propagating %s\n" (String.concat ~sep:", " inps) (String.concat ~sep:"," (List.map other_elements (fun (x, y) -> x))) in
         ()
 	else
         () in

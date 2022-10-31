@@ -41,6 +41,7 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	let () = if opts.debug_skeleton_flatten then
 		Printf.printf "Input length is %d\n" (List.length skels)
 	else () in
+	let all_non_zero = List.for_all skels (fun skel -> List.for_all skel.bindings (fun b -> (List.length b.fromvars_index_nesting) > 0)) in
 	let vbinds = List.concat (List.map skels (
 			fun skel ->
 				let () = if opts.debug_skeleton_flatten then
@@ -76,6 +77,10 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	(* There must be more things after we expand them. *)
     (* Failure of this assertion implies that there is something odd going on
     with the dimension variables.  *)
-	let () = assert ((List.length result) >= (List.length skels)) in
+	let () = if all_non_zero then
+		(* let () = assert ((List.length result) >= (List.length skels)) in *)
+		()
+	else ()
+	in
 	let result = List.filter result length_variable_compatability in
 	result
