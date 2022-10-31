@@ -41,7 +41,6 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	let () = if opts.debug_skeleton_flatten then
 		Printf.printf "Input length is %d\n" (List.length skels)
 	else () in
-	let all_non_zero = List.for_all skels (fun skel -> List.for_all skel.bindings (fun b -> (List.length b.fromvars_index_nesting) > 0)) in
 	let vbinds = List.concat (List.map skels (
 			fun skel ->
 				let () = if opts.debug_skeleton_flatten then
@@ -77,10 +76,20 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	(* There must be more things after we expand them. *)
     (* Failure of this assertion implies that there is something odd going on
     with the dimension variables.  *)
-	let () = if all_non_zero then
-		(* let () = assert ((List.length result) >= (List.length skels)) in *)
-		()
-	else ()
-	in
+	(* Note: Oct 2022: with more agressive length inference passes,
+	   things sometimes get to this stage without having any pluasible
+	   matches.  It's not clear to me whether this assert is important
+	   enough to figure out how to abort out of this pipeline before
+	   we get here if there are zero matches.
+
+	   The main problem here is that this pass is called for each infered
+		typemap --- so if one typemap has no valid mappings for a variable,
+		this assert is tripped.
+
+	   Regardless, in less-agressive length inference modes, this isn't hit.
+	   Presumably becuase there are partially valid candidates that make it
+	   past here.  *)
+	(* Anyway, disabled for now.  *)
+	(* let () = assert ((List.length result) >= (List.length skels)) in *)
 	let result = List.filter result length_variable_compatability in
 	result
