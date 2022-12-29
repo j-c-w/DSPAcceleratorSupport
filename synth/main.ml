@@ -396,7 +396,7 @@ let debug_comparison =
 (* Debug flags *)
 let info =
 	let doc = "Synthesize support for hardware accelerators" in
-	Term.info "synth" ~doc
+	Cmd.info "synth" ~doc
 
 (* This command line parser is a shitshow, or I don't know how to use it.
    In any case, this has to stay in the right order.  *)
@@ -421,4 +421,4 @@ let args_t = Term.(const optswrapper $ compile_settings $ iospec $ apispec $ dum
 	$ probabilities_spec $ debug_skeleton_probabilities $ binding_threshold $ skip_post_synthesis
 	$ debug_skeleton_constraints_filter $ debug_evaluate_gir $ timing)
 
-let () = Term.exit @@ Term.eval (args_t, info)
+let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

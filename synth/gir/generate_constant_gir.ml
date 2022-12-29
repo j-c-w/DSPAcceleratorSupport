@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 open Spec_definition;;
 open Spec_utils;;
@@ -15,16 +15,16 @@ exception GenerateConstantGIRException of string
 
 (* Given  a function, generate a constant-returning body for it. *)
 let generate_constant_gir_function (options: options) (typemap: typemap) (iospec: iospec) =
-	let funargs = List.map iospec.funargs (fun a -> Name(a)) in
+	let funargs = List.map iospec.funargs ~f:(fun a -> Name(a)) in
 	(* Functions have their own typemaps.  *)
 	let funtable = typemap.variable_map in
-	let input_types = List.map iospec.funargs (fun arg -> Hashtbl.find_exn typemap.variable_map arg) in
+	let input_types = List.map iospec.funargs ~f:(fun arg -> Hashtbl.find_exn typemap.variable_map arg) in
 	let returntype = match iospec.returnvar with
 	| [] -> Unit
 	| [x] ->  Hashtbl.find_exn typemap.variable_map x
 	| _ -> assert false
 	in
-	let _ = Hashtbl.add funtable (iospec.funname) (Fun(input_types, returntype)) in
+	let _ = Hashtbl.add funtable ~key:(iospec.funname) ~data:(Fun(input_types, returntype)) in
 
 	match iospec.returnvar with
 	| [] ->
@@ -42,7 +42,7 @@ let generate_constant_gir_function (options: options) (typemap: typemap) (iospec
 		   to the heap allocated varible.  *)
 
 		(* Add temp_variable to the typemap.  *)
-		let _ = match Hashtbl.add typemap.variable_map "temp_variable" returntype with
+		let _ = match Hashtbl.add typemap.variable_map ~key:"temp_variable" ~data:returntype with
 		| `Ok -> ()
 		(* Need to either pick a different name for the
 		args if that is the source of teh collision,

@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Skeleton_definition;;
@@ -23,7 +23,7 @@ let filter_constraints_set options cons =
 	let tbllookup_set = fun (tbl, n) ->
 		let str = (name_reference_to_string n) in
 		let already_mapped = Hashtbl.find tbl str in
-		let () = Hashtbl.set tbl str true in
+		let () = Hashtbl.set tbl ~key:str ~data:true in
         let result = match already_mapped with
 			| Some(n) -> false
 			| None -> true
@@ -36,7 +36,7 @@ let filter_constraints_set options cons =
     let () = if options.debug_skeleton_constraints_filter then
         let () = Printf.printf "Length of input dms is %d\n" (List.length cons) in ()
     else () in
-    let filtered = List.filter cons (fun con ->
+    let filtered = List.filter cons ~f:(fun con ->
         let dm = match con with | DimensionConstraints(dm, _) -> dm in
         match dm with
         | DimvarMultiDimension(matches) ->
@@ -53,7 +53,7 @@ let filter_constraints_set options cons =
                 let () = if options.debug_skeleton_constraints_filter then
                     let () = Printf.printf "Filtering matchies %s\n" (dimvar_mapping_to_string dm) in ()
                 else () in
-                List.for_all deduplicated_matches (fun vmatch ->
+                List.for_all deduplicated_matches ~f:(fun vmatch ->
                     match vmatch with
                     | VarMatch(f, t, mode) -> (
                     let tdup =
@@ -94,8 +94,8 @@ let filter_constraints_set options cons =
 let no_multiple_cloning_check options (skel: skeleton_type_binding) =
     let assigned_from = Hashtbl.create (module String) in
     let () = ignore(
-        List.map skel.bindings (fun bind ->
-            List.map bind.fromvars_index_nesting (fun vbind ->
+        List.map skel.bindings ~f:(fun bind ->
+            List.map bind.fromvars_index_nesting ~f:(fun vbind ->
                 match vbind with
                 | AssignConstant(c) -> ()
                 | AssignVariable(indnest) ->
@@ -106,7 +106,7 @@ let no_multiple_cloning_check options (skel: skeleton_type_binding) =
                     | None -> 1
                     | Some(x) -> x + 1
                     in
-                    let _ = Hashtbl.set assigned_from indnest_string newvar in
+                    let _ = Hashtbl.set assigned_from ~key:indnest_string ~data:newvar in
                     ()
             )
         )
@@ -116,8 +116,8 @@ let no_multiple_cloning_check options (skel: skeleton_type_binding) =
     multidefs to be used more than once, but that is a task
     for anohter day.  *)
     (* let () = Printf.printf "Checking assigned from list %s\n"  (String.concat ~sep:", " (Hashtbl.keys assigned_from)) in
-    let () = Printf.printf "Scores are %s\n" (String.concat ~sep:", " (List.map (Hashtbl.keys assigned_from) (fun k -> string_of_int (Hashtbl.find_exn assigned_from k)))) in *)
-	List.for_all (Hashtbl.data assigned_from) (fun v -> v <= 1)
+    let () = Printf.printf "Scores are %s\n" (String.concat ~sep:", " (List.map (Hashtbl.keys ~f:assigned_from) (fun k -> string_of_int (Hashtbl.find_exn assigned_from k)))) in *)
+	List.for_all (Hashtbl.data assigned_from) ~f:(fun v -> v <= 1)
 
 let rec build_whole_arnm_internal arnms =
 	match arnms with
@@ -134,7 +134,7 @@ let is_in_api_list var varlist =
            the API liveout list, which is currently low (whole-variable).  *)
         (String.equal var v) || (String.is_prefix ~prefix:(var ^ ".") v)
     in
-    List.exists varlist checkvar
+    List.exists varlist ~f:checkvar
 
 (* Compute equivalence classes between variables.  For example, we might
    do:
@@ -155,7 +155,7 @@ let is_in_api_list var varlist =
 part), but they will be correct.  *)
 let compute_equivalence_classes options api pre_skel post_skel =
     let equivalence_class_map = Hashtbl.create (module String) in
-    let _ = List.map (pre_skel.flat_bindings @ post_skel.flat_bindings) (fun b ->
+    let _ = List.map (pre_skel.flat_bindings @ post_skel.flat_bindings) ~f:(fun b ->
         let conversion_function = b.conversion_function in
         let fromvar = match b.fromvars_index_nesting with
         | [] -> []
@@ -171,7 +171,7 @@ let compute_equivalence_classes options api pre_skel post_skel =
         (* Note that we only cover identity conversions, although
         equivalence could exist in some other cases (? would it be useful to find it though?) *)
         let build_equivalence_class =
-            if (is_in_api_list tovar api.liveout) || (List.exists fromvar (fun f -> is_in_api_list f api.liveout)) then
+            if (is_in_api_list tovar api.liveout) || (List.exists fromvar ~f:(fun f -> is_in_api_list f api.liveout)) then
                 (* If either variable is in the liveout, just don't build the equivalence
                     class --- liveout means that the variable could be changed by the function.
                     It also means this equivalence class isn't complete, but we aim
@@ -182,13 +182,13 @@ let compute_equivalence_classes options api pre_skel post_skel =
         in
         if build_equivalence_class && (is_identity_conversion conversion_function) then
             let _ =
-                List.map fromvar (fun f ->
+                List.map fromvar ~f:(fun f ->
                     let result = tovar:: (match Hashtbl.find equivalence_class_map f with
                     | None -> []
                     | Some(xs) -> xs
                     )
                     in
-                    let _ = Hashtbl.set equivalence_class_map f result in
+                    let _ = Hashtbl.set equivalence_class_map ~key:f ~data:result in
                     ()
                 )
             in
@@ -199,7 +199,7 @@ let compute_equivalence_classes options api pre_skel post_skel =
             | None -> fromvar
             | Some(xs) -> fromvar @ xs
             in
-            let _ = Hashtbl.set equivalence_class_map tovar tos in
+            let _ = Hashtbl.set equivalence_class_map ~key:tovar ~data:tos in
             ()
         else ()
     ) in
@@ -207,7 +207,7 @@ let compute_equivalence_classes options api pre_skel post_skel =
 
 let build_whole_arnm arnms =
 	let arnms = build_whole_arnm_internal arnms in
-	List.map arnms (fun anm -> StructName(anm))
+	List.map arnms ~f:(fun anm -> StructName(anm))
 
 (* Check that we don't use multiple length variables into the same
    array.  I think that this should probably be made more stringent,
@@ -217,15 +217,15 @@ let build_whole_arnm arnms =
 let length_variable_compatability (skel: flat_skeleton_binding) =
 	let lenvars_for = Hashtbl.create (module String) in
 	(* let () = Printf.printf "Staritng new interation\n" in*)
-	List.for_all skel.flat_bindings (fun bind ->
+	List.for_all skel.flat_bindings ~f:(fun bind ->
 		let built_up_arnms =
 			build_whole_arnm bind.tovar_index_nesting in
-		List.for_all (truncate_zip built_up_arnms bind.dimensions) (fun (arnm, dim_constraint) ->
+		List.for_all (truncate_zip built_up_arnms bind.dimensions) ~f:(fun (arnm, dim_constraint) ->
 			let arnm_so_far_str = (name_reference_to_string arnm) in
 			(* let () = Printf.printf "Arnm is %s\n" arnm_so_far_str in *)
 			let v_used = Hashtbl.find lenvars_for arnm_so_far_str in
 			(* let () = Printf.printf "VUsed is %s\n" (dimension_constraint_to_string dim_constraint) in *)
-			let _ = Hashtbl.set lenvars_for arnm_so_far_str dim_constraint in
+			let _ = Hashtbl.set lenvars_for ~key:arnm_so_far_str ~data:dim_constraint in
 			match dim_constraint, v_used with
 			| _, None ->
 					true
@@ -246,7 +246,7 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
 	else ()
 	in
     let equivalence_classes = compute_equivalence_classes options apispec pre_binding_list post_binding_list in
-    let result = List.for_all (pre_binding_list.flat_bindings @ post_binding_list.flat_bindings) (fun fb ->
+    let result = List.for_all (pre_binding_list.flat_bindings @ post_binding_list.flat_bindings) ~f:(fun fb ->
 		let tname_so_far = ref [] in
 		let fname_so_far = ref [] in
         let fromvars = match fb.fromvars_index_nesting with
@@ -257,14 +257,14 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
             [AssignConstant(Int64V(0))]
 		| other -> other
         in
-		List.for_all fromvars (fun fromvar ->
+		List.for_all fromvars ~f:(fun fromvar ->
 			let fvar_contents = match fromvar with
 			| AssignConstant(_) ->
 					[None]
 			| AssignVariable(v) ->
-					List.map v (fun v -> Some(v))
+					List.map v ~f:(fun v -> Some(v))
 			in
-		List.for_all (truncate_zip (extend_zip fb.tovar_index_nesting fvar_contents) fb.dimensions) (fun ((t, f), dimcons) ->
+		List.for_all (truncate_zip (extend_zip fb.tovar_index_nesting fvar_contents) fb.dimensions) ~f:(fun ((t, f), dimcons) ->
 			let () = tname_so_far := t :: !tname_so_far in
 			let has_tbinds = Hashtbl.find tbl (name_reference_list_to_string !tname_so_far) in
 			let has_fbinds = match f with
@@ -272,7 +272,7 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
 					let () = fname_so_far := v :: !fname_so_far in
 					let result = Hashtbl.find tbl (name_reference_list_to_string !fname_so_far) in
 					(* Set the used dimensions for the fvar.  *)
-					let _ = Hashtbl.set tbl (name_reference_list_to_string !fname_so_far) dimcons in
+					let _ = Hashtbl.set tbl ~key:(name_reference_list_to_string !fname_so_far) ~data:dimcons in
 					result
 			(* If we are assigning a constant, then we don't have to bother. *)
 			| None -> None
@@ -319,7 +319,7 @@ let no_multiple_lengths options apispec tbl pre_binding_list post_binding_list =
 						dimvar_equal_commutative equivalence_classes dimvar other_dimvar
 			in
 			(* Now, set the used dimensions for the tvar *)
-			let _ = Hashtbl.set tbl (name_reference_list_to_string !tname_so_far) dimcons in
+			let _ = Hashtbl.set tbl ~key:(name_reference_list_to_string !tname_so_far) ~data:dimcons in
 			tbinds_valid && fbinds_valid
 		)
 		)
@@ -348,7 +348,7 @@ let dim_assign_equal dimlist dimvar =
     name_reference_equal (name_reference_list_concat dimlist) dimvar
 
 let dim_assign_any_equal fvars fvar =
-    List.exists fvars (fun f ->
+    List.exists fvars ~f:(fun f ->
         String.equal f (name_reference_to_string fvar)
     )
 
@@ -360,14 +360,14 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
 	(* Check that there is an assignment matching the
 	   dimension relation.  *)
     let equivalence_map = compute_equivalence_classes options api_spec pre_skel post_skel in
-	List.for_all dimensions (fun dim ->
+	List.for_all dimensions ~f:(fun dim ->
 		let () =
 			if options.debug_skeleton_multiple_lengths_filter then
 			Printf.printf "Starting analysis of new dimension %s\n" (dimension_constraint_to_string dim)
 			else ()
 		in
 		(* Check that a suitable defining binding exists for each dimension.  *)
-		List.exists (pre_skel.flat_bindings @ post_skel.flat_bindings) (fun bind ->
+		List.exists (pre_skel.flat_bindings @ post_skel.flat_bindings) ~f:(fun bind ->
 			let conversion_function = bind.conversion_function in
 			let fromvars = match bind.fromvars_index_nesting with
 			| [] -> []
@@ -427,7 +427,7 @@ let check_assignment_compatability options api_spec pre_skel post_skel dimension
 				bugs.   Unaddressed here, because I'm not
 				acutally 100% what it should do if this is wrong --
 				using && gives us no matches :) *)
-				List.exists matches (fun vmatch ->
+				List.exists matches ~f:(fun vmatch ->
 					match vmatch with
 					| VarMatch(tov, fromv, mode) ->
 					(
@@ -504,7 +504,7 @@ let get_dimension_assignments skel =
 		(* Arg 2 to remove _dups *)
 		(List.concat
 			(List.map skel.flat_bindings
-				(fun bind -> bind.dimensions)
+				~f:(fun bind -> bind.dimensions)
 			)
 		)
 	

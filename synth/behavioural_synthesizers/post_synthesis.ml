@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Synthesizer_interface;;
 open Program;;
 open Options;;
@@ -7,7 +7,7 @@ open Gir_utils;;
 (* Expect one set of IO pairs for each program to consider.  *)
 let run_post_synthesis options iospec apispec programs io_files =
     if options.skip_post_synthesis then
-        List.map (List.zip_exn programs io_files) (fun (prog, (ioparis, passed)) -> ({
+        List.map (List.zip_exn programs io_files) ~f:(fun (prog, (ioparis, passed)) -> ({
             prog with
             post_behavioural = None
         }, passed))

@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Range_definition;;
 
@@ -13,11 +13,11 @@ let rec name_reference_to_string nref =
 	match nref with
 	| AnonymousName -> "Annon"
 	| Name(s) -> s
-	| StructName(ns) -> (String.concat ~sep:"." (List.map ns name_reference_to_string))
+	| StructName(ns) -> (String.concat ~sep:"." (List.map ns ~f:name_reference_to_string))
 
 (* Filter annonymous names out of a list of name refs.  *)
 let rec name_reference_filter_annon nrefs =
-    List.filter nrefs (fun nref ->
+    List.filter nrefs ~f:(fun nref ->
         match nref with
         | AnonymousName -> false
         | Name(s) -> true
@@ -28,13 +28,13 @@ let rec name_reference_to_id_string nref =
     match nref with
     | AnonymousName -> ""
     | Name(s) -> s
-    | StructName(ns) -> (String.concat ~sep:"." (List.map (name_reference_filter_annon ns) name_reference_to_id_string))
+    | StructName(ns) -> (String.concat ~sep:"." (List.map (name_reference_filter_annon ns) ~f:name_reference_to_id_string))
 
 let name_reference_list_to_string nrefs =
-	String.concat ~sep:", " (List.map nrefs name_reference_to_string)
+	String.concat ~sep:", " (List.map nrefs ~f:name_reference_to_string)
 
 let name_reference_option_list_to_string nrefs =
-	String.concat ~sep:", " (List.map nrefs (fun n ->
+	String.concat ~sep:", " (List.map nrefs ~f:(fun n ->
 		match n with
 		| None -> "None"
 		| Some(n) -> name_reference_to_string n))
@@ -66,7 +66,7 @@ let rec name_reference_canonicalize nms =
 	| Name(x) -> Name(x)
 	| StructName(xs) ->
 			let nms = List.concat (
-				List.map xs (fun xs ->
+				List.map xs ~f:(fun xs ->
 					match xs with
 					| Name(x) -> [Name(x)]
 					| AnonymousName -> []
@@ -86,7 +86,7 @@ let name_reference_from_string ns =
             AnonymousName
         else
             let chrs = (String.split_on_chars ~on:['.'] ns) |> (List.filter ~f:(fun x -> not (String.equal x ""))) in
-            StructName(List.map chrs (fun c -> Name(c)))
+            StructName(List.map chrs ~f:(fun c -> Name(c)))
     in
     (* let () = Printf.printf "From input name %s, computed name reference %s\n" (ns) (name_reference_to_string result) in *)
     result
@@ -97,7 +97,7 @@ let rec name_reference_equal n1 n2 =
     | Name(x), Name(y) -> (String.compare x y) = 0
     | StructName(xns), StructName(yns) -> (
             match List.zip xns yns with
-            | Ok(nms) -> List.for_all nms (fun (a, b) -> name_reference_equal a b)
+            | Ok(nms) -> List.for_all nms ~f:(fun (a, b) -> name_reference_equal a b)
             | Unequal_lengths -> false
 	)
 	(* Assume no funny-business with
@@ -106,8 +106,8 @@ let rec name_reference_equal n1 n2 =
 
 (* compare two lists of variables.  Return true if any two are equal.  *)
 let name_reference_any_equal ns1 ns2 =
-    List.exists ns1 (fun n1 ->
-        List.exists ns2 (fun n2 ->
+    List.exists ns1 ~f:(fun n1 ->
+        List.exists ns2 ~f:(fun n2 ->
             name_reference_equal n1 n2
         )
     )
@@ -115,7 +115,7 @@ let name_reference_any_equal ns1 ns2 =
 let name_reference_list_equal n1 n2 =
 	let zipped = List.zip n1 n2 in
 	match zipped with
-	| Ok(l) -> List.for_all l (fun (x, y) -> name_reference_equal x y)
+	| Ok(l) -> List.for_all l ~f:(fun (x, y) -> name_reference_equal x y)
 	| Unequal_lengths -> false
 
 let rec name_reference_top_level_name n =
@@ -144,7 +144,7 @@ let dimension_value_to_string (dim: dimension_value) =
 	| DimVariable(n, rel) -> (name_reference_to_string n) ^ (dim_relation_to_string rel)
 
 let dimension_value_list_to_string dimlist =
-    String.concat ~sep:", " (List.map dimlist dimension_value_to_string)
+    String.concat ~sep:", " (List.map dimlist ~f:dimension_value_to_string)
 
 let dim_relation_equal r1 r2 = match r1, r2 with
 	| DimEqualityRelation, DimEqualityRelation -> true
@@ -165,7 +165,7 @@ let dimension_value_equal d1 d2 =
 
 let dimension_value_list_equal l1 l2 =
 	match (List.zip l1 l2) with
-	| Ok(l) -> List.for_all l (fun (a, b) -> dimension_value_equal a b)
+	| Ok(l) -> List.for_all l ~f:(fun (a, b) -> dimension_value_equal a b)
     | Unequal_lengths -> false
 
 let dimension_constant_less_than d1 d2 =
@@ -183,7 +183,7 @@ let rec dimension_type_to_string dim =
             (dimension_value_to_string nrefs)
 	| MultiDimension(vals, op) ->
 			let opstring = dimension_operation_to_string op in
-			String.concat ~sep:opstring (List.map vals dimension_value_to_string)
+			String.concat ~sep:opstring (List.map vals ~f:dimension_value_to_string)
 
 let empty_dimension dim = match dim with
 	| EmptyDimension -> true
@@ -191,7 +191,7 @@ let empty_dimension dim = match dim with
 
 let dimension_type_list_to_string dims =
 	String.concat ~sep:"DIM: " (
-		List.map dims dimension_type_to_string
+		List.map dims ~f:dimension_type_to_string
 	)
 
 let dimension_type_equal d1 d2 = match d1, d2 with
@@ -216,7 +216,7 @@ let is_constant_dimension_variable d =
 	| SingleDimension(d) ->
 			is_constant_dimension d
 	| MultiDimension(ds, op) ->
-			List.for_all ds is_constant_dimension
+			List.for_all ds ~f:is_constant_dimension
 
 let constant_dimension_size d =
 	match d with
@@ -246,7 +246,7 @@ let rec synth_type_to_string t =
 	| Unit -> "unit"
 
 and synth_type_list_to_string stlist =
-	String.concat ~sep:", " (List.map stlist synth_type_to_string)
+	String.concat ~sep:", " (List.map stlist ~f:synth_type_to_string)
 
 let rec synth_type_equal s1 s2 =
 	match s1, s2 with
@@ -274,7 +274,7 @@ let rec synth_type_equal s1 s2 =
 	| Fun(f, t), Fun(f2, t2) ->
 			let from_types_equal =
 				match List.zip f f2 with
-				| Ok(l) -> List.for_all l (fun (a, b) -> synth_type_equal a b)
+				| Ok(l) -> List.for_all l ~f:(fun (a, b) -> synth_type_equal a b)
 				| Unequal_lengths -> false
 			in
 			(from_types_equal) &&
@@ -300,14 +300,14 @@ let rec synth_value_to_string value =
 	| PointerV(v) ->
 			"pointer(" ^ (synth_value_to_string v) ^ ")"
     | ArrayV(vs) ->
-            "[" ^ (String.concat ~sep:", " (List.map vs synth_value_to_string)) ^ "]"
+            "[" ^ (String.concat ~sep:", " (List.map vs ~f:synth_value_to_string)) ^ "]"
     | StructV(name, _) ->
             name
     | FunV(name) ->
             name
 
 let synth_value_list_to_string values =
-    String.concat ~sep:", " (List.map values synth_value_to_string)
+    String.concat ~sep:", " (List.map values ~f:synth_value_to_string)
 
 let rec synth_value_to_type v =
 	match v with
@@ -362,7 +362,7 @@ let rec synth_value_equal c1 c2 =
 			(
 			match List.zip vs1 vs2 with
 			| Ok(l) ->
-					List.for_all l (fun (v1, v2) -> synth_value_equal v1 v2)
+					List.for_all l ~f:(fun (v1, v2) -> synth_value_equal v1 v2)
 			| Unequal_lengths ->
 					false
 			)
@@ -376,11 +376,11 @@ let rec synth_value_equal c1 c2 =
 	| _, _ -> false
 
 and synth_table_equal tbl1 tbl2 =
-	let keys1 = List.sort (Hashtbl.keys tbl1) String.compare in
-	let keys2 = List.sort (Hashtbl.keys tbl2) String.compare in
+	let keys1 = List.sort (Hashtbl.keys tbl1) ~compare:String.compare in
+	let keys2 = List.sort (Hashtbl.keys tbl2) ~compare:String.compare in
 	match List.zip keys1 keys2 with
 	| Ok(l) ->
-			List.for_all l (fun (k1, k2) ->
+			List.for_all l ~f:(fun (k1, k2) ->
 				if (String.compare k1 k2) = 0 then
 					synth_value_equal
 						(Hashtbl.find_exn tbl1 k1)
@@ -422,7 +422,7 @@ let rec synth_value_has_type v t =
 					length.  *)
 					)
 				| MultiDimension(dimvalues, op) ->
-						let const_sizes: int option list = List.map dimvalues constant_dimension_size in
+						let const_sizes: int option list = List.map dimvalues ~f:constant_dimension_size in
 						(* Go through and get a const size for this
 						array --- should really be sent out to a
 						sub-function.  *)
@@ -443,7 +443,7 @@ let rec synth_value_has_type v t =
 										true
 						)
             in
-			List.for_all subvals (fun v ->
+			List.for_all subvals ~f:(fun v ->
 				synth_value_has_type v sty
 			) && validdim
 	| StructV(name, tbl), Struct(tname) ->
@@ -484,8 +484,8 @@ let type_hash_table_to_string (type_hash: (string, synth_type) Hashtbl.t) =
 	let keys = Hashtbl.keys type_hash in
     String.concat ~sep:", " (
 	List.map
-	(List.map keys (fun key -> (key, Hashtbl.find_exn type_hash key)))
-		(fun (k, typ) -> k ^ ": " ^ (synth_type_to_string typ)))
+	(List.map keys ~f:(fun key -> (key, Hashtbl.find_exn type_hash key)))
+		~f:(fun (k, typ) -> k ^ ": " ^ (synth_type_to_string typ)))
 
 let iospec_to_string (iospec: iospec) =
     "Livein: " ^ (String.concat ~sep:", " iospec.livein) ^
@@ -525,7 +525,7 @@ let sort_members_by_type typemap members =
 	(* It puts the simple types first, then the more complex
 	ones, and hopes you don't have any stupid shit around
 	array length limits.  *)
-	let member_priority_pairs = List.map members (fun mem ->
+	let member_priority_pairs = List.map members ~f:(fun mem ->
 		(mem, match Hashtbl.find_exn typemap.variable_map mem with
 		| Bool -> 0
 		| Int8 -> 0
@@ -548,14 +548,14 @@ let sort_members_by_type typemap members =
 		)
 	) in
 	let compare_func = fun (_, p) -> fun (_, p2) -> Int.compare p p2 in
-	let sorted = List.sort member_priority_pairs compare_func in
-	List.map sorted (fun (a, _) -> a)
+	let sorted = List.sort member_priority_pairs ~compare:compare_func in
+	List.map sorted ~f:(fun (a, _) -> a)
 
 
 let name_reference_list_list_equal n1 n2 = 
 	let zipped = List.zip n1 n2 in
 	match zipped with
-	| Ok(l) -> List.for_all l (fun (x, y) -> name_reference_list_equal x y)
+	| Ok(l) -> List.for_all l ~f:(fun (x, y) -> name_reference_list_equal x y)
 	| Unequal_lengths -> false
 
 let name_reference_is_struct nr =
@@ -610,13 +610,13 @@ let rec name_reference_cannonicalize ns =
 	| AnonymousName -> AnonymousName
 	| Name(x) -> Name(x)
 	| StructName(Name(x) :: xs) ->
-			StructName(Name(x) :: (List.concat ((List.map xs (fun x -> flatten (name_reference_cannonicalize x))))))
+			StructName(Name(x) :: (List.concat ((List.map xs ~f:(fun x -> flatten (name_reference_cannonicalize x))))))
 	| StructName(StructName(ns) :: xs) ->
 			(
 			match name_reference_cannonicalize (StructName(ns)) with
 			| StructName(ns_rest) ->
 					let tail = List.concat (
-						List.map xs (fun x ->
+						List.map xs ~f:(fun x ->
 							flatten (name_reference_cannonicalize x)
 						)
 					) in
@@ -677,7 +677,7 @@ let type_of typmap classmap k =
             (* Just the type of x. *)
             Hashtbl.find_exn currtypmap x
     in
-    typeloop typmap (String.split_on_chars k ['.'])
+    typeloop typmap (String.split_on_chars k ~on:['.'])
 
 (*  Functions to make handling synth values a bit more scalable. *)
 let float_from_value v =
@@ -765,11 +765,11 @@ specific.  *)
 let synth_value_cast v t =
 	if is_float_type t then
 		(* Only supporting float -> float casts right now.  *)
-		Option.map (float_from_value v) (synth_value_from_float t)
+		Option.map (float_from_value v) ~f:(synth_value_from_float t)
 	else if is_integer_type t then
-		Option.map (int_from_value v) (synth_value_from_int t)
+		Option.map (int_from_value v) ~f:(synth_value_from_int t)
 	else if is_bool_type t then
-		Option.map (bool_from_value v) (synth_value_from_bool t)
+		Option.map (bool_from_value v) ~f:(synth_value_from_bool t)
 	else
 		(* Currently not supporting any other casting for
 			internal simulation.  Would be easy to add more to emulate
@@ -782,8 +782,8 @@ let synth_value_cast v t =
 let table_clone t =
 	let newtbl = Hashtbl.create (module String) in
 	let keys = Hashtbl.keys t in
-	let _ = List.map keys (fun key ->
-		Hashtbl.add newtbl key (Hashtbl.find_exn t key)
+	let _ = List.map keys ~f:(fun key ->
+		Hashtbl.add newtbl ~key:key ~data:(Hashtbl.find_exn t key)
 	) in
 	newtbl
 
@@ -806,7 +806,7 @@ let rec clone_typemap (t: typemap) =
         classmap = clone_classmap t.classmap;
         alignment_map = clone_alignment_map t.alignment_map;
         original_typemap =
-            Option.map t.original_typemap clone_typemap
+            Option.map t.original_typemap ~f:clone_typemap
     }
 
 let merge_maps (t1: (string, 'a) Hashtbl.t) (t2: (string, 'a) Hashtbl.t) =
@@ -814,11 +814,11 @@ let merge_maps (t1: (string, 'a) Hashtbl.t) (t2: (string, 'a) Hashtbl.t) =
 	let k1 = Hashtbl.keys t1 in
 	let k2 = Hashtbl.keys t2 in
 
-	let _ = List.map k1 (fun key ->
-		Hashtbl.add newtbl key (Hashtbl.find_exn t1 key)
+	let _ = List.map k1 ~f:(fun key ->
+		Hashtbl.add newtbl ~key:key ~data:(Hashtbl.find_exn t1 key)
 	) in
-	let _ = List.map k2 (fun key ->
-		let result = Hashtbl.add newtbl key (Hashtbl.find_exn t2 key) in
+	let _ = List.map k2 ~f:(fun key ->
+		let result = Hashtbl.add newtbl ~key:key ~data:(Hashtbl.find_exn t2 key) in
 		match result with
 		| `Ok -> ()
 		| `Duplicate -> raise (SpecException "Can't merge tables with duplicate keys")
@@ -827,15 +827,18 @@ let merge_maps (t1: (string, 'a) Hashtbl.t) (t2: (string, 'a) Hashtbl.t) =
 
 let clear_map (t: ('a, 'b) Hashtbl.t) =
 	let keys = Hashtbl.keys t in
-	let _ = List.map keys (fun key ->
+	let _ = List.map keys ~f:(fun key ->
 		Hashtbl.remove t key
 	) in
 	()
 
 let typemap_to_string typemap =
 	(* TODO -- expand to the other components.  *)
-	String.concat ~sep:"\n" (List.map (Hashtbl.keys typemap.variable_map) (fun key ->
+	String.concat ~sep:"\n" (List.map (Hashtbl.keys typemap.variable_map) ~f:(fun key ->
 		let typ = Hashtbl.find_exn typemap.variable_map key in
 		key ^ ": " ^ (synth_type_to_string typ)
 	)
 	)
+
+let empty_typemap () =
+	Hashtbl.create (module String)

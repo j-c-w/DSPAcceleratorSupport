@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 
 (* NOTE: In GIR everything must be assigned to at most once.

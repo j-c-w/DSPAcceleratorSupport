@@ -1,6 +1,6 @@
 open Spec_definition;;
 open Spec_utils;;
-open Core_kernel;;
+open Core;;
 open Options;;
 open Skeleton_definition;;
 open Skeleton_utils;;
@@ -40,9 +40,9 @@ let join_index_nesting indnest =
 	nestlist
 
 let check_all_defined vars binding_list =
-    let bound_defins = List.concat (List.map binding_list.flat_bindings (
+    let bound_defins = List.concat (List.map binding_list.flat_bindings ~f:(
         fun bind -> join_index_nesting bind.tovar_index_nesting)) in
-    ignore(List.map (join_index_nesting vars) (fun v ->
+    ignore(List.map (join_index_nesting vars) ~f:(fun v ->
 			if member v bound_defins then
 				()
 			else
@@ -67,14 +67,14 @@ let rec check_non_dup vars =
 
 let check_not_double_defined vars =
 	let defs =
-		List.map vars.flat_bindings (
+		List.map vars.flat_bindings ~f:(
 			fun bind -> StructName(bind.tovar_index_nesting)
 	) in
 	check_non_dup defs
 
 let single_bind_opt_check_not_double_defined (binds: single_variable_binding_option_group list list) =
 	let defs =
-		List.filter_map binds (fun bindset ->
+		List.filter_map binds ~f:(fun bindset ->
             match bindset with
             | [] -> None
             | bind :: _ ->
@@ -85,22 +85,22 @@ let single_bind_opt_check_not_double_defined (binds: single_variable_binding_opt
 
 let single_bind_opt_check_sets (binds: single_variable_binding_option_group list list) =
 	let defs =
-		List.filter_map binds (fun bindset ->
+		List.filter_map binds ~f:(fun bindset ->
             match bindset with
             | [] -> None
             | bind :: _ ->
                 let tvar = StructName(bind.tovar_index_nesting) in
-                Some(tvar, List.map bindset (fun b -> StructName(b.tovar_index_nesting)))
+                Some(tvar, List.map bindset ~f:(fun b -> StructName(b.tovar_index_nesting)))
 		) in
-	let result = List.for_all defs (fun (v, vs) ->
-		List.for_all vs (fun e ->
+	let result = List.for_all defs ~f:(fun (v, vs) ->
+		List.for_all vs ~f:(fun e ->
 			name_reference_equal v e
 		)
 	) in
 	assert result
 
 let rec get_names typemap classmap x =
-    List.concat (List.map x (fun x ->
+    List.concat (List.map x ~f:(fun x ->
 		let typ = Hashtbl.find_exn typemap x in
 		names_from_type typemap classmap x typ
 	)
@@ -113,7 +113,7 @@ and names_from_type typemap classmap x typ =
 			let mems = get_class_fields cmap in
 			let tmap = get_class_typemap cmap in
 			let nms = get_names tmap classmap mems in
-			List.map nms (fun sub_nm ->
+			List.map nms ~f:(fun sub_nm ->
 				match sub_nm with
 				| AnonymousName -> Name(x)
 				| Name(_) -> StructName([Name(x); sub_nm])
@@ -124,7 +124,7 @@ and names_from_type typemap classmap x typ =
 			let mems = get_class_fields cmap in
 			let tmap = get_class_typemap cmap in
 			let nms = get_names tmap classmap mems in
-			List.map nms (fun sub_nm ->
+			List.map nms ~f:(fun sub_nm ->
 				match sub_nm with
 				| AnonymousName -> Name(x)
 				| Name(_) -> StructName([Name(x); sub_nm])
@@ -154,7 +154,7 @@ let verify_post options typemap (iospec: iospec) (apispec: apispec) post_binding
     ()
 
 let verify_skeleton_pairs options typemap (iospec: iospec) (apispec: apispec) pairs =
-    ignore(List.map pairs (fun (skeleton: skeleton_pairs) ->
+    ignore(List.map pairs ~f:(fun (skeleton: skeleton_pairs) ->
         let () = verify_pre options typemap iospec apispec skeleton.pre in
         let () = verify_post options typemap iospec apispec skeleton.post in
         ()

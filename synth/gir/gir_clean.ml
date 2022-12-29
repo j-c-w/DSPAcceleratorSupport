@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Gir;;
 open Gir_utils;;
 
@@ -6,8 +6,8 @@ exception UncleanException of string
 
 let copy_table oldtbl =
 	let newtbl = Hashtbl.create (module String) in
-    let () = ignore(List.map (Hashtbl.keys oldtbl) (fun k ->
-		Hashtbl.add newtbl k (Hashtbl.find_exn oldtbl k)
+    let () = ignore(List.map (Hashtbl.keys oldtbl) ~f:(fun k ->
+		Hashtbl.add newtbl ~key:k ~data:(Hashtbl.find_exn oldtbl k)
 	)) in
     newtbl
 
@@ -19,7 +19,7 @@ let rec gir_double_define_clean_internal deftbl gir =
 				Hashtbl.find deftbl (gir_name_to_string n) in
 			(* Set defined.  *)
 			let () =
-				Hashtbl.set deftbl (gir_name_to_string n) true in
+				Hashtbl.set deftbl ~key:(gir_name_to_string n) ~data:true in
 			(
 			match defined with
 				| Some(otherdef) -> EmptyGIR
@@ -36,12 +36,12 @@ let rec gir_double_define_clean_internal deftbl gir =
 			let newiffalse = gir_double_define_clean_internal (copy_table deftbl) iffalse in
 			IfCond(cond, newiftrue, newiffalse)
 	| Sequence(girs) ->
-			Sequence(List.map girs (gir_double_define_clean_internal deftbl))
+			Sequence(List.map girs ~f:(gir_double_define_clean_internal deftbl))
 	| Assignment(_, _) ->
 			gir
 	| LoopOver(body, indv, maxv) ->
 			let defined = Hashtbl.find deftbl (gir_name_to_string indv) in
-			let () = Hashtbl.set deftbl (gir_name_to_string indv) true in
+			let () = Hashtbl.set deftbl ~key:(gir_name_to_string indv) ~data:true in
 			(* Can't have the ind vars defined more than once.
 			Could replace this with a clever-er fix, e.g.
 			replacing the vars.  *)
@@ -71,7 +71,7 @@ set their use in table tbl. *)
 let rec check_function_calls tbl gir =
     match gir with
     | Definition(_) -> ()
-    | Sequence(girs) -> ignore(List.map girs (check_function_calls tbl))
+    | Sequence(girs) -> ignore(List.map girs ~f:(check_function_calls tbl))
 	| IfCond(cond, iftrue, iffalse) ->
 			let () = check_function_calls_cond tbl cond in
 			let () = check_function_calls tbl iftrue in
@@ -134,11 +134,11 @@ and check_function_calls_expr tbl expr =
 and check_function_calls_vlist tbl vlist =
     match vlist with
     | VariableList(vlist) ->
-            ignore(List.map vlist (check_function_calls_vref tbl))
+            ignore(List.map vlist ~f:(check_function_calls_vref tbl))
 and check_function_calls_fref tbl fref =
     match fref with
     | FunctionRef(Name(n)) ->
-            ignore(Hashtbl.set tbl n true)
+            ignore(Hashtbl.set tbl ~key:n ~data:true)
 
 let remove_unused_fundefs gir fundefs =
     (* Create the fundef hash table: *)
@@ -147,7 +147,7 @@ let remove_unused_fundefs gir fundefs =
         check_function_calls funtbl gir in
     (* Rebuild a fundefs list, but only using the ones
     referenced.  *)
-    List.filter_map fundefs (fun fdef ->
+    List.filter_map fundefs ~f:(fun fdef ->
         match fdef with
         | FunctionDef(Name(name), _, _, _) ->
                 let used = Hashtbl.find funtbl name in

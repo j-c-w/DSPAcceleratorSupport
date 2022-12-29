@@ -1,5 +1,5 @@
 open Spec_definition;;
-open Core_kernel;;
+open Core;;
 open Alcotest;;
 open Fft_synthesizer;;
 open Fft_synthesizer_definition;;
@@ -25,7 +25,7 @@ let test_bit_reversal () =
 
 let test_sim () =
 	let inputs = Hashtbl.create (module String) in
-	let _ = Hashtbl.add inputs "v" (ArrayV([Float32V(2.0); Float32V(2.0)])) in
+	let _ = Hashtbl.add inputs ~key:"v" ~data:(ArrayV([Float32V(2.0); Float32V(2.0)])) in
 	let program =
 		FSArrayOp(FSNormalize, FSVariable(Name("v")))
 	in
@@ -40,7 +40,7 @@ let test_sim () =
 
 let test_compare () =
 	let inputs = Hashtbl.create (module String) in
-	let _ = Hashtbl.add inputs "v" (ArrayV([Float32V(1.05); Float32V(1.05)])) in
+	let _ = Hashtbl.add inputs ~key:"v" ~data:(ArrayV([Float32V(1.05); Float32V(1.05)])) in
 	let fcomp = ((new fp_comp_mse default_options.mse_threshold)) in
 	let res = Generic_sketch_synth.compare default_options (fcomp :> fp_comp) inputs inputs in
 	let () = Alcotest.(check (bool)) "same bool" true res in

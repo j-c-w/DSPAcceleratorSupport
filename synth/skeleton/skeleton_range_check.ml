@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 open Spec_definition;;
 open Spec_utils;;
@@ -32,7 +32,7 @@ let right_shift_item i =
 let right_shift_all r =
 	match r with
 	| RangeSet(rset) ->
-			RangeSet(Array.map rset right_shift_item)
+			RangeSet(Array.map rset ~f:right_shift_item)
 
 let log_value i =
 	match i with
@@ -48,7 +48,7 @@ let log_item i =
 let log_all r = 
 	match r with
 	| RangeSet(rset) ->
-			RangeSet(Array.map rset log_item)
+			RangeSet(Array.map rset ~f:log_item)
 
 let divalways i mby =
 	match i with
@@ -78,7 +78,7 @@ let range_item_divide i mby =
 			(* should probably actually properly do this.  *)
 			Some(RangeRange(divalways f mby, divalways t mby))
 	| RangeItem(i) ->
-			Option.map (div i) (fun i -> RangeItem(i))
+			Option.map (div i) ~f:(fun i -> RangeItem(i))
 
 let range_item_multiply i mby =
 	let range_value_mul i =
@@ -122,7 +122,7 @@ let execute_conversion_on_range direction conversion inp_ranges =
 					(
 					match res with
 					| RangeSet(items) ->
-							RangeSet(Array.filter_map items (fun i ->
+							RangeSet(Array.filter_map items ~f:(fun i ->
 								range_item_divide i mby
 							))
 					)
@@ -130,7 +130,7 @@ let execute_conversion_on_range direction conversion inp_ranges =
 					(
 					match res with
 					| RangeSet(items) ->
-							RangeSet(Array.map items (fun item ->
+							RangeSet(Array.map items ~f:(fun item ->
 								range_item_multiply item mby
 							))
 					)
@@ -146,7 +146,7 @@ let execute_conversion_on_range direction conversion inp_ranges =
                 | RangeForward ->
                         mappairs
                 | RangeBackward ->
-                        List.map mappairs (fun (e1, e2) -> (e2, e1))
+                        List.map mappairs ~f:(fun (e1, e2) -> (e2, e1))
             in
             (* Create a new range that is the same, but
             has all values that overlap the mapped
@@ -156,11 +156,11 @@ let execute_conversion_on_range direction conversion inp_ranges =
             match inp_range with
             | RangeSet(range_items) ->
                     let range_items_list = Array.to_list range_items in
-                    let result_list = List.concat (List.map range_items_list (fun item ->
+                    let result_list = List.concat (List.map range_items_list ~f:(fun item ->
                         match item with
                         | RangeItem(i) ->
                                 (* See if this is in the map.  *)
-                                let res = List.find reversed_mappairs (fun (f, t) ->
+                                let res = List.find reversed_mappairs ~f:(fun (f, t) ->
                                     if range_value_eq (range_value_to_item f) i then
                                         true
                                     else
@@ -182,12 +182,12 @@ let execute_conversion_on_range direction conversion inp_ranges =
                             want to generate -5 to -1,
                             1 and 1 to 5.  *)
                                 (* We need to compress ranges after this anyway.  *)
-                                let overlapping = List.filter reversed_mappairs (fun (f, t) ->
+                                let overlapping = List.filter reversed_mappairs ~f:(fun (f, t) ->
                                     range_value_in range (range_value_to_item f)
                                 )
                                 in
                                 (* Compute the new values.  *)
-                                let new_values = List.map overlapping (fun (f, t) ->
+                                let new_values = List.map overlapping ~f:(fun (f, t) ->
                                     RangeItem(range_value_to_item t)
                                 ) in
                                 (* TODO -- remove the old values --- this overapproximates
@@ -202,7 +202,7 @@ analysis to generate the range-checking code, and you need a backward analysis t
 generate range restrictions for input-value generation.  *)
 let transform_rangemap_by options forward_range unassigned_map map bindings =
     let result_tbl = Hashtbl.create (module String) in
-    let () = ignore(List.map bindings.flat_bindings (fun flat_binding ->
+    let () = ignore(List.map bindings.flat_bindings ~f:(fun flat_binding ->
         let inputs_count = List.length flat_binding.fromvars_index_nesting in
         let () = if options.debug_range_check then
             let () = Printf.printf "Creating range check for var '%s'\n" (index_nesting_to_string flat_binding.tovar_index_nesting) in
@@ -220,7 +220,7 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
         else
             (* First, get the ranges for each of the input
                variables for this binding.  *)
-            let ranges = List.map flat_binding.fromvars_index_nesting (fun fvar ->
+            let ranges = List.map flat_binding.fromvars_index_nesting ~f:(fun fvar ->
                 match fvar with
                 | AssignConstant(c) ->
                     (* This value set will have a constant value --- note
@@ -238,14 +238,14 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
             ) in
             (* Convert the input ranges to output values if they
             exist.  *)
-            if List.for_all ranges (Option.is_some) then
-                let ranges = List.filter_map ranges Utils.id in
+            if List.for_all ranges ~f:(Option.is_some) then
+                let ranges = List.filter_map ranges ~f:Utils.id in
                 let result_range =
 					execute_conversion_on_range forward_range flat_binding.conversion_function ranges
 				in
 				let () = if (empty_range_set result_range) then
                     let () = Printf.printf "Generated an empty result range. \n" in
-                    let () = Printf.printf "Input range was %s\n" (String.concat (List.map ranges range_set_to_string))  in
+                    let () = Printf.printf "Input range was %s\n" (String.concat (List.map ranges ~f:range_set_to_string))  in
                     let () = Printf.printf "Output range is %s (size %s)\n" (range_set_to_string result_range) (range_size_to_string (range_size result_range)) in
 					let () = Printf.printf "Conversion function was %s\n" (flat_single_variable_binding_to_string flat_binding) in
                     assert false
@@ -255,14 +255,14 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
                 let () =
 					match forward_range with
 					| RangeForward ->
-							Hashtbl.set result_tbl (index_nesting_to_string flat_binding.tovar_index_nesting) result_range
+							Hashtbl.set result_tbl ~key:(index_nesting_to_string flat_binding.tovar_index_nesting) ~data:result_range
 					| RangeBackward ->
 							(* Not currently supporting many-to-one assignments here --- unclear range effects.  *)
 							match flat_binding.fromvars_index_nesting with
 								| [] -> () (* This is something that ust has to be defined, not assigned to.  *)
 								| [(AssignConstant(_))] -> () (* No range reduction to specify on a constant.  *)
 								| [(AssignVariable(fvar_nest))] ->
-										Hashtbl.set result_tbl (index_nesting_to_string fvar_nest) result_range
+										Hashtbl.set result_tbl ~key:(index_nesting_to_string fvar_nest) ~data:result_range
 								| x :: xs ->
 										raise (RangeCheckException "Many to one assignments not implemented")
                 in
@@ -279,7 +279,7 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
 		restrictions propagated from the user code.  *)
 	let umapkeys = Hashtbl.keys unassigned_map in
 	let () =
-		ignore (List.map umapkeys (fun rkey ->
+		ignore (List.map umapkeys ~f:(fun rkey ->
 		if Hashtbl.mem result_tbl rkey then
 			(* This key already had a binding that we already entered.  *)
 			()
@@ -293,7 +293,7 @@ let transform_rangemap_by options forward_range unassigned_map map bindings =
 			of the rangemap means we provide unrealistic
 			inputs to the user code (i.e. it's just going to crash).
 			*)
-			let res = Hashtbl.add result_tbl rkey (Hashtbl.find_exn unassigned_map rkey) in
+			let res = Hashtbl.add result_tbl ~key:rkey ~data:(Hashtbl.find_exn unassigned_map rkey) in
 			match res with
 			| `Ok -> ()
 			| `Duplicate -> assert false
@@ -323,7 +323,7 @@ let generate_range_check_skeleton options typemap iospec apispec pre_binding =
 
 let check_valid_map rangemap validmap iomap =
 	let keys = Hashtbl.keys iomap in
-	let _ = List.map keys (fun key ->
+	let _ = List.map keys ~f:(fun key ->
 		let range = Hashtbl.find_exn iomap key in
 		if (empty_range_set range) then
 			let () = Printf.printf "Error generating for key %s\n" (key) in
@@ -339,7 +339,7 @@ let check_valid_map rangemap validmap iomap =
 	()
 
 let generate_range_checks_skeleton options typemap iospec apispec pre_bindings =
-    List.map pre_bindings (generate_range_check_skeleton options typemap iospec apispec)
+    List.map pre_bindings ~f:(generate_range_check_skeleton options typemap iospec apispec)
 
 let generate_input_ranges_skeleton options rangemap validmap binding =
 	let () =
@@ -362,14 +362,14 @@ let generate_input_ranges_skeleton options rangemap validmap binding =
 	be generated from.  *)
 	let keys = Hashtbl.keys transformed_io_validmap in
 	let inputmap = Hashtbl.create (module String) in
-	let _ = List.map keys (fun key ->
+	let _ = List.map keys ~f:(fun key ->
 		let transformed_range = Hashtbl.find_exn transformed_io_validmap key in
 		let user_range = Hashtbl.find rangemap key in
 		let input_range = match user_range with
 		| None -> transformed_range
 		| Some(r) -> range_set_intersection r transformed_range
 		in
-		let _ = Hashtbl.set inputmap key input_range in
+		let _ = Hashtbl.set inputmap ~key:key ~data:input_range in
 		()
 	) in
 	let () = check_valid_map rangemap transformed_io_validmap inputmap in
@@ -388,14 +388,14 @@ let generate_post_check_ranges options rangemap validmap binding =
 		and the validmap.  *)
 	let keys = Hashtbl.keys validmap in
 	let reachable_validmap = Hashtbl.create (module String) in
-	let _ = List.map keys (fun key ->
+	let _ = List.map keys ~f:(fun key ->
 		let validrange = Hashtbl.find_exn validmap key in
 		let inputrange = Hashtbl.find transformed_rangemap key in
 		let resultset = match inputrange with
 			| Some(s) -> range_set_intersection validrange s
 			| None -> validrange
 		in
-		let _ = Hashtbl.set reachable_validmap key resultset in
+		let _ = Hashtbl.set reachable_validmap ~key:key ~data:resultset in
 		()
 	) in
 	reachable_validmap
@@ -403,10 +403,10 @@ let generate_post_check_ranges options rangemap validmap binding =
 (* Given some pre-mapping, and some api value restrictions, generate
 the range of inputs that we should be testing with.  *)
 let generate_input_ranges options rangemap validmap pre_bindings =
-	List.map pre_bindings (generate_input_ranges_skeleton options rangemap validmap)
+	List.map pre_bindings ~f:(generate_input_ranges_skeleton options rangemap validmap)
 
 (* Given some pre-mapping, api valud restrictions, generate
 the set of values that each variable can take /after/ the
 valid-check is complete.  *)
 let generate_post_check_ranges options rangemap validmap pre_bindings =
-	List.map pre_bindings (generate_post_check_ranges options rangemap validmap)
+	List.map pre_bindings ~f:(generate_post_check_ranges options rangemap validmap)

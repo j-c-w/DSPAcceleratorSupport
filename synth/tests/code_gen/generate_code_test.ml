@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Generate_code;;
 open Spec_definition;;
 open Options;;

@@ -1,5 +1,5 @@
 (* Parse a range value.  *)
-open Core_kernel;;
+open Core;;
 open Options;;
 open Range_definition;;
 open Spec_definition;;
@@ -17,7 +17,7 @@ let rec typecheck_item typ item =
 			match typ with
 			(* TODO --- could also do a check against dimension here.  *)
 			| Array(stype, dims) ->
-					List.for_all arr (typecheck_item stype)
+					List.for_all arr ~f:(typecheck_item stype)
 			| _ -> false
 
 let typecheck_range_range typ r =
@@ -29,14 +29,14 @@ let typecheck_range_range typ r =
 let typecheck t ast =
 	match ast with
 	| RangeSet(itms) ->
-			Array.for_all (Array.map itms (typecheck_range_range t)) (fun x -> x)
+			Array.for_all (Array.map itms ~f:(typecheck_range_range t)) ~f:(fun x -> x)
 
 let rec desugar_item i =
     match i with
     | SugaredRangeInteger(i) -> RangeInteger(i)
     | SugaredRangeFloat(f) -> RangeFloat(f)
     | SugaredRangeBool(b) -> RangeBool(b)
-    | SugaredRangeArray(t, a) -> RangeArray(t, List.map a desugar_item)
+    | SugaredRangeArray(t, a) -> RangeArray(t, List.map a ~f:desugar_item)
 and desugar_range_range rr = match rr with
     | SugaredRangeRange(f, t) -> [RangeRange(desugar_item f, desugar_item t)]
     | SugaredRangeItem(i) -> [RangeItem(desugar_item i)]
@@ -47,10 +47,10 @@ and desugar_range_range rr = match rr with
 					(* It's very plausible that an FFT wouldn't support powers from 1 *)
 					(* Note that since ocaml only has 63-bit signed ints, we only really support
 					up to 2^62 before things get weird. *)
-                    List.map (Utils.between from upto) (fun x -> RangeItem(RangeInteger(1 lsl x)))
+                    List.map (Utils.between from upto) ~f:(fun x -> RangeItem(RangeInteger(1 lsl x)))
 and desugar r = match r with
     | SugaredRangeSet(srange) ->
-			let range_items = Array.concat (Array.to_list (Array.map srange (fun x -> (Array.of_list (desugar_range_range x))))) in
+			let range_items = Array.concat (Array.to_list (Array.map srange ~f:(fun x -> (Array.of_list (desugar_range_range x))))) in
 			let () = assert ((Array.length range_items) > 0) in
             RangeSet(range_items)
 
@@ -97,9 +97,9 @@ let load_rangetable options classmap typemap range_field =
     | `Null -> ()
     | range_json ->
             let ranged_vars = keys range_json in
-            let _ = List.map ranged_vars (fun k ->
+            let _ = List.map ranged_vars ~f:(fun k ->
             let typof = type_of typemap classmap k in
-            let r = Hashtbl.add range_tbl k (parse_range options typof (range_field |> member k |> to_string)) in
+            let r = Hashtbl.add range_tbl ~key:k ~data:(parse_range options typof (range_field |> member k |> to_string)) in
             let () = match r with
             | `Ok -> ()
             | `Duplicate -> raise (TypeCheckException "Duplicate range def!")
@@ -115,9 +115,9 @@ let load_defaults_map options classmap typemap defaults_field =
 	| `Null -> ()
 	| defaults_json ->
 			let defaulted_vars = keys defaults_json in
-			let _ = List.map defaulted_vars (fun v ->
+			let _ = List.map defaulted_vars ~f:(fun v ->
 				let typof = type_of typemap classmap v in
-				let d = Hashtbl.add defaults_tbl v (parse_defaults options typof (defaults_field |> member v |> to_string)) in
+				let d = Hashtbl.add defaults_tbl ~key:v ~data:(parse_defaults options typof (defaults_field |> member v |> to_string)) in
                 let () = match d with
                 | `Ok -> ()
                 | `Duplicate -> raise (TypeCheckException "Duplicate default def")

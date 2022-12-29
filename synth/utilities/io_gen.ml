@@ -1,10 +1,10 @@
-open Core_kernel;;
 open Cmdliner;;
 open Generate_io_tests;;
 open Parse_iospec;;
 open Parse_api;;
 open Parse_classmap;;
 open Spec_definition;;
+open Spec_utils;;
 open Options;;
 open Gir;;
 open Program;;
@@ -24,7 +24,7 @@ let main iospec_file num_tests output_folder max_string_size seed =
         max_string_size = max_string_size;
 	} in
 	let iospec, iotypemap, classspec = load_iospec options iospec_file in
-	let empty_alignmenttbl = Hashtbl.create (module String) in
+	let empty_alignmenttbl = empty_typemap () in
 
 	(* Construct the program from the input IO map.  We assume
 	   that there is no ambiguity in the iospec.   That is, we
@@ -53,7 +53,9 @@ let main iospec_file num_tests output_folder max_string_size seed =
 		original_pairs = None;
 		allocated_variables = [];
 	} in
-	generate_io_tests options iospec [base_program]
+	let _ = generate_io_tests options iospec [base_program] in
+	(* Function needs to return unit or we get very convoluted errors *)
+	()
 
 let iospec =
 	let doc = "IO Spec for function" in
@@ -75,7 +77,8 @@ let destfolder =
 
 let info =
 	let doc = "Generate IO Examples" in
-	Term.info "IOGen" ~doc
+	Cmd.info "IOGen" ~doc
 
 let args_t = Term.(const main $ iospec $ number $ destfolder $ max_string_size $ seed)
-let () = Term.exit @@ Term.eval (args_t, info)
+
+let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

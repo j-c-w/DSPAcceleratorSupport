@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Value_utils;;
@@ -204,7 +204,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 				let base_arrlen = match infered_dim with
 				| SingleDimension(dms) -> size_of_dimension dms
 				| MultiDimension(dms, op) ->
-						let vals = List.map dms size_of_dimension in
+						let vals = List.map dms ~f:size_of_dimension in
 						(
 						match op with
 						| DimMultiply -> List.fold ~init:1 ~f:(fun i1 -> (fun i2 -> i1 * i2)) vals
@@ -218,7 +218,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 					Printf.printf "Generating array length %d (base %d, size modifier %d)\n" (arrlen) base_arrlen arrlen_modifier
 				else () in
 				if arrlen < options.array_length_threshold then
-					ArrayV(List.map (List.range 0 arrlen) (fun _ -> generate_inputs_for options rangemap values_so_far name_string infered_subtype subtype structure_ordering))
+					ArrayV(List.map (List.range 0 arrlen) ~f:(fun _ -> generate_inputs_for options rangemap values_so_far name_string infered_subtype subtype structure_ordering))
 				else
 					(* Don't want to try and generate arrays that are too big, because
 					it just makes synthesis take forever, espc with
@@ -231,9 +231,9 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 			let members, tmap, infered_tmap = Hashtbl.find_exn structure_ordering structname in
             (* Generate a value for each type in the metadata.  *)
             let valuetbl = Hashtbl.create (module String) in
-            let _ = List.map members (fun member ->
+            let _ = List.map members ~f:(fun member ->
 				let resv = generate_inputs_for options rangemap valuetbl member (Hashtbl.find_exn infered_tmap.variable_map member) (Hashtbl.find_exn tmap.variable_map member) structure_ordering in
-				Hashtbl.add valuetbl member resv
+				Hashtbl.add valuetbl ~key:member ~data:resv
 			) in
             StructV(structname, valuetbl)
 
@@ -251,7 +251,7 @@ let rec generate_io_values_worker options rangemap generated_vs vs structure_ord
 				let typx = Hashtbl.find_exn io_typemap.variable_map name_string in
 				let infered_typx = Hashtbl.find_exn infered_typemap.variable_map name_string in
 				let inputs = generate_inputs_for options rangemap generated_vs name_string infered_typx typx structure_orderings in
-				let res = Hashtbl.add generated_vs (name_reference_to_string x) inputs in
+				let res = Hashtbl.add generated_vs ~key:(name_reference_to_string x) ~data:inputs in
 				let () = assert (match res with | `Ok -> true | _ -> false) in
 				()
 			in
@@ -309,7 +309,7 @@ let rec value_to_string value =
     Can avoid for now with C++ as main target.  *)
     | UnitV -> "()"
     | ArrayV(vals) ->
-            let vals = List.map vals value_to_string in
+            let vals = List.map vals ~f:value_to_string in
             "[" ^ (String.concat ~sep:", " vals) ^ "]"
 	| PointerV(v) ->
 			(value_to_string v)
@@ -320,7 +320,7 @@ let rec value_to_string value =
 	in str_value
 
 and io_test_to_string names values =
-    let vals_list = List.map names (fun n ->
+    let vals_list = List.map names ~f:(fun n ->
         let value = Hashtbl.find_exn values n in
         let value_str = value_to_string value in
         "\"" ^ n ^ "\": " ^ value_str
@@ -330,11 +330,11 @@ and io_test_to_string names values =
 let write_io_tests (options: options) program_number names values =
     let target_folder = options.execution_folder ^ "/" ^ "io/" ^ program_number ^ "/" in
     (* Make the folder.  *)
-    let res = Sys.command ("mkdir -p " ^ target_folder) in
+    let res = Caml.Sys.command ("mkdir -p " ^ target_folder) in
     let () = assert (res = 0) in
     let nums = generate_file_numbers (List.length values) in
     (* Convert to json and write out.  *)
-	List.map (List.zip_exn nums values) (fun (n, vals) ->
+	List.map (List.zip_exn nums values) ~f:(fun (n, vals) ->
 		let targ_file = (target_folder ^ "/" ^ n ^ ".json") in
 		let json_str = io_test_to_string names vals in
 		let () = Out_channel.write_all targ_file ~data:json_str in
@@ -342,7 +342,7 @@ let write_io_tests (options: options) program_number names values =
 	)
 
 let wrap_nrefs nms =
-    List.map nms (fun nm ->
+    List.map nms ~f:(fun nm ->
         Name(nm)
     )
 
@@ -352,14 +352,14 @@ let wrap_nrefs nms =
 let generate_toposorted_classmap (options: options) input_typemap io_typemap =
 	let names = Hashtbl.keys input_typemap.classmap in
 	let result_hashmap = Hashtbl.create (module String) in
-	let _ = List.map names (fun name ->
+	let _ = List.map names ~f:(fun name ->
 		let structdata = Hashtbl.find_exn input_typemap.classmap name in
 		let typemap = get_class_io_typemap structdata in
-		let names = List.map (get_class_fields structdata) (fun v -> Name(v)) in
+		let names = List.map (get_class_fields structdata) ~f:(fun v -> Name(v)) in
 		let full_typemap = {input_typemap with variable_map = typemap } in
 		let toposorted_values = synthtype_toposort options full_typemap names in
 		(* TODO -- I don't know why this isn't using the io_typemap as input. *)
-		Hashtbl.add result_hashmap name ((List.map toposorted_values name_reference_to_string), full_typemap, full_typemap)
+		Hashtbl.add result_hashmap ~key:name ~data:((List.map toposorted_values ~f:name_reference_to_string), full_typemap, full_typemap)
 	) in
 	result_hashmap
 

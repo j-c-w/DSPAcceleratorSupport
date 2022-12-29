@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Fft_synthesizer_definition;;
 open Spec_utils;;
 open Spec_definition;;
@@ -54,7 +54,7 @@ let fft_generate_gir_from_dimension (x: dimension_type) =
 				(* Define a temp var with the result of the dim muple variable.  *)
 				(* TODO --- need to support non-binary cases with a fold
 				rather than a map.  *)
-				let precodes, varlist = List.unzip (List.map vs fft_generate_gir_from_dimension_variable) in
+				let precodes, varlist = List.unzip (List.map vs ~f:fft_generate_gir_from_dimension_variable) in
 				let tempvariable = generate_ind_name () in
 				Sequence(precodes @ [Definition(Name(tempvariable), false, Some(Int64), None);
 				Assignment(
@@ -97,7 +97,7 @@ let rec generate_gir_program options typemap fft_behaviour =
 						| FSHalfNormalize | FSHalfDenormalize ->
                             let variables = get_class_fields (Hashtbl.find_exn typemap.classmap name) in
                             let struct_typmap = get_class_typemap (Hashtbl.find_exn typemap.classmap name) in
-                            List.map (variables) (fun key ->
+                            List.map (variables) ~f:(fun key ->
                             let typ = Hashtbl.find_exn struct_typmap key in
                             match typ with
                             | Float16 -> (vname, Some(key))
@@ -116,7 +116,7 @@ let rec generate_gir_program options typemap fft_behaviour =
                 | _ -> raise (GenerationError("Unsupported"))
             in
             let precode, length_name = fft_generate_gir_from_dimension loop_length in
-            let calls = List.map vnames (fun (pre, post) ->
+            let calls = List.map vnames ~f:(fun (pre, post) ->
                 let funname =
                     match operator with
                     (* These are macros defined in the C std lib.  *)
@@ -158,7 +158,7 @@ let rec generate_gir_program options typemap fft_behaviour =
 			Sequence(precode :: calls)
     | FSSeq(elems) ->
 			Sequence(
-				List.map elems (generate_gir_program options typemap)
+				List.map elems ~f:(generate_gir_program options typemap)
 			)
 	| FSStructureHole -> raise (CXXHoleError "Has a hole")
 

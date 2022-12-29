@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Assign_dimensions;;
 open Assign_dimensions_check;;
 open Spec_definition;;
@@ -44,7 +44,7 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 	else ()
 	in
 	let apispec_dimensions = List.concat (
-		List.map iospec_dimensions (fun iospec_dim -> assign_dimensions options false apispec.validmap iospec_dim (Utils.remove_duplicates Utils.string_equal (apispec.livein @ apispec.liveout)))
+		List.map iospec_dimensions ~f:(fun iospec_dim -> assign_dimensions options false apispec.validmap iospec_dim (Utils.remove_duplicates Utils.string_equal (apispec.livein @ apispec.liveout)))
 	) in
 	let () = if options.debug_expand_typemaps then
 		Printf.printf "Number of apispec dimensions are %d\n" (List.length apispec_dimensions)
@@ -54,7 +54,7 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 	(* Do the structure inference *)
 	let struct_inferred =
 		List.concat
-			(List.map apispec_dimensions (fun typemap ->
+			(List.map apispec_dimensions ~f:(fun typemap ->
 				(* Only infer types over the iospec --- assume the API designers have been
 				kind enough to provide us with some info.  *)
 				infer_structure options typemap iospec.funargs
@@ -67,11 +67,11 @@ let generate_unified_typemaps options classmap (iospec: iospec) iospec_typemap (
 	in
 
 	(* Verify that all structures have had dimensions assigned  *)
-	let _ = List.map struct_inferred assign_dimensions_check in
+	let _ = List.map struct_inferred ~f:assign_dimensions_check in
 
 	let () =
 		if options.dump_typemaps then
-			Printf.printf "Typemaps are %s\n" (String.concat ~sep:"\nTypemap:\n" (List.map struct_inferred typemap_to_string))
+			Printf.printf "Typemaps are %s\n" (String.concat ~sep:"\nTypemap:\n" (List.map struct_inferred ~f:typemap_to_string))
         else ()
     in
 	struct_inferred

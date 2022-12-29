@@ -1,4 +1,4 @@
-{pkgs ? import<nixpkgs> {}}:
+{pkgs ? import<nixos-22.11> {}}:
 
 with pkgs;
 mkShell {
@@ -15,7 +15,7 @@ mkShell {
 		# Other indirect deps for the synthesizer.
 		parallel
 		# Deps for tests
-		fftw fftwFloat
+		fftw fftwFloat blas mkl oneDNN
 		# Deps for helper scripts
 		python38 python38Packages.numpy python38Packages.matplotlib
 		# Deps for other experiments

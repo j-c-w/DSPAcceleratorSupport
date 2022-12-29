@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Parse_range;;
 open Parse_type;;
 open Yojson.Basic.Util;;
@@ -12,12 +12,12 @@ let load_consttable options typemap json =
 	| `Assoc(_) ->
 		let keys = json |> keys in
 		let _ = ignore(
-			List.map keys (fun key ->
+			List.map keys ~f:(fun key ->
 				let typ = Hashtbl.find_exn typemap key in
 				let range = json |> member key |> to_string in
 				let parsed_range = range_values (parse_range options typ range) in
-				let synth_values = List.map parsed_range range_value_to_synth_value in
-				Hashtbl.set result key synth_values
+				let synth_values = List.map parsed_range ~f:range_value_to_synth_value in
+				Hashtbl.set result ~key:key ~data:synth_values
 			)
 		) in
 		()

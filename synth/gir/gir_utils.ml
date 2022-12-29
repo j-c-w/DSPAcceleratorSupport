@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Gir;;
@@ -13,10 +13,10 @@ let gir_name_to_name_reference gname =
 	| Name(n) -> name_reference_from_string n
 
 let gir_name_list_to_string gnames =
-	String.concat ~sep:", " (List.map gnames gir_name_to_string)
+	String.concat ~sep:", " (List.map gnames ~f:gir_name_to_string)
 
 let gir_name_list_list_to_string gnames =
-    String.concat ~sep:";" (List.map gnames gir_name_list_to_string)
+    String.concat ~sep:";" (List.map gnames ~f:gir_name_list_to_string)
 
 let gir_name_equal n1 n2 =
     match (n1, n2) with
@@ -38,7 +38,7 @@ let rec gir_to_string gir =
 			"If(" ^ (conditional_to_string cond) ^ ") {\n" ^
 			(gir_to_string iftrue) ^ "\n} else {\n" ^
 			(gir_to_string iffalse) ^ "\n}"
-	| Sequence(sublist) -> String.concat ~sep:";\n" (List.map sublist gir_to_string)
+	| Sequence(sublist) -> String.concat ~sep:";\n" (List.map sublist ~f:gir_to_string)
 	| Assignment(lval, rval) -> (lvalue_to_string lval) ^ " = " ^ (rvalue_to_string rval)
 	| LoopOver(body, ind, limit) ->
 			"LoopUpTo " ^ (expression_to_string limit) ^
@@ -68,7 +68,7 @@ and expression_to_string expr =
 			(function_ref_to_string fref) ^ "(" ^ (varlist_to_string varlist) ^ ")"
     | GIRMap(var, values) ->
             (gir_name_to_string var) ^ " match " ^
-            (String.concat (List.map values (fun(f, t) ->
+            (String.concat (List.map values ~f:(fun(f, t) ->
                 "| " ^ (synth_value_to_string f) ^ " -> " ^ (synth_value_to_string t) ^ "\n"
             )
             )
@@ -87,7 +87,7 @@ and variable_reference_to_string vref =
 and varlist_to_string vlist =
 	match vlist with
 	| VariableList(nams) ->
-			String.concat ~sep:"," (List.map nams variable_reference_to_string)
+			String.concat ~sep:"," (List.map nams ~f:variable_reference_to_string)
 and function_ref_to_string fref =
 	match fref with
 	| FunctionRef(nam) ->
@@ -120,13 +120,13 @@ and unary_comparator_to_string comp =
 	| PowerOfTwo -> "PowerOfTwo"
 
 let gir_list_to_string girl =
-	String.concat ~sep:"\nGIR:" (List.map girl gir_to_string)
+	String.concat ~sep:"\nGIR:" (List.map girl ~f:gir_to_string)
 
 let gir_list_list_to_string girll =
-	String.concat ~sep:"\n=====\n" (List.map girll gir_list_to_string)
+	String.concat ~sep:"\n=====\n" (List.map girll ~f:gir_list_to_string)
 
 let expression_list_to_string exprl =
-	String.concat ~sep:", " (List.map exprl expression_to_string)
+	String.concat ~sep:", " (List.map exprl ~f:expression_to_string)
 
 let post_behavioural_to_string (pbp: post_behavioural_program option) =
     match pbp with
@@ -147,10 +147,10 @@ let program_to_string (program: program) =
     (String.concat ~sep:"," program.liveout) ^ ")\n"
 
 let variable_reference_list_to_string nms =
-	String.concat ~sep:", " (List.map nms variable_reference_to_string)
+	String.concat ~sep:", " (List.map nms ~f:variable_reference_to_string)
 
 let variable_reference_option_list_to_string nms =
-	String.concat ~sep:", " (List.map nms (fun n ->
+	String.concat ~sep:", " (List.map nms ~f:(fun n ->
 		match n with
 		| None -> "None"
 		| Some(n) -> variable_reference_to_string n))
@@ -161,7 +161,7 @@ let variable_reference_option_to_string opt =
     | Some(n) -> variable_reference_to_string n
 
 let program_list_to_string (programs: program list) =
-    String.concat ~sep:"\n\n" (List.map programs program_to_string)
+    String.concat ~sep:"\n\n" (List.map programs ~f:program_to_string)
 
 
 (*  Converts, e.g. X.y.z and A.b.c to

@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Gir;;
@@ -13,7 +13,7 @@ exception GenerateProgramException of string
 let rec add_index_variables_to_typemap typemap gir =
     match gir with
 	| Definition(nref, escapes, deftype, _) -> ()
-	| Sequence(girs) -> ignore(List.map girs (add_index_variables_to_typemap typemap))
+	| Sequence(girs) -> ignore(List.map girs ~f:(add_index_variables_to_typemap typemap))
 	(* This can eitehr assign lists to lists, of variables to
 	   variables.  *)
 	| Assignment(lval, rval) -> () (* Should not be possible
@@ -21,7 +21,7 @@ let rec add_index_variables_to_typemap typemap gir =
 	(* Body, induction variable name, loop max value *)
     | LoopOver(body, indvar, maxvar) ->
             (
-            match Hashtbl.add typemap (gir_name_to_string indvar) Int32 with
+            match Hashtbl.add typemap ~key:(gir_name_to_string indvar) ~data:Int32 with
             | `Duplicate ->
 					let () = Printf.printf "Variable %s detected twice!" (gir_name_to_string indvar) in
 					raise (GenerateProgramException "Added same index var to the typemap twice!")
@@ -60,14 +60,14 @@ let rec disjoint_union x y =
 let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
 	(* Generate the function call to the API.  *)
 	let api_funcname = FunctionRef(Name(apispec.funname)) in
-	let api_args = VariableList(List.map apispec.funargs (fun v -> Variable(Name(v)))) in
+	let api_args = VariableList(List.map apispec.funargs ~f:(fun v -> Variable(Name(v)))) in
 	let funcall = FunctionCall(api_funcname, api_args) in
 	(* Ret type --- currently only support one since we are
 	   targetting C.  More for functional/tuple languages
 	   would not be hard.  *)
 	(* TODO -- somehting like this for APIs with explicit
 	return types.  *)
-	(* let rettype = List.map iospec.returnvar (fun v -> LVariable(Variable(Name(v)))) in *)
+	(* let rettype = List.map iospec.returnvar ~f:(fun v -> LVariable(Variable(Name(v)))) in *)
 	(* Build the typemap that we need.  Note we need
 	   to (a) build the typemap, then (b) schedule then
 		   rebuild the program again with the scheduled
@@ -136,7 +136,7 @@ let generate_program_for opts (apispec: apispec) (iospec: iospec) (girpair) =
    that can be turned into C code.  *)
 let generate_programs (opts: options) (iospec: iospec) (api: apispec)
 	(conversion_functions: gir_pair list)  =
-		let result_programs = List.map conversion_functions (generate_program_for opts api iospec) in
+		let result_programs = List.map conversion_functions ~f:(generate_program_for opts api iospec) in
 		let () = if opts.dump_generate_program then
 			Printf.printf "Generated Programs are: %s\n\n" (
 				program_list_to_string result_programs

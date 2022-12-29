@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 
@@ -19,7 +19,7 @@ let rec get_value inputs vname =
 					(* Or, at least, I think it's a stupic hack.  Might actually be the
 					right place to do this... *)
 					| ArrayV(values) ->
-							ArrayV(List.map values (fun v -> match v with
+							ArrayV(List.map values ~f:(fun v -> match v with
 							| StructV(n, values) -> get_value values (StructName(ns))
 							| _ -> raise (SynthValueException ("Unexecptected non struct"))))
 					| PointerV(vs) ->
@@ -34,9 +34,9 @@ let rec get_value inputs vname =
 
 let rec set_value inputs vname result =
 	match vname with
-	| Name(n) -> Hashtbl.set inputs n result
+	| Name(n) -> Hashtbl.set inputs ~key:n ~data:result
 	| StructName([n]) ->
-			Hashtbl.set inputs (name_reference_to_string n) result
+			Hashtbl.set inputs ~key:(name_reference_to_string n) ~data:result
 	| StructName(n :: ns) ->
 			(
 			match Hashtbl.find_exn inputs (name_reference_to_string n) with
@@ -44,7 +44,7 @@ let rec set_value inputs vname result =
 					set_value vmap (StructName(ns)) result
 			| ArrayV(values) ->
 					ignore(
-						List.map values (fun v ->
+						List.map values ~f:(fun v ->
 							match v with
 							| StructV(n, vmap) ->
 									set_value vmap (StructName(ns))

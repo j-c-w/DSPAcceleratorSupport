@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Range_definition;;
 open Random;;
 open Spec_definition;;
@@ -37,20 +37,20 @@ let range_item_size ritem =
 let range_size r =
     match r with
     | RangeSet(items) ->
-            let item_lengths = Array.map items range_item_size in
+            let item_lengths = Array.map items ~f:range_item_size in
             Array.fold item_lengths ~f:range_size_add ~init:(Finite(0))
 
 let rec range_value_to_item i = match i with
     | RInt(fint) -> RangeInteger(fint)
     | RFloat(ffloat) -> RangeFloat(ffloat)
 	| RBool(fbool) -> RangeBool(fbool)
-	| RArray(typ, farr) -> RangeArray(typ, List.map farr range_value_to_item)
+	| RArray(typ, farr) -> RangeArray(typ, List.map farr ~f:range_value_to_item)
 
 let rec range_item_to_value i = match i with
 	| RangeInteger(fint) -> RInt(fint)
 	| RangeFloat(ffloat) -> RFloat(ffloat)
 	| RangeBool(fbool) -> RBool(fbool)
-	| RangeArray(typ, farr) -> RArray(typ, List.map farr range_item_to_value)
+	| RangeArray(typ, farr) -> RArray(typ, List.map farr ~f:range_item_to_value)
 
 let range_size_to_string n =
     match n with
@@ -63,7 +63,7 @@ let rec range_item_to_string i =
     | RangeFloat(f) -> (string_of_float f)
     | RangeBool(b) -> (string_of_bool b)
     | RangeArray(t, vs) ->
-            "[" ^ (String.concat ~sep:", " (List.map vs range_item_to_string)) ^ "]"
+            "[" ^ (String.concat ~sep:", " (List.map vs ~f:range_item_to_string)) ^ "]"
 
 let range_value_to_string v =
 	range_item_to_string (range_value_to_item v)
@@ -78,11 +78,11 @@ let range_range_to_string rrange =
 let range_set_to_string rset =
 	match rset with
 	| RangeSet(elems) ->
-			"{" ^ (String.concat ~sep:", " (Array.to_list (Array.map elems range_range_to_string))) ^ "}"
+			"{" ^ (String.concat ~sep:", " (Array.to_list (Array.map elems ~f:range_range_to_string))) ^ "}"
 
 let range_map_to_string rangemap =
 	let keys = Hashtbl.keys rangemap in
-	String.concat ~sep:"\n" (List.map keys (fun key ->
+	String.concat ~sep:"\n" (List.map keys ~f:(fun key ->
 		let range = Hashtbl.find_exn rangemap key in
 		"For key " ^ key ^ ": have range " ^ (range_set_to_string range) ^ "(size " ^ (range_size_to_string (range_size range)) ^ ")"
 	))
@@ -93,7 +93,7 @@ let rec value_from_range_item item =
 	| RangeFloat(f) -> RFloat(f)
 	| RangeBool(b) -> RBool(b)
     | RangeArray(typ, a) ->
-            RArray(typ, List.map a value_from_range_item)
+            RArray(typ, List.map a ~f:value_from_range_item)
 
 let random_value_from_range_range_in_range r =
 	match r with
@@ -145,7 +145,7 @@ let range_values_range_range rr =
     | RangeRange(f, t) ->
             match f, t with
             | RangeInteger(fint), RangeInteger(toint) ->
-                    List.map (int_range fint toint) (fun ival ->
+                    List.map (int_range fint toint) ~f:(fun ival ->
                         RInt(ival))
             | RangeFloat(ffloat), RangeFloat(tofloat) ->
                     raise (RangeError "Can't do value set of floating range (i.e. of infinite window)")
@@ -163,7 +163,7 @@ let range_values_range_range rr =
 a set of values from it.  *)
 let range_values rset = match rset with
     | RangeSet(items) ->
-            let sub_items = Array.to_list (Array.map items range_values_range_range) in
+            let sub_items = Array.to_list (Array.map items ~f:range_values_range_range) in
             (* Warning: this is not uniquified, so needs
             the input ranges to be disjoint.  *)
             List.concat sub_items
@@ -212,7 +212,7 @@ let rec range_compare v1 v2 =
             (
 			match List.zip a1 a2 with
 			| Ok(l) ->
-					let cmpranges = List.map l (fun (e1, e2) -> range_compare e1 e2) in
+					let cmpranges = List.map l ~f:(fun (e1, e2) -> range_compare e1 e2) in
 					let result = List.fold cmpranges ~init:0 ~f:(fun eq -> (fun cmpvalue ->
 						if eq = 0 then
 							cmpvalue
@@ -240,7 +240,7 @@ let range_item_max im =
 
 let range_max r = match r with
 	| RangeSet(items) ->
-			let max_of_each = Array.map items range_item_max in
+			let max_of_each = Array.map items ~f:range_item_max in
 			let max_overall = Array.fold max_of_each ~init:(Array.get max_of_each 0) ~f:(fun acc -> fun r ->
 				if (range_compare acc r) < 0 then
 					r
@@ -256,7 +256,7 @@ let range_item_min im =
 
 let range_min r = match r with
 	| RangeSet(items) ->
-			let min_of_each = Array.map items range_item_min in
+			let min_of_each = Array.map items ~f:range_item_min in
 			let min_overall = Array.fold min_of_each ~init:(Array.get min_of_each 0) ~f:(fun acc -> fun r ->
 				if (range_compare acc r) > 0 then
 					r
@@ -267,7 +267,7 @@ let range_min r = match r with
 
 let range_value_set_sort vset =
     (* Perhaps it would be better to keep these sets as arrays? *)
-    List.sort vset (fun a -> fun b ->
+    List.sort vset ~compare:(fun a -> fun b ->
         match a, b with
         | RInt(a), RInt(b) -> Int.compare a b
         | RFloat(a), RFloat(b) -> Float.compare a b
@@ -287,7 +287,7 @@ let rec range_value_eq v1 v2 =
 	| RangeArray(t, suba), RangeArray(t1, suba2) ->
 			(
 			match List.zip suba suba2 with
-			| Ok(l) -> List.for_all l (fun (e1, e2) -> range_value_eq e1 e2)
+			| Ok(l) -> List.for_all l ~f:(fun (e1, e2) -> range_value_eq e1 e2)
 			| Unequal_lengths -> false
 			)
 	| RangeInteger(_), _ -> false
@@ -335,7 +335,7 @@ let rec range_item_to_synth_value rvalue =
 	| RangeFloat(f) -> Float64V(f)
 	| RangeBool(b) -> BoolV(b)
 	| RangeArray(t, arr) ->
-			ArrayV(List.map arr range_item_to_synth_value)
+			ArrayV(List.map arr ~f:range_item_to_synth_value)
 
 let rec range_value_to_synth_value rvalue =
     match rvalue with
@@ -343,7 +343,7 @@ let rec range_value_to_synth_value rvalue =
     | RFloat(v) -> Float32V(v)
 	| RBool(v) -> BoolV(v)
 	| RArray(t, arr) ->
-			ArrayV(List.map arr range_value_to_synth_value)
+			ArrayV(List.map arr ~f:range_value_to_synth_value)
 
 let rec synth_type_to_range_type stype =
 	match stype with
@@ -391,8 +391,8 @@ let rec item_from_synth_value svalue =
 				*)
 						Some(RangeArray(RangeIntegerType, []))
 				| xs ->
-						let xs = List.map xs item_from_synth_value in
-                        let xs: range_item list = List.map xs (fun f -> match f with | None -> raise (RangeError "Unexpected") | Some(f) -> f) in
+						let xs = List.map xs ~f:item_from_synth_value in
+                        let xs: range_item list = List.map xs ~f:(fun f -> match f with | None -> raise (RangeError "Unexpected") | Some(f) -> f) in
 						let typ = range_type_value (List.hd_exn xs) in
 						Some(RangeArray(typ, xs))
                 )
@@ -402,7 +402,7 @@ let rec item_from_synth_value svalue =
 
 let range_from_synth_value svalue =
     let rvalue = item_from_synth_value svalue in
-	Option.map rvalue (fun rv -> RangeSet(
+	Option.map rvalue ~f:(fun rv -> RangeSet(
 		Array.of_list [RangeItem(rv)]
 	))
 
@@ -454,4 +454,4 @@ let is_even_range_range r = match r with
 let is_even_range r =
 	match r with
 	| RangeSet(elems) ->
-			Array.for_all elems is_even_range_range
+			Array.for_all elems ~f:is_even_range_range

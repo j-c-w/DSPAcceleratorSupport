@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Yojson;;
 open Yojson.Basic.Util;;
 open Spec_definition;;
@@ -19,12 +19,12 @@ let load_typemap options json_definition typenames =
 	let typemap = Hashtbl.create (module String) in
 	(* Get the types parsed *)
 	let json_mapping = json_definition |> member "typemap" in
-	let typemap_pairs = List.map typenames (fun name ->
+	let typemap_pairs = List.map typenames ~f:(fun name ->
 		if is_null_json (Yojson.Basic.Util.member name json_mapping) then
 			raise (LoadTypemapException ("Not found type for variable " ^ name ^ "\n"))
 		else
 			(name, json_mapping |> member name |> to_string |> (parse_type options))
 	) in
 	(* Put the parsed types in a hash table. *)
-	ignore(List.map typemap_pairs (fun (name, typ) -> Hashtbl.add typemap name typ));
+	ignore(List.map typemap_pairs ~f:(fun (name, typ) -> Hashtbl.add typemap ~key:name ~data:typ));
 	typemap

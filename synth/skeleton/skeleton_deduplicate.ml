@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Skeleton_definition;;
 open Skeleton_utils;;
 open Spec_utils;;
@@ -18,13 +18,13 @@ open Options;;
 way to do it. *)
 let flat_skeleton_binding_to_hash_string options tmap binding =
 	String.concat ~sep:"-" (
-		List.map binding.flat_bindings (fun binds ->
+		List.map binding.flat_bindings ~f:(fun binds ->
 				let () = if options.debug_skeleton_deduplicate then
 					let () = Printf.printf "Keys in typemap are %s%!\n" (String.concat ~sep:", " (Hashtbl.keys tmap.variable_map)) in
 					let () = Printf.printf "Looking at tovar %s\n" (name_reference_list_to_string binds.tovar_index_nesting) in
 				() else () in
 				let totyp = synth_type_to_string (type_of_name_reference_list tmap (binds.tovar_index_nesting)) in
-				let fromtyps = String.concat ~sep:", " (List.map binds.fromvars_index_nesting (fun v -> (synth_type_to_string (type_of_assignment tmap v)))) in
+				let fromtyps = String.concat ~sep:", " (List.map binds.fromvars_index_nesting ~f:(fun v -> (synth_type_to_string (type_of_assignment tmap v)))) in
 				"To:" ^ (name_reference_list_to_string binds.tovar_index_nesting) ^ ", Typ: " ^ totyp ^ ", From:" ^ (assignment_type_list_to_string binds.fromvars_index_nesting) ^ ", FromTyp:" ^ fromtyps ^ ", Dimensions:" ^ (dimension_constraint_list_to_string binds.dimensions) ^ ", ConvFunc:" ^ (conversion_function_to_string binds.conversion_function)
 		)
 	)
@@ -43,13 +43,13 @@ let skeleton_to_hash options s =
 	(skeleton_pairs_to_hash_string options s)
 
 let deduplicate_skeletons options skeletons =
-	let hashes = List.map skeletons (fun s ->
+	let hashes = List.map skeletons ~f:(fun s ->
 		skeleton_to_hash options s, s
 	) in
 	let hashtable = Hashtbl.create (module String) in
-	let filtered = List.filter hashes (fun (hash, prog) ->
-		match Hashtbl.add hashtable hash true with
+	let filtered = List.filter hashes ~f:(fun (hash, prog) ->
+		match Hashtbl.add hashtable ~key:hash ~data:true with
 		| `Ok -> true
 		| `Duplicate -> false
 	) in
-	List.map filtered (fun (_, p) -> p)
+	List.map filtered ~f:(fun (_, p) -> p)

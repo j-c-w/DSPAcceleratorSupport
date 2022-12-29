@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Builtin_conversion_functions;;
 open Range_definition;;

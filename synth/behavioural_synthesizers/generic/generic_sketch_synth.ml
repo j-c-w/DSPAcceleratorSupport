@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Utils;;
@@ -21,7 +21,7 @@ class virtual ['a] synth_manipulator =
 		method virtual runner: 'a -> (string, synth_value) Hashtbl.t -> unit
         method list_to_string ls =
             String.concat ~sep:"\n" (
-                List.map ls self#to_string
+                List.map ls ~f:self#to_string
             );
     end
 
@@ -40,7 +40,7 @@ let rec compare options fcomp v1 v2 =
 	let v1_keys = Hashtbl.keys v1 in
 	(* let () = Printf.printf "V1tbl keys are: %s\n" (String.concat (Hashtbl.keys v1)) in
 	let () = Printf.printf "V2tbl keys are: %s\n" (String.concat (Hashtbl.keys v2)) in *)
-	List.for_all v1_keys (fun mem ->
+	List.for_all v1_keys ~f:(fun mem ->
 		let () = if options.debug_post_synthesis then
 			(* This was a bit too noisy *)
 			(* Printf.printf "Comparing for key %s\n" mem *)
@@ -86,7 +86,7 @@ and compare_elts options fcomp v1 v2 =
     | UnitV, UnitV -> true
     | ArrayV(vs1), ArrayV(vs2) ->
 			((List.length vs1) = (List.length vs2)) &&
-			(List.for_all (List.zip_exn vs1 vs2) (fun (i1, i2) ->
+			(List.for_all (List.zip_exn vs1 vs2) ~f:(fun (i1, i2) ->
 				compare_elts options fcomp i1 i2
 			))
 	| PointerV(vs1), PointerV(vs2) ->
@@ -113,7 +113,7 @@ and compare_elts options fcomp v1 v2 =
 let rec deep_copy tbl =
     let new_tbl = Hashtbl.create (module String) in
     let keys = Hashtbl.keys tbl in
-    let () = ignore(List.map keys (fun key ->
+    let () = ignore(List.map keys ~f:(fun key ->
         let add = match Hashtbl.find_exn tbl key with
         | StructV(n, vls) ->
                 StructV(n, deep_copy vls)
@@ -121,18 +121,18 @@ let rec deep_copy tbl =
                 v
         in
 		(* let () = Printf.printf "Deep copying key %s with value %s" (key) (synth_value_to_string add) in *)
-        Hashtbl.add new_tbl key add
+        Hashtbl.add new_tbl ~key:key ~data:add
     )) in
     new_tbl
 
 let eval options fft_manip sketches ios =
-	let run_results = List.map sketches (fun sketch ->
+	let run_results = List.map sketches ~f:(fun sketch ->
 		(* We don't currently need all the results, so we
 		   do a take while here instead.  *)
 		let () = if options.debug_post_synthesis then
 			Printf.printf "Starting analysis for program %s\n" (fft_manip#to_string sketch)
 		else () in
-		List.take_while ios (fun io ->
+		List.take_while ios ~f:(fun io ->
             (* TODO -- could support non-void returns? *)
             let this_state = deep_copy io.input in
 			let () = fft_manip#runner sketch this_state in
@@ -142,7 +142,7 @@ let eval options fft_manip sketches ios =
 			(compare options fcomp io.output this_state) && (fcomp#result options)
 		), sketch
 	) in
-	let result = List.filter_map run_results (fun (results, prog) ->
+	let result = List.filter_map run_results ~f:(fun (results, prog) ->
 		let total = List.length ios in
 		let passed = List.length results in
 		let () = if options.debug_post_synthesis then

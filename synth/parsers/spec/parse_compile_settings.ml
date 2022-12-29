@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Yojson;;
 open Yojson.Basic.Util;;
 open Compile_settings;;

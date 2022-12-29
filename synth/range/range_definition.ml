@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 
 (* Could perhaps make this more precise to correspond
    better to the synthtypes.  In fact, I'm not 100% sure

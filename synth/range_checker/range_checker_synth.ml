@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 open Spec_definition;;
 open Range_definition;;
@@ -37,7 +37,7 @@ let item_between i (lower, higher) =
 let check_value_in v set =
 	match v with
 	| RangeItem(i) ->
-			Array.find_map set (fun set_item ->
+			Array.find_map set ~f:(fun set_item ->
 				match set_item with
 				| RangeRange(lower, higher) ->
 						if range_value_in (RangeRange(lower, higher)) i then
@@ -51,7 +51,7 @@ let check_value_in v set =
 							None
 			)
 	| RangeRange(lower, higher) ->
-			Array.find_map set (fun set_item ->
+			Array.find_map set ~f:(fun set_item ->
 				match set_item with
 				| RangeRange(otherlower, otherhigher) ->
 						let overlapping_range =
@@ -67,7 +67,7 @@ let check_value_in v set =
 (* There is a 100% chance that this could
    be implemented more efficiently.  *)
 let range_intersection r1 r2 =
-	Array.filter_map r1 (fun range_item ->
+	Array.filter_map r1 ~f:(fun range_item ->
 		let new_item = check_value_in range_item r2 in
 		new_item
 	)
@@ -81,7 +81,7 @@ let range_set_has_intersection r1 r2 =
 	not (empty_range_set (range_set_intersection r1 r2))
 
 let positive_check_for vname var_type range_set =
-	let conds = Array.map range_set (fun range_elem ->
+	let conds = Array.map range_set ~f:(fun range_elem ->
 		match range_elem with
 		| RangeRange(lower, higher) ->
 				let lowerv = range_item_to_synth_value lower in
@@ -196,9 +196,9 @@ let supports rty =
 	| None -> true
 
 let is_supported_type s1 s2 s3 =
-	let s1_type = Option.map s1 range_type in
-	let s2_type = Option.map s2 range_type in
-	let s3_type = Option.map s3 range_type in
+	let s1_type = Option.map s1 ~f:range_type in
+	let s2_type = Option.map s2 ~f:range_type in
+	let s3_type = Option.map s3 ~f:range_type in
 	
 	let s1_supported = supports s1_type in
 	let s2_supported = supports s2_type in
@@ -210,8 +210,8 @@ let is_supported_type s1 s2 s3 =
    on the accelerator variables or on the user code
    variables.  *)
 let generate_range_check options typemap vars accel_valid input_range input_valid =
-	let wrapped_vars = List.map vars (fun var -> Variable(Name(var))) in
-	let range_checks: conditional list = List.filter_map wrapped_vars (fun var ->
+	let wrapped_vars = List.map vars ~f:(fun var -> Variable(Name(var))) in
+	let range_checks: conditional list = List.filter_map wrapped_vars ~f:(fun var ->
 		let var_string = (variable_reference_to_string var) in
 		let var_type = type_of typemap.variable_map typemap.classmap (variable_reference_to_string var) in
 		let accel_valid_for_var = Hashtbl.find accel_valid var_string in

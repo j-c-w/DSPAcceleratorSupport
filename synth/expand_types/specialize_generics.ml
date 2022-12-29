@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Builtin_types;;
@@ -18,10 +18,10 @@ let filter_target_types tps =
     tps
 
 let rebuild_typemaps tps =
-    List.map tps (fun tpset ->
+    List.map tps ~f:(fun tpset ->
         let tbl = Hashtbl.create (module String) in
-        let () = ignore(List.map tpset (fun (v, t) ->
-            Hashtbl.add tbl v t
+        let () = ignore(List.map tpset ~f:(fun (v, t) ->
+            Hashtbl.add tbl ~key:v ~data:t
         )) in
         tbl
     )
@@ -31,7 +31,7 @@ with more sane generics, imagine it'd look a bit like this.  *)
 let rec generate_pointer_types_generic inference_types typ = 
     match typ with
     | Pointer(st) ->
-            List.map (generate_pointer_types inference_types typ) (fun inf_type -> Pointer(inf_type))
+            List.map (generate_pointer_types inference_types typ) ~f:(fun inf_type -> Pointer(inf_type))
     | Generic -> inference_types
     | other -> [other]
 
@@ -46,7 +46,7 @@ One things for sure: it's a shit-show.
 let rec generate_pointer_types_cxx inference_types typ =
     match typ with
     | Pointer(Generic) ->
-            List.map inference_types (fun inftype ->
+            List.map inference_types ~f:(fun inftype ->
                 match inftype with
                 (* So, infering arrays don't have to be pointers,
                 but everything else should be.  *)
@@ -61,7 +61,7 @@ let rec generate_pointer_types_cxx inference_types typ =
             )
     | Poitner(other) ->
             let subinference = generate_pointer_types_cxx inference_types other in
-            List.map subinference (fun s -> Pointer(s))
+            List.map subinference ~f:(fun s -> Pointer(s))
     | Generic -> raise (SpecializationException "Unsupported unwrapped generic in C")
     | other -> [other]
 
@@ -72,10 +72,10 @@ let generate_pointer_types options inference_types typ =
 let specialize_generics options typemap (apispec: apispec) =
 	let target_types = filter_target_types (get_types_used_in apispec.variables typemap) in
 
-    let newpairs = List.map (Hashtbl.members typemap.variable_map)  (fun variable ->
+    let newpairs = List.map (Hashtbl.members typemap.variable_map)  ~f:(fun variable ->
         let vtyp = Hashtbl.find_exn typemap.variable_map variable in
         let suggested_types = generate_pointer_types options target_types vtyp in
-        List.map suggested_types (fun t -> (variable, suggested_types))
+        List.map suggested_types ~f:(fun t -> (variable, suggested_types))
 	) in
 
     let variable_type_sets = Utils.cross_product newpairs in

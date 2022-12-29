@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Options;;
@@ -13,7 +13,7 @@ let debug_find_exn tbl name =
 	Hashtbl.find_exn tbl.variable_map name
 
 let lookup tbl names =
-	List.map names (fun name ->
+	List.map names ~f:(fun name ->
 		(name, debug_find_exn tbl name)
 	)
 
@@ -46,7 +46,7 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
             at call site, but not likely to be a performance
             issue so... *)
             if not (empty_dimension existing_dims) then
-				List.map newsubtyps (fun newsubtyp ->
+				List.map newsubtyps ~f:(fun newsubtyp ->
 					Array(newsubtyp, existing_dims)
 				)
             else
@@ -55,19 +55,19 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
                    this eventually to include types that
                    technically sit below this level,
                    e.g. class members/functions. *)
-                let possible_len_vars = List.filter all_vars_at_level (valid_lenvar typemap) in
+                let possible_len_vars = List.filter all_vars_at_level ~f:(valid_lenvar typemap) in
 				let () =
 					if (List.length possible_len_vars) = 0 then
 						raise (AssignDimensionsException "Can't find any plausible dimensions for variable")
 					else () in
 				let () = if opts.debug_assign_dimensions then
 					let () = Printf.printf "%s" ("Found " ^ (string_of_int (List.length possible_len_vars)) ^ " vars\n") in
-					let () = Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," (List.map all_vars_at_level name_reference_to_string))) in
-					Printf.printf "%s\n" ("These are possible: " ^ (String.concat ~sep:"," (List.map possible_len_vars name_reference_to_string)))
+					let () = Printf.printf "%s\n" ("Choosing from " ^ (String.concat ~sep:"," (List.map all_vars_at_level ~f:name_reference_to_string))) in
+					Printf.printf "%s\n" ("These are possible: " ^ (String.concat ~sep:"," (List.map possible_len_vars ~f:name_reference_to_string)))
 				else () in
 				let single_dim_len_vars =
 					List.concat
-						(List.map possible_len_vars (fun lv ->
+						(List.map possible_len_vars ~f:(fun lv ->
 							(* Note that we do not infer the mulby relation here, since
 							that should be infered only during type inference (i.e.
 							we are saying hey, if we reduce the length of your
@@ -96,14 +96,14 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
                 let possible_len_vars = single_dim_len_vars @ two_dimensional_len_vars in
 				let () = if opts.debug_assign_dimensions then
 					let () = Printf.printf "Array variable has type %s\n" (synth_type_to_string name) in
-					let () = Printf.printf "Looking at the following len vars: %s\n" (String.concat ~sep:", " (List.map possible_len_vars dimension_type_to_string)) in
+					let () = Printf.printf "Looking at the following len vars: %s\n" (String.concat ~sep:", " (List.map possible_len_vars ~f:dimension_type_to_string)) in
 					()
 				else ()
 				in
                 let newarrtyp =
 					List.concat (
-						List.map newsubtyps (fun newsubtyp ->
-							List.map possible_len_vars (fun lvar ->
+						List.map newsubtyps ~f:(fun newsubtyp ->
+							List.map possible_len_vars ~f:(fun lvar ->
 								Array(newsubtyp, lvar)
 							)
 						)
@@ -131,7 +131,7 @@ let rec expand_and_wrap_names typemap nms =
 						expand_and_wrap_names subtypmap (get_class_fields struct_info)
 					in
 					(* We need to prepend this struct's name.  *)
-					List.map members (fun mem ->
+					List.map members ~f:(fun mem ->
 						name_reference_concat (Name(nm)) mem
 					)
 			| Pointer(sty) ->
@@ -141,7 +141,7 @@ let rec expand_and_wrap_names typemap nms =
 					[Name(nm)]
 	in
 	List.concat (
-		List.map nms (fun nm ->
+		List.map nms ~f:(fun nm ->
 			let typ = Hashtbl.find_exn typemap.variable_map nm in
 			expand_type typemap typ nm
 		)
@@ -159,13 +159,13 @@ let assign_dimensions_to_type opts typemap inptypes typename =
 	(typename, restyp)
 
 let create_all_typemaps tps =
-	let types = List.map tps (fun (x, y) -> y) in
-	let names: string list = List.map tps (fun (x, y) -> x) in
+	let types = List.map tps ~f:(fun (x, y) -> y) in
+	let names: string list = List.map tps ~f:(fun (x, y) -> x) in
 	let combinations = cross_product types in
-	let newtbls = List.map combinations (fun comb ->
+	let newtbls = List.map combinations ~f:(fun comb ->
 		let newtbl = Hashtbl.create (module String) in
-		let _ = List.map (List.zip_exn comb names) (fun (t, n) ->
-			let _ = Hashtbl.add newtbl n t in
+		let _ = List.map (List.zip_exn comb names) ~f:(fun (t, n) ->
+			let _ = Hashtbl.add newtbl ~key:n ~data:t in
 			()
 		) in
 		newtbl
@@ -183,8 +183,8 @@ let create_all_classmaps tps =
 	   the typemaps *)
 	| [] -> [Hashtbl.create (module String)]
 	| _ ->
-	let updated_maps = List.map tps (fun (cname, metadata, subtymaps) ->
-		List.map subtymaps (fun subtymap ->
+	let updated_maps = List.map tps ~f:(fun (cname, metadata, subtymaps) ->
+		List.map subtymaps ~f:(fun subtymap ->
 			let resdata = match metadata with
 			| ClassMetadata(cty) ->
 					ClassMetadata({ cty with typemap = subtymap; io_typemap = subtymap })
@@ -196,10 +196,10 @@ let create_all_classmaps tps =
 	)
 	in
 	let combinations = cross_product updated_maps in
-	List.map combinations (fun combination ->
+	List.map combinations ~f:(fun combination ->
 		let classtbl = Hashtbl.create (module String) in
-		let _ = List.map combination (fun (name, str) ->
-			let result = Hashtbl.add classtbl name str in
+		let _ = List.map combination ~f:(fun (name, str) ->
+			let result = Hashtbl.add classtbl ~key:name ~data:str in
 			match result with
 			| `Ok -> ()
 			| `Duplicate -> assert false (* Probably an issue with the producting.  *)
@@ -209,8 +209,8 @@ let create_all_classmaps tps =
 
 let carry_other_elements oldtbl expanded_elements =
     let tblkeys = Hashtbl.keys oldtbl in
-    List.filter_map tblkeys (fun key ->
-        if List.mem expanded_elements key Utils.string_equal then
+    List.filter_map tblkeys ~f:(fun key ->
+        if List.mem expanded_elements key ~equal:Utils.string_equal then
             None
         else
             Some(key, [Hashtbl.find_exn oldtbl key])
@@ -220,7 +220,7 @@ let carry_other_elements oldtbl expanded_elements =
    variables that have been assigned power2 lengths
    could plausibly be that size.  *)
 let assign_dimensions_apply_heuristics options rangemap (typename, types) =
-	(typename, List.filter types (fun typ ->
+	(typename, List.filter types ~f:(fun typ ->
 		let rec check_typ t =
 			(
 			match t with
@@ -316,8 +316,8 @@ let assign_dimensions (options: options) do_classmaps rangemap typemap inps =
 		let () = Printf.printf "Have the following top level names to choose dimensions from: %s \n"
 			(name_reference_list_to_string top_level_wrapped_names)
 		in () else () in
-	let res_typemaps = List.map inps (assign_dimensions_to_type options typemap top_level_wrapped_names) in
-    let filtered_typemaps = List.map res_typemaps (assign_dimensions_apply_heuristics options rangemap)  in
+	let res_typemaps = List.map inps ~f:(assign_dimensions_to_type options typemap top_level_wrapped_names) in
+    let filtered_typemaps = List.map res_typemaps ~f:(assign_dimensions_apply_heuristics options rangemap)  in
     (* Also preserve the other elements.  *)
     let other_elements = carry_other_elements typemap.variable_map inps in
     let () = if options.debug_assign_dimensions then
@@ -333,14 +333,14 @@ let assign_dimensions (options: options) do_classmaps rangemap typemap inps =
 		if do_classmaps then
 			(* Now, do all the classes.  *)
 			let classnames = Hashtbl.keys typemap.classmap in
-			let res_classmaps = (List.map classnames (fun cname ->
+			let res_classmaps = (List.map classnames ~f:(fun cname ->
 				let metadata = Hashtbl.find_exn typemap.classmap cname in
 				let cls_typemap = get_class_typemap metadata in
 				let cls_members = get_class_members metadata in
 				let sub_typemap = { typemap with variable_map = cls_typemap } in
 				let wrapped_cls_members = expand_and_wrap_names sub_typemap cls_members in
-				let tps_with_dims = List.map cls_members (assign_dimensions_to_type options sub_typemap wrapped_cls_members) in
-                let filtered_tps_with_dims = List.map tps_with_dims (assign_dimensions_apply_heuristics options rangemap) in
+				let tps_with_dims = List.map cls_members ~f:(assign_dimensions_to_type options sub_typemap wrapped_cls_members) in
+                let filtered_tps_with_dims = List.map tps_with_dims ~f:(assign_dimensions_apply_heuristics options rangemap) in
 
 				let () = if options.debug_assign_dimensions then
 					let () = Printf.printf "For class %s, \n" (cname) in
@@ -356,7 +356,7 @@ let assign_dimensions (options: options) do_classmaps rangemap typemap inps =
 			let () = if options.dump_assigned_dimensions then
 				let () = Printf.printf "The top-level dimensions are %s\n" (type_hash_table_to_string typemap.variable_map) in
 				Printf.printf "The class-level dimensions are %s\n" (
-					String.concat ~sep:"\nNext Class " (List.map classnames (fun name -> name ^ (type_hash_table_to_string (get_class_typemap (Hashtbl.find_exn typemap.classmap name))))
+					String.concat ~sep:"\nNext Class " (List.map classnames ~f:(fun name -> name ^ (type_hash_table_to_string (get_class_typemap (Hashtbl.find_exn typemap.classmap name))))
 				))
 			else
 				()
@@ -371,7 +371,7 @@ let assign_dimensions (options: options) do_classmaps rangemap typemap inps =
 	let () = if options.debug_assign_dimensions then
 		Printf.printf "Number of result classmaps is %d, result typemaps is %d\n" (List.length result_classmaps) (List.length result_typemaps)
 	else () in
-    let result_maps = List.map (List.cartesian_product result_classmaps result_typemaps) (fun (cmap, tmap) ->
+    let result_maps = List.map (List.cartesian_product result_classmaps result_typemaps) ~f:(fun (cmap, tmap) ->
 		{
 			variable_map = tmap;
 			classmap = cmap;

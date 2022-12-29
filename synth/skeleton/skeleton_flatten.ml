@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Skeleton_definition;;
@@ -11,11 +11,11 @@ open Builtin_conversion_functions;;
 let flatten_binding options (svar_binding: single_variable_binding_option_group) =
     (* let () = Printf.printf "Length of bindings is %d\n" (List.length svar_binding.dimensions_set) in *)
 	if List.length svar_binding.dimensions_set > 0 then
-		(* let () = ignore( List.map svar_binding.dimensions_set (fun dims -> Printf.printf "Before reducing, have a constraints set of %s\n" (dimension_constraint_list_to_string dims))) in *)
-		let reduced_constraint_set = List.map svar_binding.dimensions_set (filter_constraints_set options) in
+		(* let () = ignore( List.map svar_binding.dimensions_set ~f:(fun dims -> Printf.printf "Before reducing, have a constraints set of %s\n" (dimension_constraint_list_to_string dims))) in *)
+		let reduced_constraint_set = List.map svar_binding.dimensions_set ~f:(filter_constraints_set options) in
 		let combinations = cross_product reduced_constraint_set in
         (* let () = Printf.printf "Reduced constraint set to size %d\n" (List.length combinations) in *)
-		List.map combinations (fun dim ->
+		List.map combinations ~f:(fun dim ->
 		(* let () = Printf.printf "Building for dimensions %s" (dimension_constraint_list_to_string dim) in *)
 		{
 			fromvars_index_nesting = svar_binding.fromvars_index_nesting;
@@ -41,7 +41,7 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	let () = if opts.debug_skeleton_flatten then
 		Printf.printf "Input length is %d\n" (List.length skels)
 	else () in
-	let vbinds = List.concat (List.map skels (
+	let vbinds = List.concat (List.map skels ~f:(
 			fun skel ->
 				let () = if opts.debug_skeleton_flatten then
 					let () = Printf.printf "Starting new skeleton!\n" in
@@ -49,11 +49,11 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 					let () = Printf.printf "Skeleton is %s\n" (skeleton_type_binding_to_string skel) in
                     let () = Printf.printf "Number of input variables %d\n" (List.length skel.bindings) in
                     let () = Printf.printf "Number of elements per variable is: %s\n"
-                                (String.concat ~sep:", " (List.map skel.bindings (fun b -> Int.to_string (List.length (b.fromvars_index_nesting))))) in
+                                (String.concat ~sep:", " (List.map skel.bindings ~f:(fun b -> Int.to_string (List.length (b.fromvars_index_nesting))))) in
 					()
 				else () in
                 (* Each elt in the skel bindings is a list of possible dimvars *)
-				let binding_options = List.map skel.bindings (flatten_binding opts) in
+				let binding_options = List.map skel.bindings ~f:(flatten_binding opts) in
                 (* Product them all together so each is a sinlge list of options.  *)
 				let bindings = cross_product binding_options in
                 let () = if opts.debug_skeleton_flatten then
@@ -65,7 +65,7 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 				bindings
 		)
 	) in
-	let result = List.map vbinds (fun bind ->
+	let result = List.map vbinds ~f:(fun bind ->
 	{
 		flat_bindings = bind
 	}
@@ -91,5 +91,5 @@ let flatten_skeleton (opts: options) (skels: skeleton_type_binding list): flat_s
 	   past here.  *)
 	(* Anyway, disabled for now.  *)
 	(* let () = assert ((List.length result) >= (List.length skels)) in *)
-	let result = List.filter result length_variable_compatability in
+	let result = List.filter result ~f:length_variable_compatability in
 	result

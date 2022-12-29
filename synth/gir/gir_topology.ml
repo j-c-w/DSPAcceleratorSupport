@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Gir;;
@@ -66,7 +66,7 @@ let rec ud_name_to_string udname =
 			(ud_name_to_string udname) ^ "." ^ (gir_name_to_string girname)
 
 let ud_name_list_to_string uds =
-	String.concat ~sep:"," (List.map uds ud_name_to_string)
+	String.concat ~sep:"," (List.map uds ~f:ud_name_to_string)
 
 let use_def_to_string ud =
     "GIR: " ^ (gir_to_string ud.gir) ^ "\n" ^
@@ -75,7 +75,7 @@ let use_def_to_string ud =
     "Assigns: " ^ (ud_name_list_to_string ud.assigns) ^ "\n"
 
 let use_def_list_to_string udl =
-	String.concat ~sep:"\n" (List.map udl use_def_to_string)
+	String.concat ~sep:"\n" (List.map udl ~f:use_def_to_string)
 
 (* Arrays are implicit in the assignment notation, so we
 	just get rid of the arrays  (lining those up
@@ -121,12 +121,12 @@ let rec expand_use_def_name typemap ud_name =
 			let classdata = Hashtbl.find_exn typemap.classmap sname in
 			let cmembers = get_class_fields classdata in
 			(* Expand this into each of the class members: *)
-			let expanded = List.map cmembers (fun mem ->
+			let expanded = List.map cmembers ~f:(fun mem ->
 				UDNameNest(ud_name, Name(mem))
 			) in
 			(* The quadratic part --- do a recursion.  *)
 			List.concat (
-				List.map expanded (expand_use_def_name typemap)
+				List.map expanded ~f:(expand_use_def_name typemap)
 			)
 
 	| _ ->
@@ -140,11 +140,11 @@ let rec expand_use_def_name typemap ud_name =
 (* Go through and expand e.g. complex: {x, y} to complex.x and complex.y *)
 (* i.e. cannonicalize for ease of scheduling.  *)
 let expand_use_defs typemap (uds: use_def_info list): use_def_info list =
-	List.map uds (fun ud ->
+	List.map uds ~f:(fun ud ->
 		{
-			uses = List.concat (List.map ud.uses (expand_use_def_name typemap));
-			defs = List.concat (List.map ud.defs (expand_use_def_name typemap));
-			assigns = List.concat (List.map ud.assigns (expand_use_def_name typemap));
+			uses = List.concat (List.map ud.uses ~f:(expand_use_def_name typemap));
+			defs = List.concat (List.map ud.defs ~f:(expand_use_def_name typemap));
+			assigns = List.concat (List.map ud.assigns ~f:(expand_use_def_name typemap));
 			gir = ud.gir;
 		}
 	)
@@ -177,6 +177,7 @@ let rec gnames_from_ud ud =
 			(gnames_from_ud rest) @ [n]
 
 let get_uses_from_dim dim =
+	let () = Printf.printf "Looking at dim variable %s\n" (dimension_value_to_string dim) in
 	match dim with
 		| DimVariable(AnonymousName, _) -> raise (TopologicalSortException "No anon names in the typemap!")
 		| DimVariable(Name(n), _) -> [UDName(Name(n))]
@@ -193,7 +194,7 @@ let rec get_uses_defining_type typ =
             | SingleDimension(nm) ->
 					get_uses_from_dim nm
 			| MultiDimension(dms, op) ->
-					List.concat(List.map dms get_uses_from_dim)
+					List.concat(List.map dms ~f:get_uses_from_dim)
             | EmptyDimension -> raise (TopologicalSortException "Don't think this is possible?") in
             this_dim @ (get_uses_defining_type subtyp)
 	| Pointer(subty) ->
@@ -215,11 +216,11 @@ let rec compute_use_def_assign_for_expr expr: use_def_info_expr =
 	| FunctionCall(_, vars) -> (
 		match vars with
 		| VariableList(nms) ->
-                let vref_use_defs = List.map nms compute_use_def_assign_for_vref in
+                let vref_use_defs = List.map nms ~f:compute_use_def_assign_for_vref in
 				{
                     (* In a variable list, we don't define anything so all maybe
                     assigns are actually uses. :) *)
-                    uses = List.concat (List.map vref_use_defs (fun ud -> ud.uses @ ud.maybe_assigns));
+                    uses = List.concat (List.map vref_use_defs ~f:(fun ud -> ud.uses @ ud.maybe_assigns));
 				}
 	)
     | GIRMap(indexer, values) ->
@@ -310,11 +311,11 @@ let rec compute_use_def_assign_for_node typemap gir =
 		gir = gir
 	}
 	| Sequence(girs) ->
-		let subdefs = List.map girs (compute_use_def_assign_for_node typemap) in
+		let subdefs = List.map girs ~f:(compute_use_def_assign_for_node typemap) in
 		{
-            uses = List.concat (List.map subdefs (fun d -> d.uses));
-            defs = List.concat (List.map subdefs (fun d -> d.defs));
-            assigns = List.concat (List.map subdefs (fun d -> d.assigns));
+            uses = List.concat (List.map subdefs ~f:(fun d -> d.uses));
+            defs = List.concat (List.map subdefs ~f:(fun d -> d.defs));
+            assigns = List.concat (List.map subdefs ~f:(fun d -> d.assigns));
             gir = gir;
 		}
 	| Assignment(lval, rval) ->
@@ -331,7 +332,7 @@ let rec compute_use_def_assign_for_node typemap gir =
         let maxv_uses = compute_use_def_assign_for_expr maxvar in
 		(* Filter out the indvar, since that is
 		defined and assigned in the loop header.  *)
-		let subuses_without_index = List.filter subuses.uses (fun i ->
+		let subuses_without_index = List.filter subuses.uses ~f:(fun i ->
 			not (ud_name_equal i (UDName(indvar)))) in
 		let uses = maxv_uses.uses @ subuses_without_index in
 		let defs = subuses.defs in
@@ -443,8 +444,8 @@ let rec expand_types typemap name =
 				let submap = get_class_typemap meta in
 				let members = get_class_fields meta in
 				let subtypemap = { typemap with variable_map = submap } in
-				let subvars = List.concat (List.map members (fun m -> expand_types subtypemap m)) in
-				List.map subvars (fun svar -> name ^ "." ^ svar)
+				let subvars = List.concat (List.map members ~f:(fun m -> expand_types subtypemap m)) in
+				List.map subvars ~f:(fun svar -> name ^ "." ^ svar)
 		(* The other types don't have subtypes.  Although I would like a more future-proof way of doing this.  *)
 		| _ -> [name]
 	in
@@ -473,16 +474,16 @@ let rec khan_accum (options: options) (girs: use_def_info list) (s: use_def_info
             nodes were 'freed' anc should be added
             to the s stack.  *)
             let schedulable_girs =
-                List.filter girs (fun gir ->
-                    (List.for_all gir.uses (fun u -> member u assigned)) &&
-                    (List.for_all gir.assigns (fun u -> member u defed))
+                List.filter girs ~f:(fun gir ->
+                    (List.for_all gir.uses ~f:(fun u -> member u assigned)) &&
+                    (List.for_all gir.assigns ~f:(fun u -> member u defed))
                 ) in
             (* and also calc still girs still
             dependent.  *)
             let dependent_girs =
-                List.filter girs (fun gir ->
-                    (not (List.for_all gir.uses (fun u -> member u (gir.assigns @ assigned)))) ||
-                    (not (List.for_all gir.assigns (fun u -> member u (gir.defs @ defed))))
+                List.filter girs ~f:(fun gir ->
+                    (not (List.for_all gir.uses ~f:(fun u -> member u (gir.assigns @ assigned)))) ||
+                    (not (List.for_all gir.assigns ~f:(fun u -> member u (gir.defs @ defed))))
                 ) in
 			let () = if options.debug_gir_topology_sort then
 			let () = Printf.printf "Adding %d shcdulable girs!\n" (List.length schedulable_girs) in
@@ -501,16 +502,16 @@ let khan (options: options) (gir_uses: use_def_info list) predefed preassed =
 	else ()
 	in
     let s =
-        List.filter gir_uses (fun gir ->
+        List.filter gir_uses ~f:(fun gir ->
 			(* let () = Printf.printf "Looking at GIR %s\n" (use_def_to_string gir) in *)
-            (List.for_all gir.uses (fun u ->
+            (List.for_all gir.uses ~f:(fun u ->
 				if (member u preassed) then
 					true
 				else
 					(* let () = Printf.printf "Has unassed use %s\n" (ud_name_to_string u) in *)
 					false
 			)) &&
-            (List.for_all gir.assigns (fun u ->
+            (List.for_all gir.assigns ~f:(fun u ->
 				if (member u predefed) then
 					true
 				else
@@ -521,9 +522,9 @@ let khan (options: options) (gir_uses: use_def_info list) predefed preassed =
     (* Everthing that is not in the 's' stack should
        be in th rest of the nodes to consdier. *)
     let non_starting_girs =
-        List.filter gir_uses (fun gir ->
-            (not (List.for_all gir.uses (fun u -> member u preassed))) ||
-                    (not (List.for_all gir.assigns (fun u -> member u predefed)))
+        List.filter gir_uses ~f:(fun gir ->
+            (not (List.for_all gir.uses ~f:(fun u -> member u preassed))) ||
+                    (not (List.for_all gir.assigns ~f:(fun u -> member u predefed)))
                     ) in
 	let () = if options.debug_gir_topology_sort then
 		let () = Printf.printf
@@ -542,13 +543,13 @@ let topo_sort (options: options) (typemap) (gir_uses: use_def_info list) (predef
 		Printf.printf "Preassed vnames is %s\n" (String.concat ~sep:", " preassigned)
 		else () in
 	let all_predefed_vars =
-		List.concat (List.map predefed (fun p -> expand_types typemap p))
+		List.concat (List.map predefed ~f:(fun p -> expand_types typemap p))
 	in
 	let all_preassed_vars =
-		List.concat (List.map preassigned (fun p -> expand_types typemap p))
+		List.concat (List.map preassigned ~f:(fun p -> expand_types typemap p))
 	in
-	let predefined_vars_name_refs = List.map all_predefed_vars (fun nr -> ud_name_from_string nr) in
-    let preassigned_vars_name_refs = List.map all_preassed_vars (fun nr -> ud_name_from_string nr) in
+	let predefined_vars_name_refs = List.map all_predefed_vars ~f:(fun nr -> ud_name_from_string nr) in
+    let preassigned_vars_name_refs = List.map all_preassed_vars ~f:(fun nr -> ud_name_from_string nr) in
 	let () = if options.debug_gir_topology_sort then
 		Printf.printf "Running new TOPO SORT==========\n"
 	else () in
@@ -564,7 +565,7 @@ let rec topological_gir_sort (options: options) typemap gir predefed preassed =
 	let result = match gir with
 	 | Sequence(girs) ->
 		(* Get the uses/defs for each node. *)
-		let use_defs = List.map girs (compute_use_def_assign_for_node typemap) in
+		let use_defs = List.map girs ~f:(compute_use_def_assign_for_node typemap) in
 		(* Expand the use-defs to avoid getting hung up on
 		   returning e.g. whole classes.  *)
 		let elementary_use_defs = expand_use_defs typemap use_defs in

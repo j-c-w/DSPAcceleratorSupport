@@ -9,7 +9,7 @@ let main mode f1 f2 =
 	(* Convert the I/O into value pairs.  *)
 	let f1s = String.split_on_char ',' f1 in
 	let f2s = String.split_on_char ',' f2 in
-	let io_pairs = List.map (List.zip_exn f1s f2s) (fun (f1, f2) ->
+	let io_pairs = List.map (List.zip_exn f1s f2s) ~f:(fun (f1, f2) ->
 		(load_value_map_from f1), (load_value_map_from f2)
 	) in
 	let first_pair_elem, _ = List.hd_exn io_pairs in
@@ -35,8 +35,8 @@ let mode =
 
 let info =
 	let doc = "Run one of the behavioural synthesizers on it's own." in
-	Term.info "BehaviouralSyntRun"
+	Cmd.info "BehaviouralSyntRun"
 
 let args_t = Term.(const main $ mode $ f1 $ f2)
 
-let () = Term.exit @@ Term.eval (args_t, info)
+let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

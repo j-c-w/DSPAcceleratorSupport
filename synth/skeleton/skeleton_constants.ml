@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Skeleton_definition;;
 open Skeleton_utils;;
 open Spec_definition;;
@@ -8,7 +8,7 @@ open Range_definition;;
 open Options;;
 
 let join_option_lists optlists =
-	let filtered = List.concat (List.filter_map optlists (Utils.id)) in
+	let filtered = List.concat (List.filter_map optlists ~f:(Utils.id)) in
 	match filtered with
 	| [] -> None
 	| xs -> Some(xs)
@@ -37,7 +37,7 @@ let rec dimconsts_from_types typ =
 	| SType(_) -> []
 	| STypes(typs) ->
 			List.concat (
-				List.map typs dimconsts_from_types
+				List.map typs ~f:dimconsts_from_types
 			)
 	| SArray(_, subtyps, lenvar) ->
 			let subconsts = dimconsts_from_types subtyps in
@@ -52,14 +52,14 @@ let rec dimconsts_from_types typ =
 			| SingleDimension(dim) ->
 					consts_from_dim dim
 			| MultiDimension(dims, op) ->
-					List.concat (List.map dims consts_from_dim)
+					List.concat (List.map dims ~f:consts_from_dim)
 			in
 			subconsts @ this_consts
 
 let get_length_constants styp input_styps: synth_value list option =
 	match styp with
 	| SInt(nr) -> Some(
-		List.concat (List.map input_styps dimconsts_from_types)
+		List.concat (List.map input_styps ~f:dimconsts_from_types)
 	)
 	(* Non-int types don't get suggestions from the
 		input array sizes!*)
@@ -89,7 +89,7 @@ let generate_plausible_constants_from_range options vrange: synth_value list opt
 				if n < options.param_constant_generation_threshold then
 					let rvalues = range_values vrange in
 					Some(
-						List.map rvalues (fun rval ->
+						List.map rvalues ~f:(fun rval ->
 							range_value_to_synth_value rval
 						)
 					)
@@ -114,7 +114,7 @@ let generate_plausible_constants_map options supplied_constmap validmap defaultm
     let () = if options.debug_skeleton_constant_gen then
         Printf.printf "Starting gen constants\n"
     else () in
-    let () = ignore(List.map stypes (fun stype ->
+    let () = ignore(List.map stypes ~f:(fun stype ->
         (* We only handle constant generation for the base
         cases right now --- we could 100% handle generaiton
         of more complex types e.g. structs/arrays etc,
@@ -174,8 +174,8 @@ let generate_plausible_constants_map options supplied_constmap validmap defaultm
                 | Some(rconst), Some(copts) ->
                         (* If we have the range restrictions set, then only consider consts
                         in the valid range for this variable.  *)
-                        (* Some(List.filter copts (fun opt ->
-                            (List.exists rconst (fun r -> synth_value_equal r opt)
+                        (* Some(List.filter copts ~f:(fun opt ->
+                            (List.exists rconst ~f:(fun r -> synth_value_equal r opt)
                         ))
                         ) *)
 						const_options
@@ -191,7 +191,7 @@ let generate_plausible_constants_map options supplied_constmap validmap defaultm
                             let () = Printf.printf "Options are: %s\n" (synth_value_list_to_string deduplicated) in
                             ()
                         else () in
-                    let _ = Hashtbl.set constmap vname deduplicated in
+                    let _ = Hashtbl.set constmap ~key:vname ~data:deduplicated in
                     ()
             | None ->
                     ()

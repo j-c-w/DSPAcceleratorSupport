@@ -16,8 +16,8 @@ let f2 =
 
 let info =
 	let doc = "Compare JSON files" in
-	Term.info "JSONGen" ~doc
+	Cmd.info "JSONGen" ~doc
 
 let args_t = Term.(const main $ f1 $ f2)
 
-let () = Term.exit @@ Term.eval (args_t, info)
+let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

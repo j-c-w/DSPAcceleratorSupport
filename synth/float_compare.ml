@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 
 (* We found that using just raw FP approximate equality was

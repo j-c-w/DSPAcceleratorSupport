@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Expand_typemaps;;
 open Generate_gir;;
@@ -133,7 +133,7 @@ let run_synthesis (opts:options) (classmap: (string, structure_metadata) Hashtbl
 	else () in
     (* TODO --- regenerate the code and output the working ones
         in an output file!. *)
-    let working_programs = List.filter_map post_synthesis_programs (fun (p, passing) -> if passing then Some(p) else None) in
+    let working_programs = List.filter_map post_synthesis_programs ~f:(fun (p, passing) -> if passing then Some(p) else None) in
 	(* Do some opts? *)
     (* Do not dump intermediates in the final result! *)
 	let () = Printf.printf "===============================================\n" in

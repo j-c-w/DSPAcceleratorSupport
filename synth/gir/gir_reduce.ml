@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 open Gir;;
 open Gir_utils;;
@@ -37,14 +37,14 @@ let rec reduce_gir (options: options) gir: gir =
     else () in
     let result = match gir with
 	| Sequence(subitems) ->
-			let flattened = List.concat (List.map subitems (fun subitem ->
+			let flattened = List.concat (List.map subitems ~f:(fun subitem ->
                 let reduced_subitem = reduce_gir options subitem in
 				match reduced_subitem with
 				| Sequence(subseqs) ->
-						let sub_exed = List.map subseqs (reduce_gir options) in
+						let sub_exed = List.map subseqs ~f:(reduce_gir options) in
 						(* Now, remove the subseqs. *)
 						let unsequed = List.concat (
-							List.map sub_exed (fun f ->
+							List.map sub_exed ~f:(fun f ->
 								match f with
 								| Sequence(xs) -> xs
 								| x -> [x]
@@ -55,7 +55,7 @@ let rec reduce_gir (options: options) gir: gir =
 			)
 			)
 			in
-			let filtered = List.filter flattened (fun sub ->
+			let filtered = List.filter flattened ~f:(fun sub ->
 				match sub with
 				| EmptyGIR -> false
 				| _ -> true
@@ -93,7 +93,7 @@ let rec reduce_gir (options: options) gir: gir =
 let rec reduce_gir_check gir =
 	match gir with
 	| Sequence(subseq) ->
-			let _ = List.map subseq (
+			let _ = List.map subseq ~f:(
 				fun x ->
 					match x with
 					| Sequence(_) -> assert (false)

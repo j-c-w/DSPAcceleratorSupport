@@ -1,8 +1,8 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 
 let print_working_code_warnings options progrfiles =
-    ignore(List.map progrfiles (fun (prog, code) ->
+    ignore(List.map progrfiles ~f:(fun (prog, code) ->
         (* Check the code for facc_malloc.  If that's used,
         then we have to replace every free /in the program
         in which this is implemented/ with facc_free. *)

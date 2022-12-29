@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Yojson;;
@@ -9,12 +9,12 @@ exception JSONCheckException of string
 exception JSONCheckFailed
 
 let rec load_json j =
-	let mempairs = List.map j (fun (name, elt) ->
+	let mempairs = List.map j ~f:(fun (name, elt) ->
 		(name, load_json_elt (elt))
 	) in
     let result = Hashtbl.create (module String) in
-    let _ = List.map mempairs (fun (name, value) ->
-        Hashtbl.add result name value
+    let _ = List.map mempairs ~f:(fun (name, value) ->
+        Hashtbl.add result ~key:name ~data:value
     ) in
     result
 
@@ -33,7 +33,7 @@ and load_json_elt (e: Yojson.Basic.t) =
 	| `Int(i) ->
 			Int32V(i)
 	| `List(l) ->
-			ArrayV(List.map l load_json_elt)
+			ArrayV(List.map l ~f:load_json_elt)
 	| `Null ->
 			raise (JSONException "Loading Null JSON")
 	| `String(s) ->
@@ -43,14 +43,14 @@ let load_value_map_from file =
 	(* let () = Printf.printf "Loading from file %s\n" (file) in *)
 	let json = Yojson.Basic.from_file file in
 	let j_members = keys json in
-    let json_elts = List.map j_members (fun mem ->
+    let json_elts = List.map j_members ~f:(fun mem ->
         (mem, json |> member mem)
     ) in
 	load_json json_elts
 
 
 let rec check_elts_for_uninitialized_reads typemap elts =
-	List.map elts (fun (name, typ, json) ->
+	List.map elts ~f:(fun (name, typ, json) ->
 		check_elt_for_uninitialized_read typemap name typ json 
 	)
 and check_elt_for_uninitialized_read typemap name typ json =
@@ -59,7 +59,7 @@ and check_elt_for_uninitialized_read typemap name typ json =
 			let subtmap = get_class_typemap (Hashtbl.find_exn typemap.classmap n) in
 			(* TODO -- we could also check that all memebrs
 			are present.  *)
-			let subelts = List.map d (fun (subname, subjson) ->
+			let subelts = List.map d ~f:(fun (subname, subjson) ->
 				(subname, (Hashtbl.find_exn subtmap subname), subjson)
 			) in
 			let new_typemap = {typemap with variable_map = subtmap } in
@@ -91,10 +91,10 @@ and check_elt_for_uninitialized_read typemap name typ json =
 						(* TODO --- we could do a more thorough check here... *)
 						()
 			in
-			ignore(List.map l (check_elt_for_uninitialized_read typemap name t))
+			ignore(List.map l ~f:(check_elt_for_uninitialized_read typemap name t))
 	| `List(l), Array(t, MultiDimension(_, _)) ->
 						(* likewise (better check) *)
-			ignore(List.map l (check_elt_for_uninitialized_read typemap name t))
+			ignore(List.map l ~f:(check_elt_for_uninitialized_read typemap name t))
 	| `Null, Float16 -> raise JSONCheckFailed
 	| `Null, Float32 -> raise JSONCheckFailed
 	| `Null, Float64 -> raise JSONCheckFailed
@@ -109,7 +109,7 @@ and check_elt_for_uninitialized_read typemap name typ json =
 
 let check_for_uninitialized_reads options typemap outfile =
 	let json = Yojson.Basic.from_file outfile in
-	let json_elts = List.map (keys json) (fun mem ->
+	let json_elts = List.map (keys json) ~f:(fun mem ->
 		(mem, Hashtbl.find_exn typemap.variable_map mem, json |> member mem)
 	) in
 	let result = try (ignore(check_elts_for_uninitialized_reads typemap json_elts); false)

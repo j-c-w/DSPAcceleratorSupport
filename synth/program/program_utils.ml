@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Gir;;
 open Gir_reduce;;
 open Program;;
@@ -32,7 +32,7 @@ let insert_conditional_call options gir (program: program) =
 							FunctionRef(
 								Name(program.user_funname)
 							),
-							VariableList(List.map program.funargs (generate_cast_reference program))
+							VariableList(List.map program.funargs ~f:(generate_cast_reference program))
 						)
 			in
 			(* Not all code needs return parameters *)
@@ -71,7 +71,7 @@ let rec insert_around_call callname program gir pre_addition post_addition =
 	let result = match gir with
 	| Sequence(elems) ->
 			Sequence(List.concat(
-				List.map elems (fun elem ->
+				List.map elems ~f:(fun elem ->
 					match elem with
 						| Assignment(lvalue, Expression(FunctionCall(FunctionRef(Name(n)), args))) as fcall ->
 							if (Utils.string_equal n program.api_funname) then
@@ -110,7 +110,7 @@ let rec insert_around_call callname program gir pre_addition post_addition =
 let insert_dump_intermediates_call apispec callname gir program =
 	let addition = Expression(FunctionCall(FunctionRef(Name(callname)),
 									VariableList(
-										List.map apispec.livein (fun n ->
+										List.map apispec.livein ~f:(fun n ->
 											Variable(Name(n))
 											)
 										)

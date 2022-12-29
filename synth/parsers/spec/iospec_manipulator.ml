@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Run_definition;;
@@ -21,7 +21,7 @@ let generate_results_for (opts: options) typemap (iospec: iospec) inp_files =
 			()
 		else () in
         (* TODO -- Need to have a timeout here.  *)
-        let res = Sys.command runcmd in
+        let res = Caml.Sys.command runcmd in
 		let () = if opts.debug_iospec_manipulator then
 			let () = Printf.printf "Finished with result: %d\n" (res) in
 			() else ()
@@ -43,14 +43,14 @@ let generate_results_for (opts: options) typemap (iospec: iospec) inp_files =
 				RunSuccess(outfile)
 	) inp_files
 	in
-	let success_count = List.count results (fun r -> match r with
+	let success_count = List.count results ~f:(fun r -> match r with
 		| RunFailure -> false
 		| RunSuccess(_) -> true
 	) in
 	results, success_count
 
 let compute_default_results opts iospec (inp_files: (program * string list) list) =
-	let results = List.map inp_files (fun (program, inp_file_set) ->
+	let results = List.map inp_files ~f:(fun (program, inp_file_set) ->
 		let results, succ_count = generate_results_for opts (get_io_typemap program) iospec inp_file_set in
 		let () = if succ_count = 0 then
 				let () = Printf.printf "Can't find any working inputs to user code: likely too sparse (try more inputs?)" in
@@ -59,9 +59,9 @@ let compute_default_results opts iospec (inp_files: (program * string list) list
 		in
 		results, succ_count
 	) in
-	let _ = if List.for_all results (fun (_, c) -> c = 0) then
+	let _ = if List.for_all results ~f:(fun (_, c) -> c = 0) then
 		raise (SparsityException "Error: FACC was able to find 0 working inputs to the user code: likely too sparse (try profiling the code and providing likely inputs).")
 	else
 		()
 	in
-	List.map results (fun (v, _) -> v)
+	List.map results ~f:(fun (v, _) -> v)

@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 
@@ -30,7 +30,7 @@ let rec typ_has_dimension n t =
 
 let check_dimensions_in typemap =
 	let keys = Hashtbl.keys typemap in
-	let _ = List.map keys (fun key ->
+	let _ = List.map keys ~f:(fun key ->
 		let typ = Hashtbl.find_exn typemap key in
 		(* let () = Printf.printf "Checking %s: %s\n" (key) (synth_type_to_string typ) in *)
 		typ_has_dimension key typ
@@ -39,7 +39,7 @@ let check_dimensions_in typemap =
 
 let check_dimensions_in_classmap cmap =
 	let classes = Hashtbl.keys cmap in
-	let _ = List.map classes (fun classname ->
+	let _ = List.map classes ~f:(fun classname ->
 		let tmap = get_class_typemap (Hashtbl.find_exn cmap classname) in
         check_dimensions_in tmap
 	) in

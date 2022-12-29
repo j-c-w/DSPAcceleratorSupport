@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Gir;;
 open Gir_utils;;
 open Spec_definition;;

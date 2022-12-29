@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Cmdliner;;
 open Generate_code;;
 open Parse_iospec;;
@@ -100,8 +100,8 @@ let outfile =
 
 let info =
 	let doc = "Generate JSON wrappers" in
-	Term.info "JSONGen" ~doc
+	Cmd.info "JSONGen" ~doc
 
 let args_t = Term.(const main $ mode $ iospec $ outfile)
 
-let () = Term.exit @@ Term.eval (args_t, info)
+let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

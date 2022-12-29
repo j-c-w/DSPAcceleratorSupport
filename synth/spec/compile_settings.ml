@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 
 (* These are really allocation modes for C/C++.  They might
 have applications to other languages.  *)

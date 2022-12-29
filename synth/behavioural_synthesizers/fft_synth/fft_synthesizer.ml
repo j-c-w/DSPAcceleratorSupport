@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Fft_synthesizer_definition;;
 open Fft_synthesizer_gen;;
 open Spec_definition;;
@@ -117,7 +117,7 @@ let rec to_string_structure structure =
     | FSArrayOp(oper, var) ->
             "ArrayOp(" ^ (to_string_op oper) ^ ": " ^ (to_string_var var) ^ ")"
     | FSSeq(elems) ->
-            String.concat ~sep:";" (List.map elems to_string_structure)
+            String.concat ~sep:";" (List.map elems ~f:to_string_structure)
     | FSStructureHole -> "StructureHole"
 and to_string_cond cond =
     match cond with
@@ -154,13 +154,13 @@ let rec fs_fill_holes filler structure =
     | FSConditional(act, condition) ->
             let act_options = (fs_fill_holes filler act) in
             let cond_options = (fill_conditional_holes filler condition) in
-            List.map (List.cartesian_product act_options cond_options) (fun (a, c) ->
+            List.map (List.cartesian_product act_options cond_options) ~f:(fun (a, c) ->
                 FSConditional(a, c)
             )
     | FSArrayOp(oper, var) ->
             let oper_options = fill_array_op_hole filler oper in
             let var_options = fill_variable filler var in
-            List.map (List.cartesian_product oper_options var_options) (fun (o, v) ->
+            List.map (List.cartesian_product oper_options var_options) ~f:(fun (o, v) ->
                 FSArrayOp(o, v)
             )
     | FSSeq(elems) ->
@@ -170,9 +170,9 @@ let rec fs_fill_holes filler structure =
                     (* Preserve empty seqs. *)
 					[FSSeq([])]
             | elems ->
-                let elem_opts = List.map elems (fs_fill_holes filler) in
+                let elem_opts = List.map elems ~f:(fs_fill_holes filler) in
                 List.map (Utils.cross_product elem_opts)
-                (fun opt -> FSSeq(opt))
+                ~f:(fun opt -> FSSeq(opt))
 			)
     | FSStructureHole -> raise (FFTSynth "DOn't support filling structural holes")
 
@@ -181,26 +181,26 @@ and fill_conditional_holes filler structure =
     | FSGreaterThan(v, const) ->
             let v_opts = fill_variable filler v in
             let c_opts = fill_variable filler const in
-            List.map (List.cartesian_product v_opts c_opts) (fun (v, c) ->
+            List.map (List.cartesian_product v_opts c_opts) ~f:(fun (v, c) ->
                 FSGreaterThan(v, c)
             )
     | FSLessThan(v, const) ->
             let v_opts = fill_variable filler v in
             let c_opts = fill_variable filler const in
-            List.map (List.cartesian_product v_opts c_opts) (fun (v, c) ->
+            List.map (List.cartesian_product v_opts c_opts) ~f:(fun (v, c) ->
                 FSLessThan(v, c)
             )
     | FSPowerOfTwo(v) ->
             let v_opts = fill_variable filler v in
-            List.map v_opts (fun v ->
+            List.map v_opts ~f:(fun v ->
                 FSPowerOfTwo(v)
             )
     | FSConditionalHole ->
-            List.concat (List.map fs_conditional_sketches (fill_conditional_holes filler))
+            List.concat (List.map fs_conditional_sketches ~f:(fill_conditional_holes filler))
 and fill_array_op_hole filler v =
     match v with
     | FSArrayOpHole ->
-            List.concat (List.map fs_array_operator (fill_array_op_hole filler))
+            List.concat (List.map fs_array_operator ~f:(fill_array_op_hole filler))
     | other -> [other]
 
 and fill_variable filler v = 
@@ -212,14 +212,14 @@ let hole_options options bool_variables array_variables int_variables float_vari
 	let () = Printf.printf "Int variables are: %s\n" (name_reference_list_to_string int_variables) in
 	let () = Printf.printf "Float variables are: %s\n" (name_reference_list_to_string float_variables) in *)
     let result = match variable_type with
-    | FSIntConstantHole -> List.map fs_int_constants (fun x -> FSConstant(x))
-    | FSFloatConstantHole -> List.map fs_float_constants (fun x -> FSConstant(x))
-	| FSStringConstantHole -> List.map fs_string_constants (fun x -> FSConstant(x))
-    | FSArrayVariableHole -> List.map array_variables (fun x -> FSVariable(x))
-    | FSIntVariableHole -> List.map int_variables (fun x -> FSVariable(x))
-    | FSFloatVariableHole -> List.map float_variables (fun x -> FSVariable(x))
-    | FSScalarVariableHole -> List.map (int_variables @ float_variables) (fun x -> FSVariable(x))
-	| FSStringVariableHole -> List.map (string_variables) (fun x -> FSVariable(x))
+    | FSIntConstantHole -> List.map fs_int_constants ~f:(fun x -> FSConstant(x))
+    | FSFloatConstantHole -> List.map fs_float_constants ~f:(fun x -> FSConstant(x))
+	| FSStringConstantHole -> List.map fs_string_constants ~f:(fun x -> FSConstant(x))
+    | FSArrayVariableHole -> List.map array_variables ~f:(fun x -> FSVariable(x))
+    | FSIntVariableHole -> List.map int_variables ~f:(fun x -> FSVariable(x))
+    | FSFloatVariableHole -> List.map float_variables ~f:(fun x -> FSVariable(x))
+    | FSScalarVariableHole -> List.map (int_variables @ float_variables) ~f:(fun x -> FSVariable(x))
+	| FSStringVariableHole -> List.map (string_variables) ~f:(fun x -> FSVariable(x))
     | FSVariable(x) -> [variable_type]
     | FSConstant(x) -> [variable_type] in
     let () = if options.debug_fft_synthesizer then
@@ -243,17 +243,17 @@ let compare_fs (a: synth_value) b = match (int_from_value a, int_from_value b) w
 let rec generic_normalize op arr: synth_value list =
     let length = float_of_int (List.length arr) in
 	(* let () = Printf.printf "Input length of array is %d\n" (List.length arr) in *)
-    List.map arr (fun e1 ->
+    List.map arr ~f:(fun e1 ->
         let result: synth_value = match e1 with
 		| StructV(sname, subeles) ->
 				let newtbl = Hashtbl.create (module String) in
-				let _ = List.map (Hashtbl.keys subeles) (fun key ->
+				let _ = List.map (Hashtbl.keys subeles) ~f:(fun key ->
                     let value = Hashtbl.find_exn subeles key in
 					match value with
-					| Float16V(f) -> Hashtbl.set newtbl key (Float16V(op f length))
-					| Float32V(f) -> Hashtbl.set newtbl key (Float16V(op f length))
-					| Float64V(f) -> Hashtbl.set newtbl key (Float16V(op f length))
-					| ArrayV(subarr) -> Hashtbl.set newtbl key (ArrayV(generic_normalize op subarr))
+					| Float16V(f) -> Hashtbl.set newtbl ~key:key ~data:(Float16V(op f length))
+					| Float32V(f) -> Hashtbl.set newtbl ~key:key ~data:(Float16V(op f length))
+					| Float64V(f) -> Hashtbl.set newtbl ~key:key ~data:(Float16V(op f length))
+					| ArrayV(subarr) -> Hashtbl.set newtbl ~key:key ~data:(ArrayV(generic_normalize op subarr))
 					(* TODO  -- support nested classes.  *)
 					| _ -> raise (FFTSynth "Unexpected non-float")
 				) in
@@ -329,7 +329,7 @@ let rec runner program (inputs: (string, synth_value) Hashtbl.t) =
     )
     | FSSeq(elems) ->
             (* These things mutate the inputs.  *)
-            ignore(List.map elems (fun e ->
+            ignore(List.map elems ~f:(fun e ->
                 runner e inputs
             ))
     | FSArrayOp(action_name, FSVariable(on)) ->
@@ -388,7 +388,7 @@ and eval_variable v (inputs: (string, synth_value) Hashtbl.t): synth_value =
 
 let assert_not_empty (bres, ares, ires, fres, strres) =
 	let rec assert_list_not_empty l =
-		let r = List.for_all l (fun l ->
+		let r = List.for_all l ~f:(fun l ->
 			match l with
 			| AnonymousName -> false
 			| Name("") -> false
@@ -435,12 +435,12 @@ let rec split_variables classmap typemap variables =
 		| Fun(_, _) -> raise (FFTSynth "Higher order functions not supported")
 	in
     (* Get the type of each variable.  *)
-    let types = List.map variables (fun v -> Hashtbl.find_exn typemap (name_reference_to_string v)) in
+    let types = List.map variables ~f:(fun v -> Hashtbl.find_exn typemap (name_reference_to_string v)) in
 	let b_vars, arr_vars, i_vars, f_vars, str_vars, s_vars = List.fold (List.zip_exn types variables) ~init:([], [], [], [], [], [])
         ~f:(fun (b, a, i, f, ss, s) -> fun (t, v) ->
 			add_variable_to_list (b, a, i, f, ss, s) t v
         ) in
-    let struct_name_types = List.map s_vars (fun (varname, structname) ->
+    let struct_name_types = List.map s_vars ~f:(fun (varname, structname) ->
 		get_struct_variables classmap varname structname
     ) in
     (* Probably could be done in a more scalable manner.  Anyway... *)
@@ -454,16 +454,16 @@ let rec split_variables classmap typemap variables =
 and get_struct_variables classmap varname structname =
         let struct_metadata = Hashtbl.find_exn classmap structname in
         let structtypemap = get_class_typemap struct_metadata in
-        let structmembers = List.map (get_class_members struct_metadata) (fun mem -> Name(mem)) in
+        let structmembers = List.map (get_class_members struct_metadata) ~f:(fun mem -> Name(mem)) in
         let (sb, sarr, si, sf, sstr) = split_variables classmap structtypemap structmembers in
 
         (* We need to prepend the structname to everything here.  *)
         let prepend_sname = name_reference_concat varname in
-        (List.map sb prepend_sname,
-		 List.map sarr prepend_sname,
-         List.map si prepend_sname,
-         List.map sf prepend_sname,
-		 List.map sstr prepend_sname
+        (List.map sb ~f:prepend_sname,
+		 List.map sarr ~f:prepend_sname,
+         List.map si ~f:prepend_sname,
+         List.map sf ~f:prepend_sname,
+		 List.map sstr ~f:prepend_sname
         )
 
 let rec get_operations_in prog =
@@ -474,7 +474,7 @@ let rec get_operations_in prog =
 			[operator]
 	| FSSeq(slist) ->
 			List.concat(
-			List.map slist get_operations_in
+			List.map slist ~f:get_operations_in
 			)
 	| FSStructureHole -> []
 
@@ -505,8 +505,8 @@ let is_likely_valid_program prog =
 		[FSHalfNormalize; FSDenormalize];
 		[FSDenormalize; FSHalfDenormalize];
 	] in
-	List.for_all invalid_op_pairs (fun inv_ops ->
-		List.exists inv_ops (fun op -> not(List.mem ops op array_operator_equal))
+	List.for_all invalid_op_pairs ~f:(fun inv_ops ->
+		List.exists inv_ops ~f:(fun op -> not(List.mem ops op ~equal:array_operator_equal))
 	)
 
 class fft_synth_manipulator hole_opts =
@@ -518,11 +518,11 @@ class fft_synth_manipulator hole_opts =
         method fill_holes structs =
 			let all_options = 
 				List.concat (
-					List.map structs (fs_fill_holes hole_opts)
+					List.map structs ~f:(fs_fill_holes hole_opts)
 				)
 			in
 			(* let () = Printf.printf "Pre filtering number of opts is %d\n" (List.length all_options) in *)
-			let filtered = List.filter all_options is_likely_valid_program in
+			let filtered = List.filter all_options ~f:is_likely_valid_program in
 			(* let () = Printf.printf "Post filtering number of opts is %d\n" (List.length filtered) in *)
 			filtered
         method runner prog state =

@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Options;;
 open Program;;
@@ -21,10 +21,10 @@ let build_code (opts: options) (iospec: iospec) (apispec: apispec) (codes: (prog
 	let file_numbers = generate_file_numbers (List.length codes) in
 	let extension = get_extension opts in
 	let exec_names = if opts.skip_build then
-        List.map (List.zip_exn codes file_numbers) (fun ((prog, _), f) -> (prog, target_file ^ "/" ^ f ^ "_exec"))
+        List.map (List.zip_exn codes file_numbers) ~f:(fun ((prog, _), f) -> (prog, target_file ^ "/" ^ f ^ "_exec"))
     else
         (* Make sure the target folder exists *)
-        let res = Sys.command ("mkdir -p " ^ target_file) in
+        let res = Caml.Sys.command ("mkdir -p " ^ target_file) in
         let () = (assert (res = 0)) in
         let compiler_cmd = opts.compiler_cmd in
 		let compiler_flags = String.concat ~sep:" " (apispec.compiler_flags @ iospec.compiler_flags) in
@@ -45,11 +45,11 @@ let build_code (opts: options) (iospec: iospec) (apispec: apispec) (codes: (prog
             else () in
             let () = Out_channel.write_all filename ~data:program_code in
             (* then build the file *)
-            let result = Sys.command cmd in
+            let result = Caml.Sys.command cmd in
             result, (program, outname)
         ) (List.zip_exn codes file_numbers)) in
         let () = ignore(
-            List.map results (fun r ->
+            List.map results ~f:(fun r ->
                 assert (r = 0)
             )
         ) in

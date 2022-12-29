@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Range_definition;;
 open Range;;
 open Spec_utils;;
@@ -36,7 +36,7 @@ let conversion_function_to_string conv_function =
 			"DividedBy " ^ (string_of_int x)
     | Map(f, t, ftlist) -> "ValueMapConversion(" ^
         (synth_type_to_string f) ^ "->" ^ (synth_type_to_string t) ^ ") {" ^
-		(String.concat ~sep:", " (List.map ftlist (fun (f, t) ->
+		(String.concat ~sep:", " (List.map ftlist ~f:(fun (f, t) ->
 			(synth_value_to_string (range_value_to_synth_value f) ^ "->" ^ (synth_value_to_string (range_value_to_synth_value t))
 		)))) ^ "}"
 

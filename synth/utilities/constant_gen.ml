@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Cmdliner;;
 open Generate_code;;
 open Parse_iospec;;
@@ -25,13 +25,13 @@ let main iospec_file output_file seed debug_constant_gen max_string_size =
     let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = Hashtbl.create (module String) in
 	(* Setup the entry for the functio ntuype in the typemap.  *)
-	let fromtypes = List.map iospec.funargs (fun a -> Hashtbl.find_exn iotypemap a) in
+	let fromtypes = List.map iospec.funargs ~f:(fun a -> Hashtbl.find_exn iotypemap a) in
 	let totype = match iospec.returnvar with
 	| [] -> Unit
 	| [x] -> Hashtbl.find_exn iotypemap x
 	| y :: ys -> assert false
 	in
-	let _ = Hashtbl.add iotypemap iospec.funname (Fun(fromtypes, totype)) in
+	let _ = Hashtbl.add iotypemap ~key:iospec.funname ~data:(Fun(fromtypes, totype)) in
 	(* let () = Printf.printf "Added function type for %s (type %s)\n" (iospec.funname) (synth_type_to_string (Fun(fromtypes, totype))) in *)
 
 	(* Build the actual typemap.  *)
@@ -72,8 +72,8 @@ let debug_gen_constants =
 
 let info =
 	let doc = "Generate Function Bodies" in
-	Term.info "FuncGen" ~doc
+	Cmd.info "FuncGen" ~doc
 
 let args_t = Term.(const main $ iospec $ outfile $ seed $ debug_gen_constants $ max_string_size)
 
-let () = Term.exit @@ Term.eval (args_t, info)
+let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

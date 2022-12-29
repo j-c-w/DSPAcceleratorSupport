@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Skeleton_definition;;
@@ -72,7 +72,7 @@ let transform_range convf range =
     in
     match range with
     | RangeSet(itms) ->
-            RangeSet(Array.map itms transform_range_itms)
+            RangeSet(Array.map itms ~f:transform_range_itms)
 
 
 (* There is a lot more we could do here, e.g.
@@ -189,12 +189,12 @@ let check_binds options from_rangemap to_rangemap (bind: flat_single_variable_bi
     | _, None -> [bind]
     | Some(frange), Some(trange) ->
             let () = if options.debug_skeleton_range_filter then
-                let () = Printf.printf "Doing range compat check for %s and %s\n" (index_nesting_to_string bind.tovar_index_nesting) (String.concat (List.map bind.fromvars_index_nesting assignment_type_to_string)) in
+                let () = Printf.printf "Doing range compat check for %s and %s\n" (index_nesting_to_string bind.tovar_index_nesting) (String.concat (List.map bind.fromvars_index_nesting ~f:assignment_type_to_string)) in
                 ()
             else ()
             in
             let conv_fs = range_conversion options frange trange in
-            List.filter_map conv_fs (fun conv_f ->
+            List.filter_map conv_fs ~f:(fun conv_f ->
                 let compatible = range_compat_check options conv_f frange trange in
                 let () = if options.debug_skeleton_range_filter then
                     let () = Printf.printf "Under conversion %s compatible: %b\n" (conversion_function_to_string conv_f) (compatible) in
@@ -226,7 +226,7 @@ let check_binds options from_rangemap to_rangemap (bind: flat_single_variable_bi
    *)
 let rangecheck_binds options vbinds from_rangemap to_rangemap =
     let individual_bind_checks =
-        List.map vbinds (check_binds options from_rangemap to_rangemap) in
+        List.map vbinds ~f:(check_binds options from_rangemap to_rangemap) in
     let binds = List.fold individual_bind_checks ~f:(fun binds ->
             fun bindcheck -> match bindcheck, binds with
 				| [], _ -> None
@@ -237,13 +237,13 @@ let rangecheck_binds options vbinds from_rangemap to_rangemap =
 	| Some(bind) -> bind
 	| None -> [] in
 	let binds = cross_product binds in
-	List.map binds (fun bind -> {
+	List.map binds ~f:(fun bind -> {
 			flat_bindings = bind
 		})
 
 (* Note that this can  increase /or/ decrese the number of skeletons
    to check.  *)
 let rangecheck_skeletons options (skeletons: flat_skeleton_binding list) from_rangemap to_rangemap =
-	List.concat (List.map skeletons (fun skeleton ->
+	List.concat (List.map skeletons ~f:(fun skeleton ->
 		rangecheck_binds options skeleton.flat_bindings from_rangemap to_rangemap
 	))

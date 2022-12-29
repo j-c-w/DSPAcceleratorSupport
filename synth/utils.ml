@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 
 exception UtilException of string
@@ -10,28 +10,28 @@ let rec cross_product ls =
 	| [] -> []
 	| [x] ->
 			(* let () = Printf.printf "Length of x is %d" (List.length x) in *)
-			List.map x (fun value -> [value])
+			List.map x ~f:(fun value -> [value])
 	| (x :: xs) ->
 			let subcross = cross_product xs in
 			List.concat(
-			List.map subcross (fun subprod ->
-				List.map x (fun value -> 
+			List.map subcross ~f:(fun subprod ->
+				List.map x ~f:(fun value -> 
 					value :: subprod
 				)
 			)
 			)
 
 
-let uniq_cons eql x xs = if List.mem xs x eql then xs else x :: xs
+let uniq_cons eql x xs = if List.mem xs x ~equal:eql then xs else x :: xs
 
 let remove_duplicates eql xs = List.fold_right xs ~f:(uniq_cons eql) ~init:[]
 
-let set_difference eql l1 l2 = List.filter l1 (fun x -> not (List.mem l2 x eql))
+let set_difference eql l1 l2 = List.filter l1 ~f:(fun x -> not (List.mem l2 x ~equal:eql))
 
 let hash_table_from_list s l =
     let tbl = Hashtbl.create s in
-    let () = ignore(List.map l (fun (i, t) ->
-        Hashtbl.add tbl i t
+    let () = ignore(List.map l ~f:(fun (i, t) ->
+        Hashtbl.add tbl ~key:i ~data:t
     )) in
     tbl
 
@@ -54,7 +54,7 @@ let rec extend_zip l1 l2 =
 			(x, y) :: (extend_zip xs [y])
 
 let prepend_all x xs =
-    List.map xs (fun l -> x :: l)
+    List.map xs ~f:(fun l -> x :: l)
 
 let max_of_int_list xs =
 	List.fold xs ~f:(fun x -> fun y -> if x > y then x else y) ~init:(-1000000000)
@@ -115,8 +115,8 @@ let log_2 i =
 	!l2_value - 1
 
 let double_map l f =
-	List.map l (fun e ->
-		List.map e f
+	List.map l ~f:(fun e ->
+		List.map e ~f:f
 	)
 
 (* Parmap is hard to trace errors through.  *)
@@ -124,7 +124,7 @@ let parmap options f l =
 	if options.use_parmap then
 		Parmap.parmap f (Parmap.L l)
 	else
-		List.map l f
+		List.map l ~f:f
 
 let rec unzip3 ls =
 	match ls with
@@ -138,11 +138,11 @@ let power_of_two i = 1 lsl i
 let rec deduplicate eq xs =
     match xs with
     | [] -> []
-    | x :: xs -> if (List.mem xs x eq) then deduplicate eq xs else x :: (deduplicate eq xs)
+    | x :: xs -> if (List.mem xs x ~equal:eq) then deduplicate eq xs else x :: (deduplicate eq xs)
 
 let strings_any_equal s1s s2s =
-	List.exists s1s (fun s1 ->
-		List.exists s2s (fun s2 ->
+	List.exists s1s ~f:(fun s1 ->
+		List.exists s2s ~f:(fun s2 ->
 			string_equal s1 s2
 		)
 	)

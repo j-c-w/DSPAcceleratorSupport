@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Fft_synthesizer;;
 open Json_utils;;
 open Options;;
@@ -55,7 +55,7 @@ we need to make sure the parameters appear in the output
 Json files.  *)
 let configuration_parameters_for typemap (iospec: iospec) (apispec: apispec) =
 	let deadout = Utils.set_difference (Utils.string_equal) iospec.livein iospec.liveout in
-	let config_deadout = List.filter deadout (fun deadvar ->
+	let config_deadout = List.filter deadout ~f:(fun deadvar ->
 		let typ = Hashtbl.find_exn typemap.variable_map deadvar in
         is_configuration_type typ
 	) in
@@ -65,7 +65,7 @@ let configuration_parameters_for typemap (iospec: iospec) (apispec: apispec) =
    and the other represents the outputs.  We need to get
    the configuration parameters from the right one.  *)
 let post_synthesis_io_pairs options apispec iospec iofiles program configuration_parameters =
-	let result = List.filter_map iofiles (fun (test_results: test_result) ->
+	let result = List.filter_map iofiles ~f:(fun (test_results: test_result) ->
 		let () = if options.debug_post_synthesis then
 			Printf.printf "Loading inputs from file %s\n" (test_results.input)
 		else () in
@@ -82,8 +82,8 @@ let post_synthesis_io_pairs options apispec iospec iofiles program configuration
 			let true_outp_values = load_value_map_from true_outps in
 			(* Don't need this for now.  *)
 			(* let pre_accel_call_values = load_value_map_from pre_acc_call in *)
-			let _ = List.map configuration_parameters (fun v ->
-				Hashtbl.add outp_values v (Hashtbl.find_exn inp_values v)
+			let _ = List.map configuration_parameters ~f:(fun v ->
+				Hashtbl.add outp_values ~key:v ~data:(Hashtbl.find_exn inp_values v)
 			) in
 			(* ((inputs, configs), required results) *)
 			(* Only use this for behavioural synthesis if it passes the range
@@ -160,7 +160,7 @@ let synthesize_post (options: options) typemap (iospec: iospec) (apispec: apispe
     (* create the unified typemaps.  *)
     (* TODO _-- REALLy need to handle name clashes --- perhaps
        by prefixing things? *)
-    let names = List.map (configuration_parameters @ iospec.liveout) (fun n -> Name(n)) in
+    let names = List.map (configuration_parameters @ iospec.liveout) ~f:(fun n -> Name(n)) in
 	(* The synthesizer NEEDS to result in a function definition
 	of that type, and a way to convert that function into
 	a string for each of the backends (or into GIR).

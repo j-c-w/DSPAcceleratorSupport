@@ -1,10 +1,10 @@
-open Core_kernel;;
+open Core;;
 open Generate_gir
 open Alcotest;;
 open Spec_definition;;
 
 let string_list_list_to_string ls =
-	String.concat ~sep:"." (List.map ls (fun l -> String.concat ~sep:"." l))
+	String.concat ~sep:"." (List.map ls ~f:(fun l -> String.concat ~sep:"." l))
 
 let expand_simple_struct () =
 	let testtmap = {
@@ -22,14 +22,14 @@ let expand_simple_struct () =
 		typemap = Hashtbl.create (module String);
 		io_typemap = Hashtbl.create (module String);
 	} in
-	let _ = Hashtbl.add struct_classmap.typemap "mem1" Int32 in
-	let _ = Hashtbl.add struct_classmap.typemap "mem2" (Array(Float32, SingleDimension(DimConstant(10)))) in
-	let _ = Hashtbl.add testtmap.classmap "teststr" (StructMetadata(struct_classmap)) in
+	let _ = Hashtbl.add struct_classmap.typemap ~key:"mem1" ~data:Int32 in
+	let _ = Hashtbl.add struct_classmap.typemap ~key:"mem2" ~data:(Array(Float32, SingleDimension(DimConstant(10)))) in
+	let _ = Hashtbl.add testtmap.classmap ~key:"teststr" ~data:(StructMetadata(struct_classmap)) in
 
 	let expanded_types = get_copy_types_for testtmap typ ["basename1"] ["basename2"] in
 	let () = Printf.printf "Size of expanded types is %d\n" (List.length expanded_types) in
 	let _ = Alcotest.(check (int)) "same int" 2 (List.length expanded_types) in
-	let () = Printf.printf "FQDNs is %s\n" (String.concat ~sep:", " (List.map expanded_types (fun (t, n1, n2) -> string_list_list_to_string n1))) in
+	let () = Printf.printf "FQDNs is %s\n" (String.concat ~sep:", " (List.map expanded_types ~f:(fun (t, n1, n2) -> string_list_list_to_string n1))) in
 	()
 
 let main () = 

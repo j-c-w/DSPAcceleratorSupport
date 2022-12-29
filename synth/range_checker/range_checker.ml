@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Range_definition;;
 open Range;;
 open Spec_definition;;

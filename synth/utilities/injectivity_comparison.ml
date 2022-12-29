@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Cmdliner;;
 open Options;;
 open Spec_definition;;
@@ -78,7 +78,7 @@ let main specname num =
 		let () = assert (success_count > 0) in
         (* Run failures not allowed here, since we are looking for failure-free duplication.  *)
         (* Duplication check dubiously done with a md5sum command. *)
-        ignore(List.map (List.zip_exn results test_batch) (fun (result, test) ->
+        ignore(List.map (List.zip_exn results test_batch) ~f:(fun (result, test) ->
 			let resoutfile = match result with
             | RunFailure -> ""
             | RunSuccess(outfile) ->
@@ -89,8 +89,8 @@ let main specname num =
                         (* Skip -- this md5 has already been tested.  *)
 						outfile
                 | None ->
-                        let () = ignore(Hashtbl.add tbl inp_md5 true) in
-                        let () = match Hashtbl.add outtbl out_md5 true with
+                        let () = ignore(Hashtbl.add tbl ~key:inp_md5 ~data:true) in
+                        let () = match Hashtbl.add outtbl ~key:out_md5 ~data:true with
                         | `Ok -> ()
                         | `Duplicate ->
                                 duplicate_count := !duplicate_count + 1
@@ -98,7 +98,7 @@ let main specname num =
                         let () = number_tested := !number_tested + 1 in
 						outfile
 			in
-			let _ = Sys.command ("rm " ^ resoutfile ^ " " ^ test) in
+			let _ = Caml.Sys.command ("rm " ^ resoutfile ^ " " ^ test) in
 			()
         )
         )
@@ -117,8 +117,8 @@ let number =
 
 let info =
 	let doc = "Compute the epsilon-injectivity of a function" in
-	Term.info "EpsilonInjectivity" ~doc
+	Cmd.info "EpsilonInjectivity" ~doc
 
 let args_t = Term.(const main $ iospec $ number)
 
-let () = Term.exit @@ Term.eval (args_t, info)
+let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

@@ -1,7 +1,7 @@
 open Spec_definition;;
 open Options;;
 open Spec_utils;;
-open Core_kernel;;
+open Core;;
 
 exception STopologyException of string
 
@@ -16,7 +16,7 @@ let dep_to_string deps =
 
 let dep_list_to_string dlist =
 	String.concat ~sep:"\n" (
-		List.map dlist dep_to_string
+		List.map dlist ~f:dep_to_string
 	)
 
 let rec get_dependencies_for typemap typ =
@@ -46,7 +46,7 @@ let rec get_dependencies_for typemap typ =
 			let this_deps = match dims with
 			| SingleDimension(x) -> deps_from_var x
 			| MultiDimension(xs, op) ->
-					List.concat (List.map xs deps_from_var)
+					List.concat (List.map xs ~f:deps_from_var)
 			| EmptyDimension -> raise (STopologyException "Unhandled")
 			in
 			this_deps @ (get_dependencies_for typemap tp)
@@ -57,16 +57,16 @@ let rec get_dependencies_for typemap typ =
 			let metadata = Hashtbl.find_exn typemap.classmap sname in
 			let subs = get_class_fields metadata in
 			let stypedef = get_class_typemap metadata in
-			let subtyps = List.map subs (Hashtbl.find_exn stypedef) in
+			let subtyps = List.map subs ~f:(Hashtbl.find_exn stypedef) in
             let subdefs = List.concat (
-				List.map subtyps (get_dependencies_for typemap)
+				List.map subtyps ~f:(get_dependencies_for typemap)
 			) in
             (* Remove any types that are inherint to this type: they shouldn't be
             considered here.  *)
 			(* let () = Printf.printf "For struct name %s\n" (sname) in
 			let () = Printf.printf "Filtering out variables %s\n" (String.concat ~sep:", " subs) in
 			let () = Printf.printf "Pre filtering is %s\n" (name_reference_list_to_string subdefs) in *)
-			let result = List.filter subdefs (fun d -> not (List.mem subs (name_reference_to_string d) Utils.string_equal)) in
+			let result = List.filter subdefs ~f:(fun d -> not (List.mem subs (name_reference_to_string d) ~equal:Utils.string_equal)) in
 			(* let () = Printf.printf "Post filtering is %s\n" (name_reference_list_to_string result) in *)
 			result
 	| Unit ->
@@ -80,7 +80,7 @@ let rec get_dependencies_for typemap typ =
 			[]
 
 let compute_use_defs typemap names =
-	List.map names (fun n ->
+	List.map names ~f:(fun n ->
 		let typ = Hashtbl.find_exn typemap.variable_map (name_reference_to_string n) in
 		(* let () = Printf.printf "Getting dependencies for %s: %s\n" (name_reference_to_string n) (synth_type_to_string typ) in *)
 		{
@@ -90,8 +90,8 @@ let compute_use_defs typemap names =
 	)
 
 let split_deps deps =
-		let still_has_deps = List.filter deps (fun v -> List.length v.dependencies <> 0) in
-		let no_more_deps = List.filter deps (fun v -> List.length v.dependencies = 0) in
+		let still_has_deps = List.filter deps ~f:(fun v -> List.length v.dependencies <> 0) in
+		let no_more_deps = List.filter deps ~f:(fun v -> List.length v.dependencies = 0) in
 		still_has_deps, no_more_deps
 
 let name_ref_def_check n1 n2 =
@@ -103,7 +103,7 @@ let filter_deps name deps =
 	   I think (look at the name_ref_def_check func).  *)
 	{
 		name = deps.name;
-		dependencies = List.filter deps.dependencies (name_ref_def_check name)
+		dependencies = List.filter deps.dependencies ~f:(name_ref_def_check name)
 	}
 
 let rec synth_khan options vars s sorted =
@@ -123,7 +123,7 @@ let rec synth_khan options vars s sorted =
 	else () in
 	sorted
 	| n :: ss -> 
-			let remaining_vars = List.map vars (filter_deps n.name) in
+			let remaining_vars = List.map vars ~f:(filter_deps n.name) in
 			let still_has_deps, no_more_deps = split_deps remaining_vars in
 			synth_khan options still_has_deps (ss @ no_more_deps) (n :: sorted)
 
@@ -137,4 +137,4 @@ let synthtype_toposort options typemap snames =
 	let deps = compute_use_defs typemap snames in
 	let rest, stack = split_deps deps in
 	let topo_sorted = synth_khan options rest stack [] in
-	List.rev (List.map topo_sorted (fun t -> t.name))
+	List.rev (List.map topo_sorted ~f:(fun t -> t.name))

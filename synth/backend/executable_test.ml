@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Yojson;;
 open Yojson.Basic.Util;;
 open Run_definition;;
@@ -18,7 +18,7 @@ let rec compare_jsons options fcomp j1 j2 =
 	(* let () = Printf.printf "JSON j1 is %s \n%!" (Yojson.Basic.pretty_to_string j1) in
 	let () = Printf.printf "JSON j2 is %s \n%!" (Yojson.Basic.pretty_to_string j2) in *)
     let j1_members = keys j1 in
-	let result = List.for_all j1_members (fun mem ->
+	let result = List.for_all j1_members ~f:(fun mem ->
 		compare_json_elts options fcomp (j1 |> member mem) (j2 |> member mem)
 	) in
 	(* let () = Printf.printf "Exiting comparison\n%!" in *)
@@ -27,16 +27,16 @@ let rec compare_jsons options fcomp j1 j2 =
 and compare_json_elts options fcomp e1 e2 =
 	let result = match (e1, e2) with
 	  | `Assoc(njson_pairs1), `Assoc(njson_pairs2) ->
-			  let sorted_p1 = List.sort njson_pairs1 (fun (s1, j1) -> fun (s2, j2) ->
+			  let sorted_p1 = List.sort njson_pairs1 ~compare:(fun (s1, j1) -> fun (s2, j2) ->
 				  String.compare s1 s2
 			  ) in
-			  let sorted_p2 = List.sort njson_pairs2 (fun (s1, j1) -> fun (s2, j2) ->
+			  let sorted_p2 = List.sort njson_pairs2 ~compare:(fun (s1, j1) -> fun (s2, j2) ->
 				  String.compare s1 s2
 			  ) in (
 			  match List.zip sorted_p1 sorted_p2 with
 			  | Ok(ls) ->
 					  (* let () = Printf.printf "Looping in match%!\n" in *)
-					  let r = List.for_all ls (fun ((name1, json1), (name2, json2)) ->
+					  let r = List.for_all ls ~f:(fun ((name1, json1), (name2, json2)) ->
 						  ((String.compare name1 name2) = 0) && (compare_json_elts options fcomp json1 json2)
 					  ) in
 					  r
@@ -51,7 +51,7 @@ and compare_json_elts options fcomp e1 e2 =
 	  | `List(l1), `List(l2) ->
 			  (* let () = Printf.printf "Looping in list\n%!" in *)
 			  ((List.length l1) = (List.length l2)) &&
-			  List.for_all (List.zip_exn l1 l2) (fun (i1, i2) ->
+			  List.for_all (List.zip_exn l1 l2) ~f:(fun (i1, i2) ->
 				  compare_json_elts options fcomp i1 i2
 			  )
 	(* I mean, this could be true, but not sure why it would appear.  *)
@@ -98,7 +98,7 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
 	let ()  = if options.debug_test then
 		Printf.printf "Starting tests for executable %s\n" execname
 	else () in
-	let res = List.map tests_and_results (fun (testin, testout) ->
+	let res = List.map tests_and_results ~f:(fun (testin, testout) ->
             (
             (* Get an output name for this test.  *)
             let experiment_outname = testin ^ "_outtmp_" ^ (string_of_int test_no) ^ ".json" in
@@ -116,12 +116,12 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
             else () in
             let result =
                 if options.skip_test then
-                    if Sys.file_exists experiment_outname then
+                    if Caml.Sys.file_exists experiment_outname then
 						0
                     else
                         1
                 else
-                    Sys.command cmd in
+                    Caml.Sys.command cmd in
 			let () = if options.debug_test then
 				Printf.printf "Done\n%!"
 			else ()
@@ -207,7 +207,7 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
 		) in
 	(* Glue together the results.  *)
 	let total_count = List.length res in
-	let passed_count = List.count res (fun (result) -> result.passed) in
+	let passed_count = List.count res ~f:(fun (result) -> result.passed) in
 	let passed = (total_count = passed_count) in
     (* OK: so this is a terrible hack, but when we just can't line up with the usercode
     sparsity, everything will 'pass' by default, and we'd like to avoid that.  I think there
@@ -215,8 +215,8 @@ let check_if_code_works (options:options) (program: program) execname test_no ge
     post-test generation where we go through and are like "this is clearly buggy, this jus tmissed
     due to bad luck" etc. *)
     (* Anyway, this makes sure that there is at least one non-vacuous testcase *)
-    let lucky_pass = List.for_all res (fun res -> res.vacuous) in
-	let valid_passes = List.count res (fun res -> not res.vacuous) in
+    let lucky_pass = List.for_all res ~f:(fun res -> res.vacuous) in
+	let valid_passes = List.count res ~f:(fun res -> not res.vacuous) in
 	let () = Printf.printf "For executable %s, passed cound is %d of %d tests (%d are vacuous: luck pass is %b) \n%!" (execname) (passed_count) (total_count) (total_count - valid_passes) (lucky_pass) in
 	res, (passed && (not lucky_pass))
 
@@ -226,7 +226,7 @@ let find_working_code (options:options) (generated_executables: (program * strin
 		() else () in
 	let groups = List.zip_exn generated_executables (List.zip_exn generated_io_tests correct_answer_files) in
 	let test_no = ref 0 in
-	let result = List.map groups (fun ((program, executable), ((_, inps), outps)) ->
+	let result = List.map groups ~f:(fun ((program, executable), ((_, inps), outps)) ->
 		test_no := !test_no + 1;
 		check_if_code_works options program executable !test_no inps outps
 	) in
@@ -239,10 +239,10 @@ let find_working_code (options:options) (generated_executables: (program * strin
 let print_working_code options (apispec: apispec) working_list =
     let output_dir = options.execution_folder ^ "/output" in
 	let extension = Build_code.get_extension options in
-    let result = Sys.command ("mkdir -p " ^ output_dir) in
+    let result = Caml.Sys.command ("mkdir -p " ^ output_dir) in
     let () = assert (result = 0) in
     let numbers = Build_code.generate_file_numbers (List.length working_list) in
-    let fnames = List.map (List.zip_exn working_list numbers) (fun ((prog, code), number) ->
+    let fnames = List.map (List.zip_exn working_list numbers) ~f:(fun ((prog, code), number) ->
         let filename = output_dir ^ "/option_" ^ number ^ extension in
         let () = Out_channel.write_all filename ~data:code in
         filename

@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Builtin_types;;
@@ -19,7 +19,7 @@ but it is far from complete now.  *)
 	either all e.g. float* arrays are actually f32x2 arrays, or none
 	are.  *)
 let infer_structs_on_typemap options typemap variables =
-    let pairs, used_types = List.unzip (List.map variables (fun variable ->
+    let pairs, used_types = List.unzip (List.map variables ~f:(fun variable ->
         let current_type = Hashtbl.find_exn typemap.variable_map variable in
         match current_type with
         | Array(t, d) ->
@@ -60,10 +60,10 @@ let infer_structs_on_typemap options typemap variables =
 								(* TODO *)
 								[(variable, Array(t, d))], []
 						| Float32 ->
-								(List.map newdims (fun newdim -> (variable, Array(two_float32_type, newdim)))) @
+								(List.map newdims ~f:(fun newdim -> (variable, Array(two_float32_type, newdim)))) @
 								[(variable, Array(t, d))], [two_float32_type]
 						| Float64 ->
-								(List.map newdims (fun newdim -> (variable, Array(two_float64_type, newdim)))) @
+								(List.map newdims ~f:(fun newdim -> (variable, Array(two_float64_type, newdim)))) @
 								[(variable, Array(t, d))], [two_float64_type]
 						| other ->
 								(* TODO -- support ints here? *)
@@ -88,18 +88,18 @@ def'ed in copyvars and setting the variables specified in expandvars
 as specified.  *)
 let construct_typemap_from_assignments oldtmap copyvars expandvars =
     let newtbl = Hashtbl.create (module String) in
-    let _ = List.map copyvars (fun cvar ->
-        Hashtbl.add newtbl cvar (Hashtbl.find_exn oldtmap cvar)
+    let _ = List.map copyvars ~f:(fun cvar ->
+        Hashtbl.add newtbl ~key:cvar ~data:(Hashtbl.find_exn oldtmap cvar)
     ) in
-    let _ = List.map expandvars (fun (n, t) ->
-        Hashtbl.add newtbl n t
+    let _ = List.map expandvars ~f:(fun (n, t) ->
+        Hashtbl.add newtbl ~key:n ~data:t
     ) in
     newtbl
 
 let expand_and_preserve original_typemap (variables: string list) vpairs =
     let preserve_vars = Utils.set_difference Utils.string_equal (Hashtbl.keys original_typemap) variables in
     let new_typemaps = Utils.cross_product vpairs in
-    List.map new_typemaps (fun vassignments ->
+    List.map new_typemaps ~f:(fun vassignments ->
         construct_typemap_from_assignments original_typemap preserve_vars vassignments
     )
 
@@ -118,10 +118,10 @@ let get_array_types tmap n =
 
 (* TODO -- this should support classmaps too.  *)
 let all_or_nothing_approximation variable_sets tmap =
-	List.for_all variable_sets (fun variables ->
-		let atypes = List.filter_map variables (get_array_types tmap) in
+	List.for_all variable_sets ~f:(fun variables ->
+		let atypes = List.filter_map variables ~f:(get_array_types tmap) in
 		let all_infered =
-			List.for_all atypes (fun atype ->
+			List.for_all atypes ~f:(fun atype ->
 				match atype with
 				(* These are the types we use the domain-specific
 				   type complex struct inference on.  *)
@@ -134,7 +134,7 @@ let all_or_nothing_approximation variable_sets tmap =
 		(* TODO -- this might not work with more generic
 		struct inference.  *)
 		let all_uninfered =
-			List.for_all atypes (fun atype ->
+			List.for_all atypes ~f:(fun atype ->
 				match atype with
 				| Struct(name) ->
 						(* Check if this type is one
@@ -157,7 +157,7 @@ let all_or_nothing_approximation variable_sets tmap =
 	)
 
 let apply_structure_heuristics variable_sets tmaps =
-	List.filter tmaps (fun tmap ->
+	List.filter tmaps ~f:(fun tmap ->
 		(* Apply the all-or-nothing approxmation, i.e. the idea
 		that we aren't just looking at a single isolated type,
 		but rather a programmer who has made a representation
@@ -178,15 +178,15 @@ let infer_structure options typemap variables =
     let new_variable_maps = expand_and_preserve typemap.variable_map variables typemap_expansions in
     (* Add any inferred types to the classmap.  *)
     let new_classmap = clone_classmap typemap.classmap in
-    let _ = List.map builtins (fun builtin ->
+    let _ = List.map builtins ~f:(fun builtin ->
         let name = synth_type_to_string builtin in
         match Hashtbl.find new_classmap name with
         | Some(_) -> () (* TODO -- should we do an assert here? *)
         | None ->
-                let _ = Hashtbl.add new_classmap name (builtin_struct_from_name name) in
+                let _ = Hashtbl.add new_classmap ~key:name ~data:(builtin_struct_from_name name) in
                 ()
     ) in
-	let result = List.map new_variable_maps (fun vmap ->
+	let result = List.map new_variable_maps ~f:(fun vmap ->
         {
             variable_map = vmap;
 			classmap = new_classmap;

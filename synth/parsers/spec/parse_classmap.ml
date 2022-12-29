@@ -1,5 +1,5 @@
 (* This file contains the parser for the type information. *)
-open Core_kernel;;
+open Core;;
 open Yojson;;
 open Yojson.Basic.Util;;
 open Spec_definition;;
@@ -9,10 +9,10 @@ open Parse_typemap;;
 
 let load_individual_type options json_definition =
 	let isstruct = json_definition |> member "type" |> to_string in
-	let symbols = List.map (json_definition |> member "symbols" |> to_list) (fun j -> j |> to_string) in
+	let symbols = List.map (json_definition |> member "symbols" |> to_list) ~f:(fun j -> j |> to_string) in
 	let functions =
 		if (String.compare isstruct "class") = 0 then
-			List.map (json_definition |> member "functions" |> to_list) to_string
+			List.map (json_definition |> member "functions" |> to_list) ~f:to_string
 			(* No functions in a struct.  *)
 		else []
 	in
@@ -28,8 +28,8 @@ let load_classmap_from_json options json =
 	(* Get the names of all the defined types.  *)
 	let typedefs = json |> keys in
 	(* Get the types from these definitions.  *)
-	let typepairs = List.map typedefs (fun name -> (name, load_individual_type options (json |> member name))) in
-	ignore(List.map typepairs (fun (name, value) -> Hashtbl.add tbl name value));
+	let typepairs = List.map typedefs ~f:(fun name -> (name, load_individual_type options (json |> member name))) in
+	ignore(List.map typepairs ~f:(fun (name, value) -> Hashtbl.add tbl ~key:name ~data:value));
 	tbl;;
 
 let load_classmap options filename =

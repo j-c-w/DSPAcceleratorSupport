@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Spec_definition;;
 open Spec_utils;;
 open Gir;;
@@ -16,10 +16,10 @@ let rec gir_fix_typemap options (typemap: typemap) gir =
 				| None -> raise (FixTypemapException "Can't fix typemap with None as a type entry")
 				| Some(x) -> x
 				in
-                let _ = Hashtbl.add typemap.variable_map (gir_name_to_string n) typ in
+                let _ = Hashtbl.add typemap.variable_map ~key:(gir_name_to_string n) ~data:typ in
                 let _ = match typemap.original_typemap with
                 | Some(t) ->
-                        let _ = Hashtbl.add t.variable_map (gir_name_to_string n) typ in
+                        let _ = Hashtbl.add t.variable_map ~key:(gir_name_to_string n) ~data:typ in
                         ()
                 | None ->
                         ()
@@ -34,7 +34,7 @@ let rec gir_fix_typemap options (typemap: typemap) gir =
             let () = gir_fix_typemap options typemap iffalse in
             ()
     | Sequence(seq) ->
-            let _ = List.map seq (gir_fix_typemap options typemap) in
+            let _ = List.map seq ~f:(gir_fix_typemap options typemap) in
             ()
     | Assignment(_, _) -> ()
     | LoopOver(body, indv, maxv) ->

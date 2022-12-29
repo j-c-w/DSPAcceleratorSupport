@@ -1,4 +1,4 @@
-open Core_kernel;;
+open Core;;
 open Options;;
 open Spec_definition;;
 open Spec_utils;;
@@ -32,8 +32,8 @@ let new_conversion_function () =
     Name("conversion" ^ (string_of_int !conversion_function_count))
 
 let to_gir_name_list_list slist_list: gir_name list list =
-    List.map slist_list (fun slist ->
-        List.map slist (fun s ->
+    List.map slist_list ~f:(fun slist ->
+        List.map slist ~f:(fun s ->
             Name(s)
         )
     )
@@ -43,7 +43,7 @@ let generate_gir_name_for nref =
     | AnonymousName -> None
     | Name(n) -> Some(Variable(Name(n)))
     | StructName(names) ->
-            let names = List.map names (fun n -> match n with
+            let names = List.map names ~f:(fun n -> match n with
             | Name(n) -> n
             | _ -> raise (GenerateGIRException "UNexepcted!")
             ) in
@@ -57,7 +57,7 @@ let generate_gir_name_for nref =
                     MemberReference(namesofar, Name(nextname))))
 
 let generate_gir_names_for nrefs =
-    List.map nrefs generate_gir_name_for
+    List.map nrefs ~f:generate_gir_name_for
 
 (* Given a type typ, and a varaible from_basename that has
  that stored in it, get a breakdown of variable copy triples
@@ -86,7 +86,7 @@ let rec get_copy_types_for typemap typ to_basename from_basename =
                       etc.  *)
                     get_copy_types_for typemap sub_type [] [] in
                 (* Add this array to the head of all the things.  *)
-                List.map stys (fun (s, names_1, names_2)->
+                List.map stys ~f:(fun (s, names_1, names_2)->
                     Array(s, dim),
                     prepend_names_1 :: names_1,
                     prepend_names_2 :: names_2
@@ -96,10 +96,10 @@ let rec get_copy_types_for typemap typ to_basename from_basename =
                 let submap = get_class_typemap meta in
                 let members = get_class_fields meta in
                 let subtypemap = { typemap with variable_map = submap } in
-                let subvars = List.concat (List.map members (fun m ->
+                let subvars = List.concat (List.map members ~f:(fun m ->
                     let mtyp = Hashtbl.find_exn subtypemap.variable_map m in
                     subtyps_of mtyp [m] [m])) in
-                List.map subvars (fun (sty, names_1, names_2) ->
+                List.map subvars ~f:(fun (sty, names_1, names_2) ->
                     let new_names_1 = match names_1 with
                     | x :: xs -> (prepend_names_1 @ x) :: xs
                     | _ -> assert false (* Think this shouldn't be possible because the subtypes will have to have been expanded? *)
@@ -115,7 +115,7 @@ let rec get_copy_types_for typemap typ to_basename from_basename =
         | Pointer(styp) ->
                 (* Treating pointers as transparent here is the right idea? *)
                 let subcalls = get_copy_types_for typemap styp to_basename from_basename in
-                List.map subcalls (fun (t, name_1, name_2) ->
+                List.map subcalls ~f:(fun (t, name_1, name_2) ->
                     (Pointer(t), name_1, name_2)
                 )
         | typ ->
@@ -182,12 +182,12 @@ and putting a TODO note like in the backend? *)
 			in
 			(in_loop_assign, [indvar])
 	| MultiDimension(dims, opmode) ->
-			let dimnames = List.map dims (fun dim ->
+			let dimnames = List.map dims ~f:(fun dim ->
 				generate_dim_reference typelookup dim
 			) in
 			(* let () = Printf.printf "From dims %s, generated name references %s\n" (dimension_value_list_to_string dims) (expression_list_to_string dimnames)  in *)
 			let maxvar = new_variable () in
-			let _ = Hashtbl.add typelookup (gir_name_to_string maxvar) (Int64) in
+			let _ = Hashtbl.add typelookup ~key:(gir_name_to_string maxvar) ~data:(Int64) in
 			let indvar = new_induction_variable () in
 
 			(* The multiplication function used here takes
@@ -207,8 +207,8 @@ and putting a TODO note like in the backend? *)
 							(* Generate the sub multiplications *)
 							let new_maxvar = new_variable() in
 							let new_tempvar = new_variable() in
-							let _ = Hashtbl.add typelookup (gir_name_to_string new_maxvar) (Int64) in
-							let _ = Hashtbl.add typelookup (gir_name_to_string new_tempvar) (Int64) in
+							let _ = Hashtbl.add typelookup ~key:(gir_name_to_string new_maxvar) ~data:(Int64) in
+							let _ = Hashtbl.add typelookup ~key:(gir_name_to_string new_tempvar) ~data:(Int64) in
 							let sub_precode = generate_precode (Variable(new_maxvar)) vs in
 
 							(* Add def for new_maxvar *)
@@ -256,7 +256,7 @@ let rec generate_loop_wrappers_from_dimensions typelookup constraints =
 
 let rec maybe_create_reference_from post_indexes indvarnames =
 	(* let post_indexes_str =
-		String.concat ~sep:", " (List.map post_indexes (fun p ->
+		String.concat ~sep:", " (List.map post_indexes ~f:(fun p ->
 			match p with
 			| None -> "None"
 			| Some(p) -> variable_reference_to_string p
@@ -310,7 +310,7 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 	if (List.length fvar_index_nestings) = 0 then
 		[]
 	else
-		List.map fvar_index_nestings (fun fvar_ind_nest -> (
+		List.map fvar_index_nestings ~f:(fun fvar_ind_nest -> (
 				fun index_vars ->
 					(* We expect one index_var for each fromvar_index and each tovar_index --- those
 					capture the parts of the variable names
@@ -337,10 +337,10 @@ let generate_assign_functions conversion_function_name fvar_index_nestings tvar_
 		)
 
 let get_define_for options typemap definition_type define_internal_before_assign escaping_vars vnameref =
-    let escapes = List.mem escaping_vars (variable_reference_to_string vnameref) Utils.string_equal in
+    let escapes = List.mem escaping_vars (variable_reference_to_string vnameref) ~equal:Utils.string_equal in
 	let () = if options.debug_generate_gir then
         let () = Printf.printf "Looking for definition type of %s, have esjjcapeing vars %s\n" (variable_reference_to_string vnameref) (String.concat ~sep:", " escaping_vars) in
-        Printf.printf "Getting define for type%s\n" (Option.value (Option.map definition_type synth_type_to_string) ~default:"None")
+        Printf.printf "Getting define for type%s\n" (Option.value (Option.map definition_type ~f:synth_type_to_string) ~default:"None")
 	else ()
 	in
 	let result = if (define_internal_before_assign || escapes) then
@@ -396,7 +396,7 @@ let get_unwarpped_dim_dependency (dimension_value): gir_name list =
         | _ -> raise (GenerateGIRException "Can't convert anything that isn't a name!")
         )
 	(* | DimMultipleVariables(vs, op) ->
-			List.map vs (fun v -> match v with
+			List.map vs ~f:(fun v -> match v with
 				| Name(n) -> Name(n)
 				| _ -> raise (GenerateGIRException "Can't convert anything that isn't a name")
 			)
@@ -420,9 +420,9 @@ let generate_conversion_function conv = match conv with
 			let returnvar = new_variable() in
 			let typelookup = Hashtbl.create (module String) in
 			(* TODO --- We should be smarter about the types. *)
-			let _ = Hashtbl.add typelookup (gir_name_to_string argname) (Int64) in
-			let _ = Hashtbl.add typelookup (gir_name_to_string returnvar) (Int64) in
-			let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun([Int64], Int64)) in
+			let _ = Hashtbl.add typelookup ~key:(gir_name_to_string argname) ~data:(Int64) in
+			let _ = Hashtbl.add typelookup ~key:(gir_name_to_string returnvar) ~data:(Int64) in
+			let _ = Hashtbl.add typelookup ~key:(gir_name_to_string fname) ~data:(Fun([Int64], Int64)) in
 			let functiondef = FunctionDef(fname, [argname],
 				Sequence([
 					Definition(returnvar, true, Some(Int64), None);
@@ -439,7 +439,7 @@ let generate_conversion_function conv = match conv with
 			) in
 			functiondef, fname
     | Map(ftype, ttype, to_from_list) ->
-			let to_from_list_synths = List.map to_from_list (fun (tov, fromv) ->
+			let to_from_list_synths = List.map to_from_list ~f:(fun (tov, fromv) ->
 				(range_value_to_synth_value tov, 
 				 range_value_to_synth_value fromv)
 			) in
@@ -449,9 +449,9 @@ let generate_conversion_function conv = match conv with
             (* Create the typelookup.  *)
             let typelookup = Hashtbl.create (module String) in
             (* And add the functions to it.  *)
-            let _ = Hashtbl.add typelookup (gir_name_to_string argname) ftype in
-            let _ = Hashtbl.add typelookup (gir_name_to_string returnvar) ttype in
-            let _ = Hashtbl.add typelookup (gir_name_to_string fname) (Fun([ftype], ttype)) in
+            let _ = Hashtbl.add typelookup ~key:(gir_name_to_string argname) ~data:ftype in
+            let _ = Hashtbl.add typelookup ~key:(gir_name_to_string returnvar) ~data:ttype in
+            let _ = Hashtbl.add typelookup ~key:(gir_name_to_string fname) ~data:(Fun([ftype], ttype)) in
             FunctionDef(fname, [argname],
                 Sequence([
 					Definition(returnvar, true, Some(ttype), None);
@@ -511,17 +511,17 @@ let get_definition_type_for options escapes validmap typemap v =
 								) in
 								(
 								match relation with
-								| DimEqualityRelation -> Option.map raw_max (fun r -> (r))
-								| DimPo2Relation -> Option.map raw_max (fun r -> (Utils.power_of_two r))
+								| DimEqualityRelation -> Option.map raw_max ~f:(fun r -> (r))
+								| DimPo2Relation -> Option.map raw_max ~f:(fun r -> (Utils.power_of_two r))
 								| DimDivByRelation(mby) ->
-										Option.map raw_max (fun r -> (r / mby))
+										Option.map raw_max ~f:(fun r -> (r / mby))
 								)
 						in
 						let dimmax = match dim with
 						| SingleDimension(d) ->
-								Option.map (dimmax_from_single_dimension d) (fun d -> DimConstant(d))
+								Option.map (dimmax_from_single_dimension d) ~f:(fun d -> DimConstant(d))
 						| MultiDimension(ds, op) ->
-								let rmaxes: int option list = List.map ds dimmax_from_single_dimension in
+								let rmaxes: int option list = List.map ds ~f:dimmax_from_single_dimension in
 								let int_result = (
 								match op with
 								| DimMultiply ->
@@ -530,12 +530,12 @@ let get_definition_type_for options escapes validmap typemap v =
 									| _, _ -> None
 									))) rmaxes
 								) in
-								Option.map int_result (fun r -> DimConstant(r))
+								Option.map int_result ~f:(fun r -> DimConstant(r))
                         | EmptyDimension -> assert false
 						in
-                        Option.join (Option.map dimmax (fun m -> Option.map stype_new (fun s -> Array(s, SingleDimension(m)))))
+                        Option.join (Option.map dimmax ~f:(fun m -> Option.map stype_new ~f:(fun s -> Array(s, SingleDimension(m)))))
                 | Pointer(sp) ->
-						Option.map (size_concreteization sp) (fun p -> Pointer(p))
+						Option.map (size_concreteization sp) ~f:(fun p -> Pointer(p))
                 | other -> Some(other)
                 (* Perhaps we should handle structs specially here.  *)
                 (* Note: I don't think that we will have to, since
@@ -550,7 +550,7 @@ let get_definition_type_for_tovar options validmap typemap escaping_variables to
 	match tovars with
 	| [] -> raise (GenerateGIRException "Defining empty variable")
 	| x :: xs ->
-            let escapes = List.mem escaping_variables (name_reference_to_string x) Utils.string_equal in
+            let escapes = List.mem escaping_variables (name_reference_to_string x) ~equal:Utils.string_equal in
 			get_definition_type_for options escapes validmap typemap x
 
 let generate_variable_reference_to_dimension dim =
@@ -581,7 +581,7 @@ let rec generate_gir_copy_loop typemap copytype =
                             in
 							(* TODO -- support multiple prods with
 							a fold.  *)
-                            FunctionCall(FunctionRef(Name(fname)), VariableList(List.map nrs (fun n -> generate_variable_reference_to_dimension n)))
+                            FunctionCall(FunctionRef(Name(fname)), VariableList(List.map nrs ~f:(fun n -> generate_variable_reference_to_dimension n)))
                     | EmptyDimension -> assert false (* Shouldnae happen? *)
                 in
                 (* Compute the index variable for this loop.  *)
@@ -730,7 +730,7 @@ let rec generate_gir_copy typemap fromvars tovars copytype =
 let rec generate_gir_copies typemap tovars fromvars copytype =
     let expanded_types = get_copy_types_for typemap copytype tovars fromvars in
     List.map expanded_types
-        (fun (typ, basenames_to, basenames_from) ->
+        ~f:(fun (typ, basenames_to, basenames_from) ->
             generate_gir_copy typemap (to_gir_name_list_list basenames_from) (to_gir_name_list_list basenames_to) typ
         )
 
@@ -746,7 +746,7 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
     (* Not sure this is right -- it should also include
     the return value when that feature is added.  *)
 	let unescaping_variables = apispec.funargs in
-	let expression_options, required_fun_defs = List.unzip (List.map skeleton.flat_bindings (fun (single_variable_binding: flat_single_variable_binding) ->
+	let expression_options, required_fun_defs = List.unzip (List.map skeleton.flat_bindings ~f:(fun (single_variable_binding: flat_single_variable_binding) ->
 		(* There may be more than one valid dimension value.
 		   generate assignments based on all the dimension values. *)
         (* TODO --- fix this shit -- I'm pretty sure
@@ -790,12 +790,12 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
 		let assignment_statements =
             match loop_wrappers with
             | lwrap, indvars ->
-                    List.map assign_funcs(fun assfunc ->
+                    List.map assign_funcs ~f:(fun assfunc ->
                         lwrap (assfunc indvars))
         in
 		let assigns_with_defines =
 			if (List.length assignment_statements) > 0 then
-				List.map assignment_statements (fun ass -> Sequence([define; ass]))
+				List.map assignment_statements ~f:(fun ass -> Sequence([define; ass]))
 			else
 				(* Some vars can be define-only *)
 				[define]
@@ -823,7 +823,7 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
 			let frees =
 				(* Don't free everything --- only things that
 				don't escape.  *)
-                List.map unescaping_variables (fun v ->
+                List.map unescaping_variables ~f:(fun v ->
                     Free(Variable(Name(v)))
                 )
 			in
@@ -842,10 +842,10 @@ let generate_gir_for_binding (apispec: apispec) (iospec: iospec) typemap define_
 		else
 			EmptyGIR
 	in
-	let code_options = List.map expr_lists (fun exprs -> Sequence(exprs @ [returnstatement])) in
+	let code_options = List.map expr_lists ~f:(fun exprs -> Sequence(exprs @ [returnstatement])) in
 	(* Do a quick cleanup --- e.g. making sure that there are no double
 	defines, which this approach is prone to generating.  *)
-	let cleaned_code_options = List.map code_options gir_double_define_clean in
+	let cleaned_code_options = List.map code_options ~f:gir_double_define_clean in
 	cleaned_code_options, required_fun_defs
 
 let rec all_dimvars_from dimtype =
@@ -853,13 +853,13 @@ let rec all_dimvars_from dimtype =
 			| EmptyDimension -> []
 			| SingleDimension(nms) -> get_unwarpped_dim_dependency nms
 			| MultiDimension(nms, op) ->
-					List.concat (List.map nms get_unwarpped_dim_dependency)
+					List.concat (List.map nms ~f:get_unwarpped_dim_dependency)
 
 let rec type_topo_dependencies (nam, typ) =
 	match typ with
 	| Array(subtyp, dimtype) ->
 			let _, subdeps = type_topo_dependencies (nam, subtyp) in
-			(* let () = Printf.printf "For name %s have deps %s \n " (name_reference_to_string nam) (String.concat (List.map (all_dimvars_from dimtype)name_reference_to_string )) in *)
+			(* let () = Printf.printf "For name %s have deps %s \n " (name_reference_to_string nam) (String.concat (List.map (all_dimvars_from dimtype) ~f:name_reference_to_string )) in *)
 			(nam, (all_dimvars_from dimtype) @ (subdeps))
 	| Pointer(sty) ->
 			type_topo_dependencies (nam, sty)
@@ -900,24 +900,24 @@ let generate_define_statemetns_for options validmap typemap (iospec: iospec) api
 	   other are presented in the right order.  *)
 	(* Compute any defines that are needed for the returnvars. *)
 	let unpassed_returnvars = Utils.set_difference Utils.string_equal iospec.returnvar iospec.funargs in
-	let names = List.map (api.livein @ unpassed_returnvars) (fun n -> (Name(n), Hashtbl.find_exn typemap.variable_map n)) in
-	let sorted_names = toposort (List.map names type_topo_dependencies) in
+	let names = List.map (api.livein @ unpassed_returnvars) ~f:(fun n -> (Name(n), Hashtbl.find_exn typemap.variable_map n)) in
+	let sorted_names = toposort (List.map names ~f:type_topo_dependencies) in
 	let () = if options.debug_gir_generate_define_statements then
-		let () = Printf.printf "Names %s\n" (String.concat((List.map names (fun (n, s) -> (match n with Name(x) -> x) ^ (synth_type_to_string s))))) in
-		let () = Printf.printf "Sorte names %s\n" (String.concat ~sep:", " (List.map sorted_names gir_name_to_string)) in
+		let () = Printf.printf "Names %s\n" (String.concat((List.map names ~f:(fun (n, s) -> (match n with Name(x) -> x) ^ (synth_type_to_string s))))) in
+		let () = Printf.printf "Sorte names %s\n" (String.concat ~sep:", " (List.map sorted_names ~f:gir_name_to_string)) in
 		let () = Printf.printf "Livein is %s\n" (String.concat ~sep:", " iospec.livein) in
 		let () = Printf.printf "Unpassed return vars are %s\n" (String.concat ~sep:", " unpassed_returnvars) in
 		()
 	else
 		()
 	in
-	let typed_sorted_names = List.map sorted_names (fun n ->
-        let escapes = List.mem unpassed_returnvars (gir_name_to_string n) Utils.string_equal in
+	let typed_sorted_names = List.map sorted_names ~f:(fun n ->
+        let escapes = List.mem unpassed_returnvars (gir_name_to_string n) ~equal:Utils.string_equal in
 		(n, get_definition_type_for options escapes validmap typemap (gir_name_to_name_reference n))
 	) in
     (* Generate a define for each input variable in the API *)
-	List.map typed_sorted_names (fun (x, xtyp) ->
-		if List.mem unpassed_returnvars (gir_name_to_string x) Utils.string_equal then
+	List.map typed_sorted_names ~f:(fun (x, xtyp) ->
+		if List.mem unpassed_returnvars (gir_name_to_string x) ~equal:Utils.string_equal then
 			Definition(x, true, xtyp, None)
 		else
 			Definition(x, false, xtyp, None)
@@ -938,12 +938,12 @@ let generate_gir_for options apispec iospec (skeleton: skeleton_pairs) =
 	let res = List.cartesian_product pre_gir post_gir in
 	let () = if options.debug_generate_gir then
 		let () = Printf.printf "Finished generation of candidata pre programs.  Program are:\n%s\n"
-			(String.concat ~sep:"\n\n" (List.map pre_gir gir_to_string)) in
+			(String.concat ~sep:"\n\n" (List.map pre_gir ~f:gir_to_string)) in
 		let () = Printf.printf "Finsihed generation of candiates post programs. Programs are:\n%s\n"
-			(String.concat ~sep:"\n\n" (List.map post_gir gir_to_string)) in
+			(String.concat ~sep:"\n\n" (List.map post_gir ~f:gir_to_string)) in
 		Printf.printf "Found %d pre and %d post elements\n" (List.length pre_gir) (List.length post_gir)
 	else () in
-    List.map res (fun (pre, post) ->
+    List.map res ~f:(fun (pre, post) ->
 		let new_typemap =
 			{ skeleton.typemap with variable_map = clone_variablemap skeleton.typemap.variable_map }
 		in
@@ -951,14 +951,14 @@ let generate_gir_for options apispec iospec (skeleton: skeleton_pairs) =
 
 
 let generate_gir (options:options) iospec api skeletons: ((gir_pair) list) =
-	let result = List.concat ((List.map skeletons (fun skel ->
+	let result = List.concat ((List.map skeletons ~f:(fun skel ->
 		generate_gir_for options api iospec skel))) in
 	let () = if options.dump_generate_gir then
 		let () = Printf.printf "Generated %d GIR-pair programs\n" (List.length result) in
-		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result (fun(orig_skel, pre, post, typemap, funs, range, map) ->
+		Printf.printf "Printing these programs below:\n%s\n" (String.concat ~sep:"\n\n\n" (List.map result ~f:(fun(orig_skel, pre, post, typemap, funs, range, map) ->
 			"Pre:" ^ (gir_to_string pre) ^ "\nPost: " ^ (gir_to_string post))))
 	else () in
-	List.map result (fun (original_skeleton, pre, post, typemap, fundefs, range_checker, inputmap) ->
+	List.map result ~f:(fun (original_skeleton, pre, post, typemap, fundefs, range_checker, inputmap) ->
 		{
 			original_pairs = original_skeleton;
 			pre = pre;
@@ -966,7 +966,7 @@ let generate_gir (options:options) iospec api skeletons: ((gir_pair) list) =
 			typemap = typemap;
 			fundefs = fundefs;
 			inputmap = inputmap;
-			range_checker = Option.map range_checker (fun checker ->
+			range_checker = Option.map range_checker ~f:(fun checker ->
             {
                     condition = checker;
             });

@@ -1,5 +1,5 @@
 (* Parse one of the types.  *)
-open Core_kernel;;
+open Core;;
 open Yojson;;
 open Yojson.Basic.Util;;
 open Spec_definition;;
