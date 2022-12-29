@@ -15,7 +15,7 @@ open Options;;
 open Code_checker;;
 open Mtime;;
 open Mtime_clock;;
-open Core_kernel.Int64;;
+open Core.Int64;;
 
 exception TypeException of string
 

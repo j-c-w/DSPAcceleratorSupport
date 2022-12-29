@@ -85,8 +85,8 @@ let rec find_possible_dimensions opts typemap all_vars_at_level name : synth_typ
 				let two_dimensional_len_vars =
                     if use_two_dimensional_arrays opts then
                         List.concat (
-                            List.map possible_len_vars (fun lv ->
-                                List.map possible_len_vars (fun lv2 ->
+                            List.map possible_len_vars ~f:(fun lv ->
+                                List.map possible_len_vars ~f:(fun lv2 ->
                                     MultiDimension([DimVariable(lv, DimEqualityRelation); DimVariable(lv2, DimEqualityRelation)], DimMultiply)
                                 )
                             )
@@ -325,7 +325,7 @@ let assign_dimensions (options: options) do_classmaps rangemap typemap inps =
         let () = Printf.printf "Names assigned to were %s\n" (String.concat ~sep:", " inps) in
 		let () = Printf.printf "Result typemaps was %d\n" (List.length res_typemaps) in
 		let () = Printf.printf "Result typemaps after filtering was %d\n" (List.length filtered_typemaps) in
-		let () = Printf.printf "Expanded %s, also propagating %s\n" (String.concat ~sep:", " inps) (String.concat ~sep:"," (List.map other_elements (fun (x, y) -> x))) in
+		let () = Printf.printf "Expanded %s, also propagating %s\n" (String.concat ~sep:", " inps) (String.concat ~sep:"," (List.map other_elements ~f:(fun (x, y) -> x))) in
         ()
 	else
         () in

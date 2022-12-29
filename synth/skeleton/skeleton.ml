@@ -998,7 +998,7 @@ let assign_and_define_bindings options direction constant_options_map typesets_i
 		if options.debug_skeleton_multiple_lengths_filter then
 			let () = Printf.printf "Found possible bindings for %s\n"  (skeleton_dimension_group_types_to_string flattened_typesets_out) in
 			let () = Printf.printf "Have the following variables %d\n" (List.length likely_bindings) in
-			let () = Printf.printf "Have the following number of options for each variable %s\n" (String.concat ~sep:"," (List.map likely_bindings (fun r -> string_of_int (List.length r)))) in
+			let () = Printf.printf "Have the following number of options for each variable %s\n" (String.concat ~sep:"," (List.map likely_bindings ~f:(fun r -> string_of_int (List.length r)))) in
 			() else ()
 	in
     let _ =
