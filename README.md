@@ -8,6 +8,12 @@ Building:
 - Build the FACC libraries: cd synth/libs/clib/; make
 - [optional] Build the evaluation executables: cd benchmarks/; ./make.sh
 
+#Getting Weird Build Errors from OCaml where it looks like it can't find things?
+Nix seems to do a poor job of hiding the system version of Ocaml.
+You should uninstall whatever system version of ocaml is kicking around
+(so that running ocaml/ocamlopt outside of nix-shell doesn't find anything).
+
+#Running
 Run FACC using main.byte, e.g. ./main.byte <compile settings file> <io specification> <api specification>.  examples of all three exist in the benchmarks directory.
 
 Licensing:
@@ -27,3 +33,4 @@ If an example program is not working as expected, there are a few steps to debug
 1. See if FACC is generating the right candidates for it --- these are in synthethizer_temps by default --- look to see if the candidate you are looking for exists.  If it does, the --only-test <N> flag is helpful to debug behaviour on this candidate only.
 2. If it is, check that your wrappers are correct for the program (the json_gen.byte program can help with this) --- you may also need value profiling that is not correctly setup
 3. if it is not, check that range constraints are correct.
+

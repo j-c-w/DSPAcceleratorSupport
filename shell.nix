@@ -10,6 +10,7 @@ mkShell {
 		ocamlPackages.core_kernel opam ocamlPackages.cmdliner
 		ocamlPackages.ppx_expect ocamlPackages.parmap
 		ocamlPackages.alcotest ocamlPackages.core
+		ocamlPackages.mtime
 		# C++ deps for the synnthesizer
 		gcc10 nlohmann_json clang
 		# Other indirect deps for the synthesizer.
