@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <time.h>
 
 // Conditions
 #define POWER_OF_TWO(x) ((x & (x - 1)) == 0)
@@ -33,3 +34,6 @@ void facc_free(void* pointer);
 
 // Generic utility functions
 void facc_strcopy(char *str_in, char *str_out);
+
+// Timing functions
+double calc_spent_time(struct timespec end, struct timespec start);

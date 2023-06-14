@@ -78,3 +78,9 @@ void facc_strcopy(char *str_in, char *str_out) {
 	// Copy the null terminating character too.
 	*str_out = *str_in;
 }
+
+double calc_spent_time(struct timespec end, struct timespec start){
+  double result = end.tv_sec - start.tv_sec;
+  result += (end.tv_nsec - start.tv_nsec) / 1000000000.0;
+  return result;
+}

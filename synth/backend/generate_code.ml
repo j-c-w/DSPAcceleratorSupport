@@ -51,15 +51,17 @@ let cxx_generate_typemap_description tmap =
 
 let accelerator_timer_functions = "
 
-clock_t AcceleratorStart;
-clock_t AcceleratorTotalNanos = 0;
+struct timespec AcceleratorStart;
+struct timespec AcceleratorEnd;
+double AcceleratorTotalNanos = 0;
 void StartAcceleratorTimer() {
-	AcceleratorStart = clock();
+	clock_gettime(CLOCK_MONOTONIC, &AcceleratorStart);
 }
 
 void StopAcceleratorTimer() {
+	clock_gettime(CLOCK_MONOTONIC, &AcceleratorEnd);
 	AcceleratorTotalNanos +=
-		(clock()) - AcceleratorStart;
+		calc_time_spent(AcceleratorEnd, AcceleratorStart);
 }
 "
 
@@ -1245,7 +1247,7 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
-            "clock_t begin = clock();"
+			"struct timespec begin, end;\nclock_gettime(CLOCK_MONOTONIC, &start);"
         else
             ""
     in
@@ -1271,7 +1273,7 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 	let call_func = result_assignment ^ program.generated_funname ^ "(" ^ argnames ^ ");" in
     let post_timing_code =
         if options.generate_timing_code then
-			"clock_t end = clock();"
+			"clock_gettime(CLOCK_MONOTONIC, &end);"
         else
             ""
     in
@@ -1282,8 +1284,8 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 	in
     let timing_print_code =
         if options.generate_timing_code then
-            "std::cout << \"Time: \" << (double) (end - begin) / CLOCKS_PER_SEC << std::endl;
-std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos / CLOCKS_PER_SEC << std::endl;"
+            "std::cout << \"Time: \" << calc_time_spent(end, start) << std::endl;
+std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos << std::endl;"
         else
 			""
     in
