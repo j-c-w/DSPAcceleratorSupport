@@ -18,7 +18,7 @@ mkShell {
 		# Deps for tests
 		fftw fftwFloat blas mkl oneDNN
 		# Deps for helper scripts
-		python38 python38Packages.numpy python38Packages.matplotlib
+		python310 python310Packages.numpy python310Packages.matplotlib
 		# Deps for other experiments
 		(callPackage ./decard.nix {})
 	];
