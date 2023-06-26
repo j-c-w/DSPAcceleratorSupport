@@ -61,7 +61,7 @@ void StartAcceleratorTimer() {
 void StopAcceleratorTimer() {
 	clock_gettime(CLOCK_MONOTONIC, &AcceleratorEnd);
 	AcceleratorTotalNanos +=
-		calc_time_spent(AcceleratorEnd, AcceleratorStart);
+		calc_spent_time(AcceleratorEnd, AcceleratorStart);
 }
 "
 
@@ -1247,7 +1247,7 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 	(* TODO -- need to handle non-void call_funcs here.  *)
 	let pre_timing_code =
 		if options.generate_timing_code then
-			"struct timespec begin, end;\nclock_gettime(CLOCK_MONOTONIC, &start);"
+			"struct timespec begin, end;\nclock_gettime(CLOCK_MONOTONIC, &begin);"
         else
             ""
     in
@@ -1284,7 +1284,7 @@ let cxx_main_function options dump_intermediates returntype (program: program) =
 	in
     let timing_print_code =
         if options.generate_timing_code then
-            "std::cout << \"Time: \" << calc_time_spent(end, start) << std::endl;
+            "std::cout << \"Time: \" << calc_spent_time(end, begin) << std::endl;
 std::cout << \"AccTime: \" << (double) AcceleratorTotalNanos << std::endl;"
         else
 			""
