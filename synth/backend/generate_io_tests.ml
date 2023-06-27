@@ -102,29 +102,36 @@ let generate_array_from_range rangemap namestring =
 
 
 (* TODO --- Could do with making this a bit more deterministic. *)
+(* NOTE: This MUST not change the values_so_far hashmap directly.
+         The value should be returned and inserted into the values_so_far
+		 hashmap at the call-point.  See PointerV case for why.  *)
 let rec generate_inputs_for options rangemap values_so_far name_string infered_type t structure_ordering =
 	let () = if options.debug_generate_io_tests then
 		let () = Printf.printf "Generating value for %s (type %s)...\n" (name_string) (synth_type_to_string infered_type) in
 		()
 	else ()
 	in
-    match t with
+	(* If using value profiles, this is set --- don't overwrite,
+	   but do need to recurse into pointers, structs and arrays
+	   to make sure everything is full.  *)
+	let has_value = Hashtbl.mem values_so_far name_string in
+	let result = match t with
     (* TODO -- Support negative values.  *)
-	| Bool -> BoolV(generate_bool_within_range rangemap (name_string))
-	| Int8 -> Int8V(generate_int_within_range rangemap (name_string))
-    | Int16 -> Int16V(generate_int_within_range rangemap (name_string))
-    | Int32 -> Int32V(generate_int_within_range rangemap (name_string))
-    | Int64 -> Int64V(generate_int_within_range rangemap (name_string))
-	| UInt8 -> UInt8V(generate_uint_within_range rangemap (name_string))
-	| UInt16 -> UInt16V(generate_uint_within_range rangemap (name_string))
-	| UInt32 -> UInt32V(generate_uint_within_range rangemap (name_string))
-	| UInt64 -> UInt64V(generate_uint_within_range rangemap (name_string))
-    | Float16 -> Float16V(generate_float_within_range rangemap (name_string))
-    | Float32 -> Float32V(generate_float_within_range rangemap (name_string))
-    | Float64 -> Float64V(generate_float_within_range rangemap (name_string))
-	| String -> StringV(generate_string_within_range options rangemap (name_string))
-    | Fun(_, _) -> raise (TypeException "Can't generate types for a fun")
-    | Unit -> UnitV
+	| Bool -> if has_value then Hashtbl.find_exn values_so_far name_string else BoolV(generate_bool_within_range rangemap (name_string))
+	| Int8 -> if has_value then Hashtbl.find_exn values_so_far name_string else Int8V(generate_int_within_range rangemap (name_string))
+    | Int16 -> if has_value then Hashtbl.find_exn values_so_far name_string else Int16V(generate_int_within_range rangemap (name_string))
+    | Int32 -> if has_value then Hashtbl.find_exn values_so_far name_string else Int32V(generate_int_within_range rangemap (name_string))
+    | Int64 -> if has_value then Hashtbl.find_exn values_so_far name_string else Int64V(generate_int_within_range rangemap (name_string))
+	| UInt8 -> if has_value then Hashtbl.find_exn values_so_far name_string else UInt8V(generate_uint_within_range rangemap (name_string))
+	| UInt16 -> if has_value then Hashtbl.find_exn values_so_far name_string else UInt16V(generate_uint_within_range rangemap (name_string))
+	| UInt32 -> if has_value then Hashtbl.find_exn values_so_far name_string else UInt32V(generate_uint_within_range rangemap (name_string))
+	| UInt64 -> if has_value then Hashtbl.find_exn values_so_far name_string else UInt64V(generate_uint_within_range rangemap (name_string))
+    | Float16 -> if has_value then Hashtbl.find_exn values_so_far name_string else Float16V(generate_float_within_range rangemap (name_string))
+    | Float32 -> if has_value then Hashtbl.find_exn values_so_far name_string else Float32V(generate_float_within_range rangemap (name_string))
+    | Float64 -> if has_value then Hashtbl.find_exn values_so_far name_string else Float64V(generate_float_within_range rangemap (name_string))
+	| String -> if has_value then Hashtbl.find_exn values_so_far name_string else StringV(generate_string_within_range options rangemap (name_string))
+    | Fun(_, _) -> if has_value then Hashtbl.find_exn values_so_far name_string else raise (TypeException "Can't generate types for a fun")
+    | Unit -> if has_value then Hashtbl.find_exn values_so_far name_string else UnitV
 	| Pointer(stype) ->
 			let infered_stype = match infered_type with
 			| Pointer(sty) -> sty
@@ -134,127 +141,167 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 			in a general case I expect.  *)
 			| other -> raise (TypeException "Infered pointer type over non-pointer")
 			in
+			(* Despite the fact that we are recursing with a
+			different type, I'm pretty sure we can leave the hashmap
+			the same --- PointerV is a bit invisiable when loaded
+			from a value profile, so the visible type should be
+			the recursed thing anyway.  *)
+			(* NOTE: I can see this causing problems if we try
+				to typecheck the generated IO examples... *)
+			(* I guess it would be nice if the IO input format
+			had pointers prefixed with a * in the typename
+			or something, then we could resolve that ambiguity.  *)
 			PointerV(generate_inputs_for options rangemap values_so_far name_string infered_stype stype structure_ordering)
     (* TODO --- Probably need to
        make a distinction between square and non
        square arrays.  *)
     | Array(subtype, dimvar) ->
-			(* Not sure whether this should use the context name at the moment --- I think it should  *)
-			if Hashtbl.mem rangemap (name_string) then
-				(* If the array has specified values
-				we should use those --- often occurs with things
-				that have precomputed constant tables, e.g. twiddle factors.  *)
-				generate_array_from_range rangemap (name_string)
-			else
-				let (infered_subtype, infered_dim) = match infered_type with
-				| Array(sty, dim) -> sty, dim
-				(* As above with pointers: we can definitely handle this, but
-				as of now the structure inferencer doesn't actually do this,
+			let (infered_subtype, infered_dim) = match infered_type with
+					| Array(sty, dim) -> sty, dim
+					(* As above with pointers: we can definitely handle this, but
+					as of now the structure inferencer doesn't actually do this,
 				and so it's difficult to understand what subtype to use without
-				concrete usecases.  *)
-				| other -> raise (TypeException "Infered an array on a non-array original type!")
-				in
-				(* If the name wasn't specified, then we should
-				generate an array.  *)
-				(* If this throws, there's an issue with the topo sorting below --- we
-				   expect that the dimvars will have been assigned.  *)
-
-				(* helper function to get the integer value from this *)
-				let size_of_dimension_variable values_so_far dimvar_name = 
-						let wrapper = get_value values_so_far dimvar_name in
-						let arrlen = match wrapper with
-						| Int8V(v) -> v
-						| Int16V(v) -> v
-						| Int32V(v) -> v
-						| Int64V(v) -> v
-						| UInt8V(v) -> v
-						| UInt16V(v) -> v
-						| UInt32V(v) -> v
-						| UInt64V(v) -> v
-						| _ ->
-								(* probably we could handle this --- just need to have a think
-								about what it means. *)
-								raise (TypeException "Unexpected list dimension type (non-int) ")
-						in
-						arrlen
-				in
-				let size_of_dimension dim =
-						match dim with
-						| DimVariable(dimvar_name, relation) ->
-								(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
-								let arrlen = size_of_dimension_variable values_so_far dimvar_name in
-								let () = if options.debug_generate_io_tests then
-									Printf.printf "Getting dimension %s, with original array length %d\n" (name_reference_to_string dimvar_name) (arrlen)
-								else () in
-								let result_length = (
-								match relation with
-								| DimEqualityRelation -> arrlen
-								| DimPo2Relation ->
-										Utils.power_of_two arrlen
-								| DimDivByRelation(x) ->
-										arrlen / x
-                                ) in
-								let () = if options.debug_generate_io_tests then
-									Printf.printf "Got length after modification of %d\n" (result_length)
-								else ()
-								in
-								result_length
-						| DimConstant(c) -> c
-				in
-				let base_arrlen = match infered_dim with
-				| SingleDimension(dms) -> size_of_dimension dms
-				| MultiDimension(dms, op) ->
-						let vals = List.map dms ~f:size_of_dimension in
-						(
-						match op with
-						| DimMultiply -> List.fold ~init:1 ~f:(fun i1 -> (fun i2 -> i1 * i2)) vals
-						)
-				| EmptyDimension ->
-						raise (TypeException "Can't have empty dimensions!")
-				in
-				let arrlen_modifier = get_size_modifier_for infered_subtype in
-                let arrlen = arrlen_modifier * base_arrlen in
-				let () = if options.debug_generate_io_tests then
-					Printf.printf "Generating array length %d (base %d, size modifier %d)\n" (arrlen) base_arrlen arrlen_modifier
-				else () in
-				if arrlen < options.array_length_threshold then
-					ArrayV(List.map (List.range 0 arrlen) ~f:(fun _ -> generate_inputs_for options rangemap values_so_far name_string infered_subtype subtype structure_ordering))
+					concrete usecases.  *)
+					| other -> raise (TypeException "Infered an array on a non-array original type!")
+	in
+			if has_value then
+				(* If we already generated a value for this array in the
+				value profile, we just need to recurse into each sub-element.
+				(and make sure they are fully-defined. *)
+				let current_value = Hashtbl.find_exn values_so_far name_string in
+				match current_value with
+				| ArrayV(elts) ->
+						ArrayV(List.map elts ~f:(fun elt ->
+							let tempmap = Hashtbl.create (module String) in
+							let _ = Hashtbl.add tempmap ~key:"var" ~data:elt in
+							let temp_typemap = Hashtbl.create (module String) in 
+							let _ = Hashtbl.add temp_typemap ~key:"var" ~data:subtype in
+							(* Do recursive call -- 'var' is the annonymous
+							name for this array element.  *)
+							(generate_inputs_for options rangemap tempmap "var" subtype infered_subtype structure_ordering)
+						))
+				| other -> raise (TypeException "Non-array value-profile for array type")
+			else (* no value-profile for this array  *)
+				(* Otherwise, we need to fully genearte this array. *)
+				(* Not sure whether this should use the context name at the moment --- I think it should  *)
+				if Hashtbl.mem rangemap (name_string) then
+					(* If the array has specified values
+					we should use those --- often occurs with things
+					that have precomputed constant tables, e.g. twiddle factors.  *)
+					generate_array_from_range rangemap (name_string)
 				else
-					(* Don't want to try and generate arrays that are too big, because
-					it just makes synthesis take forever, espc with
-					slower computers.  *)
-                    (* let () = Printf.printf "Arrlen is %d, maxlen is %d" (arrlen) (options.array_length_threshold) in *)
-					raise (GenerationFailure)
+					(* If the name wasn't specified, then we should
+					generate an array.  *)
+					(* If this throws, there's an issue with the topo sorting below --- we
+					   expect that the dimvars will have been assigned.  *)
+
+					(* helper function to get the integer value from this *)
+					let size_of_dimension_variable values_so_far dimvar_name = 
+							let wrapper = get_value values_so_far dimvar_name in
+							let arrlen = match wrapper with
+							| Int8V(v) -> v
+							| Int16V(v) -> v
+							| Int32V(v) -> v
+							| Int64V(v) -> v
+							| UInt8V(v) -> v
+							| UInt16V(v) -> v
+							| UInt32V(v) -> v
+							| UInt64V(v) -> v
+							| _ ->
+									(* probably we could handle this --- just need to have a think
+									about what it means. *)
+									raise (TypeException "Unexpected list dimension type (non-int) ")
+							in
+							arrlen
+					in
+					let size_of_dimension dim =
+							match dim with
+							| DimVariable(dimvar_name, relation) ->
+									(* Referneces to the variable must be made from the context of this instance of the class (i.e. no escaping refs).  *)
+									let arrlen = size_of_dimension_variable values_so_far dimvar_name in
+									let () = if options.debug_generate_io_tests then
+										Printf.printf "Getting dimension %s, with original array length %d\n" (name_reference_to_string dimvar_name) (arrlen)
+									else () in
+									let result_length = (
+									match relation with
+									| DimEqualityRelation -> arrlen
+									| DimPo2Relation ->
+											Utils.power_of_two arrlen
+									| DimDivByRelation(x) ->
+											arrlen / x
+									) in
+									let () = if options.debug_generate_io_tests then
+										Printf.printf "Got length after modification of %d\n" (result_length)
+									else ()
+									in
+									result_length
+							| DimConstant(c) -> c
+					in
+					let base_arrlen = match infered_dim with
+					| SingleDimension(dms) -> size_of_dimension dms
+					| MultiDimension(dms, op) ->
+							let vals = List.map dms ~f:size_of_dimension in
+							(
+							match op with
+							| DimMultiply -> List.fold ~init:1 ~f:(fun i1 -> (fun i2 -> i1 * i2)) vals
+							)
+					| EmptyDimension ->
+							raise (TypeException "Can't have empty dimensions!")
+					in
+					let arrlen_modifier = get_size_modifier_for infered_subtype in
+					let arrlen = arrlen_modifier * base_arrlen in
+					let () = if options.debug_generate_io_tests then
+						Printf.printf "Generating array length %d (base %d, size modifier %d)\n" (arrlen) base_arrlen arrlen_modifier
+					else () in
+					if arrlen < options.array_length_threshold then
+						ArrayV(List.map (List.range 0 arrlen) ~f:(fun _ -> generate_inputs_for options rangemap values_so_far name_string infered_subtype subtype structure_ordering))
+					else
+						(* Don't want to try and generate arrays that are too big, because
+						it just makes synthesis take forever, espc with
+						slower computers.  *)
+						(* let () = Printf.printf "Arrlen is %d, maxlen is %d" (arrlen) (options.array_length_threshold) in *)
+						raise (GenerationFailure)
     | Struct(structname) ->
 			(* To generate the sub-typemap, use the toposorted fields for that partiuclar class.  *)
 			(* let () = Printf.printf "Looking at %s\n" (structname) in *)
 			let members, tmap, infered_tmap = Hashtbl.find_exn structure_ordering structname in
             (* Generate a value for each type in the metadata.  *)
-            let valuetbl = Hashtbl.create (module String) in
+			let current_valuetbl =
+				if has_value then
+					let current_struct = Hashtbl.find_exn values_so_far name_string in
+					match current_struct with
+					| StructV(_, current_valuetbl) ->
+							(* We copy the vlaue-table so we don't change
+							things -- needs to be set by parent in hashtbl.
+
+							This table is passed recusively, then updated
+							within this call w appropriate values.  *)
+							Hashtbl.copy current_valuetbl
+					| _ -> raise (TypeException "Struct type has non-struct value profile")
+				else
+					Hashtbl.create (module String)
+			in
             let _ = List.map members ~f:(fun member ->
-				let resv = generate_inputs_for options rangemap valuetbl member (Hashtbl.find_exn infered_tmap.variable_map member) (Hashtbl.find_exn tmap.variable_map member) structure_ordering in
-				Hashtbl.add valuetbl ~key:member ~data:resv
+				let resv = generate_inputs_for options rangemap current_valuetbl member (Hashtbl.find_exn infered_tmap.variable_map member) (Hashtbl.find_exn tmap.variable_map member) structure_ordering in
+				Hashtbl.add current_valuetbl ~key:member ~data:resv
 			) in
-            StructV(structname, valuetbl)
+            StructV(structname, current_valuetbl)
+	in
+	result
 
 let rec generate_io_values_worker options rangemap generated_vs vs structure_orderings infered_typemap io_typemap =
 	match vs with
 	| [] -> ()
 	| x :: xs ->
 			let name_string = name_reference_to_string x in
-			let () = if Hashtbl.mem generated_vs name_string then
-				let () = if options.debug_generate_io_tests then
-					Printf.printf "Skipping variable (defined by value profile) %s\n" (name_string)
-				else () in
-				() (* Skip because this has already been generated by a value profile.  *)
-			else
-				let typx = Hashtbl.find_exn io_typemap.variable_map name_string in
-				let infered_typx = Hashtbl.find_exn infered_typemap.variable_map name_string in
-				let inputs = generate_inputs_for options rangemap generated_vs name_string infered_typx typx structure_orderings in
-				let res = Hashtbl.add generated_vs ~key:(name_reference_to_string x) ~data:inputs in
-				let () = assert (match res with | `Ok -> true | _ -> false) in
-				()
-			in
+			let typx = Hashtbl.find_exn io_typemap.variable_map name_string in
+			let infered_typx = Hashtbl.find_exn infered_typemap.variable_map name_string in
+			let inputs = generate_inputs_for options rangemap generated_vs name_string infered_typx typx structure_orderings in
+			(* Remove the value-profile-injected map if
+				that was there.  *)
+			let _ = Hashtbl.remove generated_vs name_string in
+			let res = Hashtbl.add generated_vs ~key:(name_reference_to_string x) ~data:inputs in
+			let () = assert (match res with | `Ok -> true | _ -> false) in
 			(generate_io_values_worker options rangemap generated_vs xs structure_orderings infered_typemap io_typemap)
 
 let create_mapping_from_value_profiles profiles = match profiles with
@@ -264,6 +311,7 @@ let create_mapping_from_value_profiles profiles = match profiles with
             (* Note that this is a shallow clone --- needs to be a deep clone
                to properly support the partial profiling required by some
                data structures.  *)
+			(* The deep cloning is done within the generate_io_values function. *)
 			clone_valuemap (List.nth_exn profiles (Random.int (List.length profiles)))
 
 let rec generate_io_values options value_profiles num_tests rangemap livein structure_orderings infered_typemap io_typemap =
