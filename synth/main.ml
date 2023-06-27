@@ -140,6 +140,7 @@ let optswrapper compile_settings_file iospec_file api_file dump_skeletons
         debug_generate_constants = false; (* For another tool.  *)
 
 		print_synthesizer_numbers = print_synth_program_nums;
+		print_array_length_warnings = false; (* for another tool.  *)
     }
     in
 	let () =

@@ -115,6 +115,10 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 	   but do need to recurse into pointers, structs and arrays
 	   to make sure everything is full.  *)
 	let has_value = Hashtbl.mem values_so_far name_string in
+	let () = if options.debug_generate_io_tests then
+		let () = Printf.printf "Variable %s has value in value profile: %b\n" (name_string) (has_value) in
+		()
+	else () in
 	let result = match t with
     (* TODO -- Support negative values.  *)
 	| Bool -> if has_value then Hashtbl.find_exn values_so_far name_string else BoolV(generate_bool_within_range rangemap (name_string))
@@ -133,6 +137,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
     | Fun(_, _) -> if has_value then Hashtbl.find_exn values_so_far name_string else raise (TypeException "Can't generate types for a fun")
     | Unit -> if has_value then Hashtbl.find_exn values_so_far name_string else UnitV
 	| Pointer(stype) ->
+			(* let () = Printf.printf "Pointer subcase (subtype %s) \n" (synth_type_to_string stype) in *)
 			let infered_stype = match infered_type with
 			| Pointer(sty) -> sty
 			(* NOt that this case can't be easily handled, but this is a bit
@@ -156,6 +161,7 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
        make a distinction between square and non
        square arrays.  *)
     | Array(subtype, dimvar) ->
+			(* let _ = Printf.printf "Array subcase\n" in *)
 			let (infered_subtype, infered_dim) = match infered_type with
 					| Array(sty, dim) -> sty, dim
 					(* As above with pointers: we can definitely handle this, but
@@ -259,7 +265,9 @@ let rec generate_inputs_for options rangemap values_so_far name_string infered_t
 						(* Don't want to try and generate arrays that are too big, because
 						it just makes synthesis take forever, espc with
 						slower computers.  *)
-						(* let () = Printf.printf "Arrlen is %d, maxlen is %d" (arrlen) (options.array_length_threshold) in *)
+						let () = if options.print_array_length_warnings then
+							Printf.printf "Arrlen is %d, maxlen is %d\n" (arrlen) (options.array_length_threshold)
+						else () in
 						raise (GenerationFailure)
     | Struct(structname) ->
 			(* To generate the sub-typemap, use the toposorted fields for that partiuclar class.  *)
@@ -294,14 +302,15 @@ let rec generate_io_values_worker options rangemap generated_vs vs structure_ord
 	| [] -> ()
 	| x :: xs ->
 			let name_string = name_reference_to_string x in
+			(* let () = Printf.printf "Generating values for %s\n" (name_string) in *)
 			let typx = Hashtbl.find_exn io_typemap.variable_map name_string in
 			let infered_typx = Hashtbl.find_exn infered_typemap.variable_map name_string in
 			let inputs = generate_inputs_for options rangemap generated_vs name_string infered_typx typx structure_orderings in
 			(* Remove the value-profile-injected map if
 				that was there.  *)
 			let _ = Hashtbl.remove generated_vs name_string in
-			let res = Hashtbl.add generated_vs ~key:(name_reference_to_string x) ~data:inputs in
-			let () = assert (match res with | `Ok -> true | _ -> false) in
+			let res = Hashtbl.add generated_vs ~key:name_string ~data:inputs in
+			let () = assert (match res with | `Ok -> true | _ -> let () = Printf.printf "Failed to insert new values\n" in false) in
 			(generate_io_values_worker options rangemap generated_vs xs structure_orderings infered_typemap io_typemap)
 
 let create_mapping_from_value_profiles profiles = match profiles with
@@ -319,9 +328,11 @@ let rec generate_io_values options value_profiles num_tests rangemap livein stru
 	| 0 -> []
 	| n ->
         let inputs = ref None in
-        let () = while (Option.is_none !inputs) do
+        let tries = ref 0 in
+        let () = while (Option.is_none !inputs) && (!tries < 1000) do
             (* This can fail if it happens to generate arrays that
             are too long to test successfully.  *)
+            let () = tries := !tries + 1 in
             let () = inputs := (try
                 let mapping = create_mapping_from_value_profiles value_profiles in
                 let () = (generate_io_values_worker options rangemap mapping livein structure_orderings infered_typemap io_typemap) in
@@ -333,6 +344,10 @@ let rec generate_io_values options value_profiles num_tests rangemap livein stru
             )
             in ()
         done in
+        (* If this crashes, it's like because tries was exceeded, which
+           is (at this point in time) most likely because the tool was asked
+           to generate arrays that are longer than the array_length_threshold
+           option sets it to be.  *)
 		(Option.value_exn !inputs) :: (generate_io_values options value_profiles (num_tests - 1) rangemap livein structure_orderings infered_typemap io_typemap)
 
 let rec value_to_string value =

@@ -11,7 +11,8 @@ open Program;;
 
 let () = Printexc.record_backtrace true;;
 
-let main iospec_file num_tests output_folder max_string_size seed =
+let main iospec_file num_tests output_folder max_string_size seed debug_generate_io_tests
+        array_length_threshold =
 	let _ = Random.init seed in
 	let options = { default_options with
 		number_of_tests = num_tests;
@@ -20,8 +21,13 @@ let main iospec_file num_tests output_folder max_string_size seed =
 		   required.  It can obscure error messages (e.g. if there are ambiguities
 		   in the iospec used.) *)
 		use_parmap = false;
-		debug_generate_io_tests = false;
+		debug_generate_io_tests = debug_generate_io_tests;
         max_string_size = max_string_size;
+		(* Since we are just doing 
+		generation, print arnings if we abort
+		due to repeatedly allocating too much data.  *)
+		print_array_length_warnings = true;
+        array_length_threshold = array_length_threshold;
 	} in
 	let iospec, iotypemap, classspec = load_iospec options iospec_file in
 	let empty_alignmenttbl = empty_typemap () in
@@ -67,9 +73,15 @@ let number =
 let max_string_size =
 	let doc = "Max size of strings to generate as part of IO test" in
 	Arg.(value & opt int 100 & info ["max-string-size"] ~docv:"MaxStringSize" ~doc)
+let array_length_threshold =
+    let doc = "max valid size of allocated arrays" in
+    Arg.(value & opt int 10000 & info ["array-length-threshold"] ~docv:"ArrayLengthThreshold" ~doc)
 let seed =
 	let doc = "Random Seed" in
 	Arg.(value & opt int 0 & info ["random-seed"] ~docv:"RandomSeed" ~doc)
+let debug_generate_io_tests =
+	let doc = "Debug generate IO tests" in
+	Arg.(value & flag & info ["debug-generate-io"] ~docv:"DebugGenerateIO" ~doc)
 
 let destfolder =
 	let doc = "Distination folder" in
@@ -79,6 +91,6 @@ let info =
 	let doc = "Generate IO Examples" in
 	Cmd.info "IOGen" ~doc
 
-let args_t = Term.(const main $ iospec $ number $ destfolder $ max_string_size $ seed)
+let args_t = Term.(const main $ iospec $ number $ destfolder $ max_string_size $ seed $ debug_generate_io_tests $ array_length_threshold)
 
 let () = Stdlib.exit @@ Cmd.eval (Cmd.v info args_t)

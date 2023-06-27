@@ -150,6 +150,7 @@ type options = {
 
 	(* Generic debug *)
 	print_synthesizer_numbers: bool;
+    print_array_length_warnings: bool;
 }
 
 (* this is a dirty hack --- fix the multiple frontends
@@ -250,6 +251,7 @@ let default_options = {
 
 	(* Generic debug *)
 	print_synthesizer_numbers = false;
+    print_array_length_warnings = false;
 }
 
 
